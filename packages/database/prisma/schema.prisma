@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  PROFESSIONAL
+  CLIENT
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  BANK_TRANSFER
+  CASH
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          Role     @default(CLIENT)
+  barbershopId  String?
+  barbershop    Barbershop? @relation("BarbershopUsers", fields: [barbershopId], references: [id])
+  professional  Professional?
+  client        Client?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([barbershopId])
+}
+
+model Barbershop {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  cnpj            String?  @unique
+  address         String?
+  phone           String?
+  email           String?
+  description     String?
+  logoUrl         String?
+  bannerUrl       String?
+  themeId         String?  @default("classic-grid")
+  theme           Theme?   @relation("BarbershopTheme", fields: [themeId], references: [id])
+  workingHours    Json?
+  subscriptionId  String?
+  subscription    Subscription? @relation("BarbershopSubscription")
+  users           User[]   @relation("BarbershopUsers")
+  professionals   Professional[]
+  services        Service[]
+  clients         Client[]
+  appointments    Appointment[]
+  socialLinks     SocialLinks?
+  loyaltyConfig   LoyaltyConfig?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([slug])
+}
+
+model Professional {
+  id             String   @id @default(uuid())
+  barbershopId   String
+  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  userId         String?  @unique
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name           String
+  email          String?
+  phone          String?
+  avatarUrl      String?
+  commissionType String   @default("PERCENTAGE")
+  commissionValue Float   @default(0)
+  canViewAllAgenda Boolean @default(false)
+  workingHours   Json?
+  services       Service[] @relation("ServiceProfessionals")
+  appointments   Appointment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([barbershopId])
+}
+
+model Service {
+  id             String   @id @default(uuid())
+  barbershopId   String
+  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  category       String   @default("OUTRO")
+  duration       Int
+  price          Float
+  imageUrl       String?
+  professionals  Professional[] @relation("ServiceProfessionals")
+  appointments   Appointment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([barbershopId])
+}
+
+model Client {
+  id             String   @id @default(uuid())
+  barbershopId   String
+  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  userId         String?  @unique
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name           String
+  email          String?
+  phone          String?
+  birthday       DateTime?
+  notes          String?
+  tags           String[] @default([])
+  loyaltyStamps  Int      @default(0)
+  lastVisit      DateTime?
+  appointments   Appointment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([barbershopId])
+  @@index([phone])
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  barbershopId    String
+  barbershop      Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  professionalId  String
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  startTime       DateTime
+  endTime         DateTime
+  status          AppointmentStatus @default(PENDING)
+  notes           String?
+  price           Float
+  commission      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([barbershopId, startTime])
+  @@index([professionalId, startTime])
+  @@index([clientId])
+}
+
+model Theme {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String
+  primary     String
+  secondary   String
+  accent      String
+  cssVars     Json
+  barbershops Barbershop[] @relation("BarbershopTheme")
+  createdAt   DateTime @default(now())
+}
+
+model SocialLinks {
+  id            String   @id @default(uuid())
+  barbershopId  String   @unique
+  barbershop    Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  instagram     String?
+  facebook      String?
+  tiktok        String?
+  youtube       String?
+  website       String?
+  whatsapp      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LoyaltyConfig {
+  id            String   @id @default(uuid())
+  barbershopId  String   @unique
+  barbershop    Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  stampsRequired Int     @default(10)
+  rewardType    String   @default("FREE_SERVICE")
+  rewardValue   Float    @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Subscription {
+  id              String   @id @default(uuid())
+  barbershopId    String   @unique
+  barbershop      Barbershop @relation("BarbershopSubscription", fields: [barbershopId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            Plan     @relation(fields: [planId], references: [id])
+  status          SubscriptionStatus @default(TRIAL)
+  trialEndsAt     DateTime?
+  currentPeriodEnd DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  payments        Payment[]
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String
+  priceMonthly Float
+  priceYearly  Float
+  features    Json
+  maxProfessionals Int?
+  trialDays   Int      @default(14)
+  active      Boolean  @default(true)
+  subscriptions Subscription[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  subscriptionId String
+  subscription  Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  amount        Float
+  method        PaymentMethod
+  status        String   @default("PENDING")
+  pixQrCode     String?
+  pixCode       String?
+  receiptUrl    String?
+  confirmedAt   DateTime?
+  createdAt     DateTime @default(now())
+  @@index([subscriptionId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  barbershopId String?
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+  oldData     Json?
+  newData     Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  @@index([barbershopId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  barbershopId String
+  userId      String?
+  type        String
+  title       String
+  message     String
+  data        Json?
+  read        Boolean  @default(false)
+  channel     String[] @default(["IN_APP"])
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  @@index([barbershopId, userId, read])
+}
