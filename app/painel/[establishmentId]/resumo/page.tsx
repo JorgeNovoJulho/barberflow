@@ -69,9 +69,12 @@ export default async function DashboardPage({ params, searchParams }: {
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>
       <Link href={`/painel/${shop}/clientes`}>Clientes</Link>
     </nav>
-    <p className="eyebrow">{shopResult.data.name}</p>
-    <h1>Visão geral</h1>
-    <Link className="primary" href={`/painel/${shop}/agenda?novo=1#novo`}>Novo agendamento</Link>
+    <header className="dashboard-header">
+      <div><p className="eyebrow">{shopResult.data.name}</p><h1>Visão geral</h1></div>
+      <Link className="primary" href={`/painel/${shop}/agenda?novo=1#novo`}>
+        <span aria-hidden="true">+</span> Novo agendamento
+      </Link>
+    </header>
     <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
       <summary>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
       {aviso === "falha" && <p role="alert">Não foi possível marcar as notificações como lidas.</p>}

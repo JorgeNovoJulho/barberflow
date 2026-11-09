@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
 import { MobileNav } from "./mobile-nav";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/plus-jakarta-sans/wght.css";
 import "./styles.css";
+import "./visual.css";
 
 export const metadata: Metadata = {
   title: { default: "BARBERFLOW", template: "%s | BARBERFLOW" },

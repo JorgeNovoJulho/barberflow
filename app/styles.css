@@ -52,7 +52,7 @@ p { margin: 0 0 1rem; }
 .landing-hero::before { z-index: 0; background: linear-gradient(90deg, rgb(24 16 13 / 92%) 0%, rgb(24 16 13 / 74%) 34%, rgb(24 16 13 / 18%) 80%); }
 .landing-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; z-index: -1; }
 .landing-hero-copy { position: relative; }
-.landing-hero-copy h1 { max-width: 13ch; font-family: Georgia, serif; font-weight: 500; letter-spacing: -.045em; }
+.landing-hero-copy h1 { max-width: 13ch; letter-spacing: -.045em; }
 .landing-hero .intro { color: #f0e4da; }
 .landing-hero .primary { background: #efbf87; color: #24160e; }
 .landing-hero .secondary { background: rgb(25 16 12 / 60%); border-color: #eac49c; color: #fff3e6; }
@@ -248,7 +248,7 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
   background: linear-gradient(90deg, rgb(24 15 16 / 96%) 0%, rgb(26 15 16 / 82%) 36%, rgb(26 15 16 / 22%) 75%),
     linear-gradient(0deg, rgb(27 16 19 / 36%), transparent 48%);
 }
-.landing-hero-copy h1, .landing-hero-copy h2 { max-width: 15ch; font-family: Georgia, serif; font-weight: 500; font-size: clamp(2.9rem, 6.8vw, 6.2rem); letter-spacing: -.055em; }
+.landing-hero-copy h1, .landing-hero-copy h2 { max-width: 15ch; font-size: clamp(2.9rem, 6.8vw, 6.2rem); letter-spacing: -.055em; }
 .landing-hero-copy .eyebrow { color: var(--brand-gold); letter-spacing: .15em; }
 .landing-hero .intro { max-width: 38ch; }
 .landing-hero .primary { background: linear-gradient(135deg, #f6d3a8, #e8a576); }
@@ -436,7 +436,7 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 }
 
 .public-intro { margin-block: 1rem 1.5rem; }
-.public-intro h1 { font-family: Georgia, serif; font-weight: 500; max-width: 24ch; }
+.public-intro h1 { max-width: 24ch; }
 .public-intro > p:last-child { color: var(--muted); }
 .directory-search {
   max-width: none;
@@ -465,7 +465,7 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
   content: ""; position: absolute; z-index: -1; inset: 0;
   background: linear-gradient(90deg, rgb(23 15 20 / 96%) 5%, rgb(23 15 20 / 84%) 48%, rgb(23 15 20 / 22%));
 }
-.business-heading h1 { font-family: Georgia, serif; font-weight: 500; max-width: 20ch; }
+.business-heading h1 { max-width: 20ch; }
 .business-heading .eyebrow { color: var(--brand-gold); margin-top: .5rem; }
 .business-heading .intro { color: #f8e7ef; }
 .business-heading .secondary { background: #291e29; border-color: #b88994; color: #fff6f3; }
