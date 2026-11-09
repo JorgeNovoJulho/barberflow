@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
+import { MobileNav } from "./mobile-nav";
 import "./styles.css";
 
 export const metadata: Metadata = {
@@ -17,27 +18,38 @@ export default async function Layout({ children }: { children: ReactNode }) {
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
   const theme = isThemeId(preference?.theme) ? preference.theme : defaultTheme;
+  const navigation = <>
+    <Link href="/#segmentos">Para quem</Link>
+    <Link href="/estabelecimentos">Encontrar serviços</Link>
+    <Link href="/#funcionalidades">Funcionalidades</Link>
+    <Link href="/planos">Planos</Link>
+    <Link href="/#duvidas">Dúvidas</Link>
+    {user && <Link href="/painel">Meu painel</Link>}
+    {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
+    {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}
+  </>;
 
   return (
     <html lang="pt-BR" data-theme={theme}>
       <body>
         <header className="site-header">
           <div className="container navigation">
-            <Link className="wordmark" href="/">BARBER<span>FLOW</span></Link>
-            <nav aria-label="Principal">
-              <Link href="/#segmentos">Para quem</Link>
-              <Link href="/estabelecimentos">Encontrar serviços</Link>
-              <Link href="/#funcionalidades">Funcionalidades</Link>
-              <Link href="/planos">Planos</Link>
-              <Link href="/#duvidas">Dúvidas</Link>
-              {user && <Link href="/painel">Meu painel</Link>}
-              {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
-              {user ? <Link href="/configuracoes">Configurações</Link> : <Link href="/login">Entrar</Link>}
-            </nav>
+            <Link className="wordmark" href="/" aria-label="BARBERFLOW, início">
+              <svg className="brand-mark" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <rect width="32" height="32" rx="9" fill="currentColor" />
+                <path d="M8 21.5h6.5l4-11h5.5M8 16h4m8 0h4" stroke="#191517" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="brand-name">BARBER<span>FLOW</span></span>
+            </Link>
+            <nav className="desktop-nav" aria-label="Principal">{navigation}</nav>
+            <MobileNav>{navigation}</MobileNav>
           </div>
         </header>
         <main>{children}</main>
-        <footer className="container footer">BARBERFLOW · Gestão para beleza e bem-estar</footer>
+        <footer className="container footer">
+          <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>
+          <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link></nav>
+        </footer>
       </body>
     </html>
   );
