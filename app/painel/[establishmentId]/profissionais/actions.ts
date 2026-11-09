@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
-import { httpsUrl } from "../../../../lib/business-profile";
+import { httpsUrl, socialUrl } from "../../../../lib/business-profile";
+import { productImageLimit, productImageTypes } from "../../../../lib/product-media";
 
 function value(data: FormData, field: string) {
   return String(data.get(field) ?? "").trim();
@@ -34,18 +35,40 @@ export async function saveProfessional(shop: string, professional: string | null
   const { path, supabase } = await context(shop, professional ?? undefined, delegated);
   const name = value(form, "name");
   const description = value(form, "description");
-  const photo_url = value(form, "photo");
+  const photo = form.get("photo_file");
+  const upload = photo instanceof File && photo.size > 0 ? photo : null;
+  let photo_url = value(form, "photo");
+  const instagram = value(form, "instagram");
+  const facebook = value(form, "facebook");
+  const tiktok = value(form, "tiktok");
+  const youtube = value(form, "youtube");
+  const contact = value(form, "whatsapp");
+  const whatsapp = contact.replace(/[+()\s-]/g, "");
   const commission_bps = commissionRate(value(form, "commission"));
   const product_commission_bps = commissionRate(value(form, "product_commission"));
-  if ((photo_url && (photo_url.length > 500 || !httpsUrl(photo_url)))
+  if ((!upload && photo_url && (photo_url.length > 500 || !httpsUrl(photo_url)))
     || commission_bps === null || product_commission_bps === null) result(path, "invalido");
   if (!name || name.length > 120 || description.length > 1000) result(path, "invalido");
-  const profile = { name, description, photo_url, commission_bps, product_commission_bps,
+  if ((instagram && !/^@?[A-Za-z0-9_.]{1,30}$/.test(instagram))
+    || (facebook && (facebook.length > 500 || !socialUrl(facebook, ["facebook.com", "fb.com"])))
+    || (tiktok && (tiktok.length > 500 || !socialUrl(tiktok, ["tiktok.com"])))
+    || (youtube && (youtube.length > 500 || !socialUrl(youtube, ["youtube.com", "youtu.be"])))
+    || (contact && !/^(55)?\d{10,11}$/.test(whatsapp))) result(path, "profissional-contatos");
+  const bucket = supabase.storage.from("barberflow-profile-media");
+  const object = upload ? `${shop}/professional-photo-${crypto.randomUUID()}` : null;
+  if (upload && object) {
+    if (upload.size > productImageLimit || !productImageTypes.includes(upload.type)) result(path, "profissional-imagem");
+    const { error } = await bucket.upload(object, upload, { contentType: upload.type });
+    if (error) result(path, "profissional-upload");
+    photo_url = bucket.getPublicUrl(object).data.publicUrl;
+  }
+  const profile = { name, description, photo_url, instagram, facebook, tiktok, youtube, whatsapp, commission_bps, product_commission_bps,
     inherit_business_hours: form.get("inherit_business_hours") === "on" };
   const query = professional
     ? supabase.from("barberflow_professionals").update({ ...profile, active: form.get("active") === "on" }).eq("establishment_id", shop).eq("id", professional)
     : supabase.from("barberflow_professionals").insert({ ...profile, establishment_id: shop });
   const { data, error } = await query.select("id").maybeSingle();
+  if ((error || !data) && object) await bucket.remove([object]);
   result(path, error || !data ? "falha" : "profissional-salvo");
 }
 
