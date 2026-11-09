@@ -135,12 +135,13 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
           <TeamInvite shop={shop} professionals={(professionals.data ?? []).filter((person) => person.active)} />
         </details>
         {team.error ? <p role="alert">Não foi possível consultar os convites.</p> : team.data?.length ? <ul className="cards">
-          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; manage_all: boolean; manage_clients: boolean; manage_services: boolean; manage_professionals: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
+          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; manage_all: boolean; manage_clients: boolean; manage_services: boolean; manage_professionals: boolean; read_finance: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
             <h3>{member.email}</h3>
             <p>{member.accepted_at ? "Aceito" : Date.parse(member.expires_at) <= Date.now() ? "Expirado" : "Pendente"} · {member.manage_all ? "Gerencia todas as agendas" : member.see_all ? "Visualiza todas as agendas" : member.professional_id ? "Gerencia a agenda vinculada" : "Sem acesso à agenda"}</p>
             {member.manage_clients && <p>Gerencia a base de clientes.</p>}
             {member.manage_services && <p>Gerencia serviços e preços.</p>}
             {member.manage_professionals && <p>Gerencia profissionais, horários e imagens.</p>}
+            {member.read_finance && <p>Consulta relatórios financeiros.</p>}
             <p>Vínculo: {professionals.data?.find((person) => person.id === member.professional_id)?.name ?? "Nenhum"}</p>
             <form action={revokeTeamAccess.bind(null, shop, member.id)}><SubmitButton>Revogar acesso</SubmitButton></form>
           </li>)}

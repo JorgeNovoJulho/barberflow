@@ -61,8 +61,9 @@ histórico de atendimentos, com isolamento entre estabelecimentos e sem
 acesso a comandas. A permissão de Serviços habilita cadastro, edição de preços,
 ordenação, arquivamento e reativação do catálogo. A permissão de Profissionais
 habilita cadastro, edição, ordenação, comissões, vínculos, horários e fotos da
-equipe. Os convites continuam reservados ao proprietário. Financeiro
-continua pendente.
+equipe. A permissão de Financeiro libera consulta aos relatórios de Caixa
+e Desempenho por 15 minutos após o uso de senha pessoal. Pagamentos, baixas,
+estornos e convites continuam reservados ao proprietário.
 
 Para reproduzir esse fluxo, cada permissão precisa ser aplicada no Supabase
 e nas ações do servidor. O teste deve cobrir convite expirado, e-mail
