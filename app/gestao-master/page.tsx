@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SubmitButton } from "../auth/submit";
 import { landingFields, parseLandingSettings, sections, type LandingBlock, type LandingSettings } from "../../lib/landing";
 import { requireMaster } from "../../lib/master";
+import { MasterCards, MasterTabs } from "./master-ui";
 import { deleteBlock, saveBlock, saveLandingSettings } from "./actions";
 
 const status: Record<string, string> = {
@@ -56,11 +57,11 @@ export default async function LandingAdmin({ searchParams }: { searchParams: Pro
   ]);
   const { estado } = await searchParams;
   return <section className="container section">
-    <p className="eyebrow">Administração master</p>
+    <MasterTabs current="/gestao-master" />
     <h1>Conteúdo da landing</h1>
     <Link href="/">Ver página pública</Link>
-    <p><Link href="/gestao-master/avaliacoes">Moderação de avaliações</Link></p>
-    <p><Link href="/gestao-master/assinaturas">Gestão de assinaturas</Link></p>
+    {data && <MasterCards items={[["Blocos publicados", data.filter(block => block.published).length],
+      ["Rascunhos", data.filter(block => !block.published).length], ["Seções configuráveis", Object.keys(sections).length]]} />}
     {estado && Object.hasOwn(status, estado) && <p role="status">{status[estado]}</p>}
     {settings.error ? <p role="alert">Não foi possível carregar as configurações da landing.</p>
       : <AppearanceEditor settings={parseLandingSettings(settings.data.appearance)} />}

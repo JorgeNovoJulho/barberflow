@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
+import { AccountActivity } from "./account-activity";
 import { MobileNav } from "./mobile-nav";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/plus-jakarta-sans/wght.css";
@@ -40,6 +41,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" data-theme={theme}>
       <body>
+        {user && <AccountActivity />}
         <header className="site-header">
           <div className="container navigation">
             <Link className="wordmark" href="/" aria-label="BARBERFLOW, início">

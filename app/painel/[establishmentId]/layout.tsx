@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { isUuid } from "../../../lib/establishments";
 import { supabaseServer } from "../../../lib/supabase";
@@ -11,6 +12,12 @@ export default async function EstablishmentLayout({ children, params }: {
   const supabase = isUuid(shop) ? await supabaseServer() : null;
   const business = await supabase?.from("barberflow_establishments").select("name,owner_id").eq("id", shop).maybeSingle();
   if (!supabase || !business?.data) return children;
+  const access = await supabase.rpc("barberflow_shop_access_state", { shop });
+  if (access.data === "blocked") return <section className="container section">
+    <h1>Estabelecimento bloqueado</h1>
+    <p>Entre em contato com a administração do BARBERFLOW para regularizar o acesso.</p>
+    <Link href="/painel">Voltar aos estabelecimentos</Link>
+  </section>;
   const user = (await supabase.auth.getUser()).data.user;
   const [bookings, orders] = await Promise.all([
     supabase.from("barberflow_schedule").select("id", { count: "exact", head: true })

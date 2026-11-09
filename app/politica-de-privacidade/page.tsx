@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <h2>Dados cadastrados por estabelecimentos</h2>
     <p>O estabelecimento decide como usa os dados que coleta para o próprio atendimento e cadastro de clientes. Para questões sobre esse uso, procure o estabelecimento. Para questões sobre sua conta BARBERFLOW e o funcionamento da plataforma, use o contato acima.</p>
     <h2>Sessão e conservação</h2>
-    <p>Usamos cookies de autenticação para manter a sessão e controlar o acesso. Conservamos os dados pelo período necessário à finalidade de cada registro, considerando a duração da conta, o histórico necessário à prestação do serviço e obrigações legais ou contratuais de conservação.</p>
+    <p>Usamos cookies de autenticação para manter a sessão e controlar o acesso. Registramos o horário da última atividade em uma aba visível para que a administração possa acompanhar o estado recente de acesso da conta. Conservamos os dados pelo período necessário à finalidade de cada registro, considerando a duração da conta, o histórico necessário à prestação do serviço e obrigações legais ou contratuais de conservação.</p>
     <h2>Seus direitos</h2>
     <p>Você pode solicitar confirmação de tratamento, acesso, correção, informações sobre compartilhamento e, conforme o caso, portabilidade, anonimização, bloqueio ou eliminação. Também pode revogar consentimento quando ele for a base do tratamento ou apresentar oposição nos casos previstos na LGPD. Envie a solicitação ao contato indicado nesta página. Podemos pedir informações proporcionais para confirmar sua identidade.</p>
   </LegalDocument>;

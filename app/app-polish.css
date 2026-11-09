@@ -183,3 +183,11 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .legal-document { max-width: 52rem; }
 .legal-document h2 { margin-top: 2rem; }
 .legal-document p { line-height: 1.7; overflow-wrap: anywhere; }
+
+.master-tabs { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1.25rem; }
+.master-tabs a { padding: .65rem .85rem; border: 1px solid var(--border); border-radius: .65rem; color: var(--foreground); text-decoration: none; font-weight: 700; }
+.master-tabs a[aria-current="page"] { color: #fff; background: #42217f; border-color: #42217f; }
+.master-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap: .75rem; }
+.master-cards .card { margin: 0; }
+.master-cards dt { font-size: .88rem; }
+.master-cards dd { margin: .2rem 0 0; font-size: 1.6rem; font-weight: 800; }

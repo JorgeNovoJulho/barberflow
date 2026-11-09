@@ -93,3 +93,8 @@ do provedor. O checkout Asaas deste fluxo recebe crédito. Para débito, use Mer
 pagamento no provedor na comanda. Pagamentos de teste não baixam o caixa.
 A conciliação compara a referência, a conta, a moeda, o valor e o meio de
 pagamento. Estornos de cartões integrados devem ser tratados no provedor.
+
+Para recuperação de senha iniciada pelo painel master, configure o modelo
+**Reset password** do Supabase Auth com `supabase/templates/recovery.html`.
+O modelo usa o hash de uso único, permitindo ao titular abrir o link em
+outro navegador. A URL de retorno deve ser a mesma cadastrada no Auth.

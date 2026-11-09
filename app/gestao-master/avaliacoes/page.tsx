@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireMaster } from "../../../lib/master";
 import { SubmitButton } from "../../auth/submit";
+import { MasterCards, MasterTabs } from "../master-ui";
 import { moderateReview } from "./actions";
 
 type Item = {
@@ -11,14 +12,17 @@ type Item = {
 const decisions: Record<string, string> = { hide: "Ocultada", restore: "Restaurada", dismiss: "Denúncias arquivadas" };
 
 export default async function ReviewModeration({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
-  const supabase = await requireMaster();
+  const supabase = await requireMaster("/gestao-master/avaliacoes");
   const { data, error } = await supabase.rpc("barberflow_review_queue");
   const { estado } = await searchParams;
   const items = (data ?? []) as Item[];
 
   return <section className="container section">
-    <Link href="/gestao-master">Voltar à administração master</Link>
+    <MasterTabs current="/gestao-master/avaliacoes" />
     <h1>Moderação de avaliações</h1>
+    {!error && <MasterCards items={[["Avaliações na fila",items.length],
+      ["Denúncias pendentes",items.reduce((total,item) => total + Number(item.pending_count),0)],
+      ["Avaliações ocultas",items.filter(item => item.hidden).length]]} />}
     {estado === "salvo" && <p role="status">Decisão registrada.</p>}
     {estado === "erro" && <p role="alert">Não foi possível registrar a decisão. Confira a situação da denúncia.</p>}
     {error ? <p role="alert">Não foi possível carregar a fila.</p> : items.length ? <ul className="cards">

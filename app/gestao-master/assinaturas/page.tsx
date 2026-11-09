@@ -1,4 +1,9 @@
+import { randomUUID } from "node:crypto";
+import QRCode from "qrcode";
 import Link from "next/link";
+import { showcasePix } from "../../../lib/pix";
+import { CopyPix } from "../../painel/[establishmentId]/assinatura/copy-pix";
+import { MasterCards, MasterTabs } from "../master-ui";
 import { requireMaster } from "../../../lib/master";
 import { bookingCurrency } from "../../../lib/public-booking";
 import { subscriptionProofLinks } from "../../../lib/subscription-checkout";
@@ -18,17 +23,21 @@ const feedback: Record<string, string> = {
 };
 const amount = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
-export default async function BillingAdmin({ searchParams }: { searchParams: Promise<{ busca?: string; estado?: string }> }) {
+export default async function BillingAdmin({ searchParams }: { searchParams: Promise<{ busca?: string; estado?: string; teste?: string }> }) {
   const supabase = await requireMaster("/gestao-master/assinaturas");
-  const { busca, estado } = await searchParams;
+  const { busca, estado, teste } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [settings, businesses, pending] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,pix_merchant,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
     search ? supabase.rpc("barberflow_billing_businesses", { search_text: search }) : Promise.resolve({ data: [], error: null }),
     supabase.from("barberflow_subscription_charges").select("*,barberflow_establishments(name)")
       .eq("status", "submitted").order("submitted_at").limit(100),
   ]);
   const config = settings.data;
+  const testCode = teste === "pix" && config?.pix_key && config.pix_merchant && config.pix_city
+    ? showcasePix({ id: randomUUID(), pix_key: config.pix_key, merchant: config.pix_merchant, city: config.pix_city, total_cents: 1 })
+    : null;
+  const qr = testCode ? await QRCode.toDataURL(testCode, { width: 240, margin: 4 }) : null;
   const shops = (businesses.data ?? []) as { id: string; name: string }[];
   const selected = shops.length === 1 ? shops[0] : undefined;
   const [subscription, history, archived] = selected ? await Promise.all([
@@ -45,9 +54,12 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const preferred = subscription?.data?.preferred_period as PlanPeriod | undefined;
 
   return <section className="container section">
-    <Link href="/gestao-master">Voltar à administração</Link>
+    <MasterTabs current="/gestao-master/assinaturas" />
     <h1>Gestão de assinaturas</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
+    {config && <MasterCards items={[["Mensal",bookingCurrency.format(config.monthly_cents / 100)],
+      ["Anual",bookingCurrency.format(config.yearly_cents / 100)],["Dias de teste",config.trial_days],
+      ["Comprovantes na fila",pending.error ? "Indisponível" : pending.data.length === 100 ? "100+" : pending.data.length]]} />}
     <h2>Configuração dos planos</h2>
     {config ? <form className="card account-form panel-form" action={savePlanSettings}>
       <div className="form-columns">
@@ -65,6 +77,19 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       <label>Benefícios do plano, um por linha <textarea name="benefits" rows={5} maxLength={2500} defaultValue={config.plan_benefits} /></label>
       <SubmitButton>Salvar configuração</SubmitButton>
     </form> : <p role="alert">Não foi possível carregar a configuração.</p>}
+    <section className="card panel-form" id="pix-teste">
+      <h2>QR Pix de teste</h2>
+      <p>Use a chave e os dados salvos acima para gerar um Pix de R$ 0,01. Confira o recebedor no aplicativo bancário. Se você confirmar no banco, haverá uma transferência real. O teste não cria cobrança nem altera assinaturas.</p>
+      {config?.pix_key && config.pix_merchant && config.pix_city
+        ? <Link className="secondary" href="?teste=pix#pix-teste">Gerar QR de teste</Link>
+        : <p>Salve a chave, o favorecido e a cidade para gerar o QR.</p>}
+      {qr && testCode && <>
+        <p><strong>Chave:</strong> {config?.pix_key}</p>
+        <img src={qr} width={240} height={240} alt="QR Pix de teste de um centavo" />
+        <label>Pix Copia e Cola <textarea readOnly value={testCode} rows={3} /></label>
+        <CopyPix value={testCode} code />
+      </>}
+    </section>
     <h2 className="panel-form">Comprovantes em análise</h2>
     {pending.error ? <p role="alert">Não foi possível carregar os comprovantes.</p>
       : !pending.data?.length ? <p>Nenhum comprovante aguardando análise.</p>
