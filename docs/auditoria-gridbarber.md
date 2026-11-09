@@ -54,9 +54,9 @@ As permissões observadas são independentes:
 
 O BARBERFLOW gera um link de uso único com sete dias de validade, vinculado
 ao e-mail confirmado, e permite revogar o acesso. A área delegada permite
-ver a agenda vinculada, atualizar estados dos próprios atendimentos e,
-quando autorizado, consultar todas as agendas. A criação e remarcação por
-delegados e as demais permissões de módulos continuam pendentes.
+ver a agenda vinculada, criar e remarcar atendimentos e atualizar seus
+estados. As permissões para visualizar ou gerenciar todas as agendas
+são separadas. As permissões dos demais módulos continuam pendentes.
 
 Para reproduzir esse fluxo, cada permissão precisa ser aplicada no Supabase
 e nas ações do servidor. O teste deve cobrir convite expirado, e-mail

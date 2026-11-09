@@ -124,7 +124,7 @@ export default async function Agenda({ params, searchParams }: {
       <div className="agenda-forms">
         <details className="card" id="novo" open={novo === "1"}>
           <summary>Novo atendimento</summary>
-          {offerings.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "appointment")}>
+          {offerings.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", false)}>
             <AppointmentFields key={`${suggestedProvider?.id ?? ""}-${suggestedService?.id ?? ""}`} providers={offerings}
               initialProfessional={suggestedProvider?.id} initialService={suggestedService?.id} />
             <label>Horário <input key={suggestedTime} type="time" name="start" defaultValue={suggestedTime} required /></label>
@@ -140,7 +140,7 @@ export default async function Agenda({ params, searchParams }: {
         </details>
         <details className="card">
           <summary>Bloquear horário</summary>
-          {active.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "block")}>
+          {active.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "block", false)}>
             <label>Profissional <select name="professional" defaultValue="" required>
               <option value="" disabled>Selecione</option>
               {active.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
@@ -179,7 +179,7 @@ export default async function Agenda({ params, searchParams }: {
           </div>}
           {entry.kind === "appointment" && entry.state === "scheduled" && <details>
             <summary>Remarcar atendimento</summary>
-            <form className="account-form" action={rescheduleEntry.bind(null, shop, day, entry.id)}>
+            <form className="account-form" action={rescheduleEntry.bind(null, shop, day, entry.id, false)}>
               <div className="form-columns">
                 <label>Nova data <input type="date" name="date" defaultValue={entry.starts_at.slice(0, 10)} required /></label>
                 <label>Novo horário <input type="time" name="start" defaultValue={entry.starts_at.slice(11, 16)} required /></label>

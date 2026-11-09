@@ -4,6 +4,8 @@ import { saoPauloToday, validDay } from "../../../lib/agenda";
 import { isUuid } from "../../../lib/establishments";
 import { supabaseServer } from "../../../lib/supabase";
 import { SubmitButton } from "../../auth/submit";
+import { AppointmentFields, type Provider } from "../../painel/[establishmentId]/agenda/appointment-fields";
+import { createEntry, rescheduleEntry } from "../../painel/[establishmentId]/agenda/actions";
 
 const states: Record<string, string> = {
   pending: "Aguardando confirmação", scheduled: "Agendado", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu",
@@ -21,6 +23,7 @@ async function setState(shop: string, id: string, day: string, state: string) {
 
 type Entry = { id: string; professional_name: string; kind: string; state: string; starts_at: string; ends_at: string;
   service_name: string | null; client_name: string | null; can_edit: boolean };
+type Offering = { professional_id: string; professional_name: string; service_id: string; service_name: string; duration_minutes: number };
 
 export default async function TeamAgenda({ params, searchParams }: {
   params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string }>;
@@ -31,14 +34,21 @@ export default async function TeamAgenda({ params, searchParams }: {
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
-  const [memberships, agenda] = await Promise.all([
+  const [memberships, agenda, offerings] = await Promise.all([
     supabase.rpc("barberflow_my_team_shops"),
     supabase.rpc("barberflow_team_agenda", { shop, agenda_day: day }),
+    supabase.rpc("barberflow_team_offerings", { shop }),
   ]);
   if (memberships.error) throw new Error("Não foi possível consultar os acessos da equipe.");
   const business = (memberships.data as { id: string; name: string }[]).find((item) => item.id === shop);
   if (!business) notFound();
   const entries = (agenda.data ?? []) as Entry[];
+  const providers = new Map<string, Provider>();
+  for (const row of (offerings.data ?? []) as Offering[]) {
+    const person = providers.get(row.professional_id) ?? { id: row.professional_id, name: row.professional_name, services: [] };
+    person.services.push({ id: row.service_id, name: row.service_name, duration_minutes: row.duration_minutes });
+    providers.set(person.id, person);
+  }
   return <section className="container section">
     <Link href="/painel">Voltar ao painel</Link>
     <p className="eyebrow">{business.name}</p><h1>Agenda da equipe</h1>
@@ -46,13 +56,34 @@ export default async function TeamAgenda({ params, searchParams }: {
       <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
       <button type="submit" className="secondary">Abrir dia</button>
     </form>
-    {estado === "salvo" && <p role="status">Atendimento atualizado.</p>}
-    {estado === "falha" && <p role="alert">Não foi possível alterar este atendimento.</p>}
+    {(estado === "salvo" || estado === "remarcado") && <p role="status">{estado === "remarcado" ? "Atendimento remarcado." : "Agenda atualizada."}</p>}
+    {estado === "falha" && <p role="alert">Não foi possível concluir a operação.</p>}
+    {estado === "invalido" && <p role="alert">Confira os campos do atendimento.</p>}
+    {estado === "indisponivel" && <p role="alert">Confira o expediente e os serviços do profissional.</p>}
+    {estado === "conflito" && <p role="alert">Este horário já está ocupado ou bloqueado.</p>}
+    {offerings.error ? <p role="alert">Não foi possível consultar os serviços disponíveis.</p> : providers.size > 0 &&
+      <details className="card panel-form"><summary>Novo atendimento</summary>
+        <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", true)}>
+          <AppointmentFields providers={[...providers.values()]} />
+          <label>Horário <input type="time" name="start" required /></label>
+          <label>Nome do cliente <input name="customer" maxLength={120} required /></label>
+          <label>WhatsApp do cliente <input type="tel" name="phone" maxLength={30} /></label>
+          <label>Observações <textarea name="note" maxLength={1000} rows={2} /></label>
+          <SubmitButton>Agendar atendimento</SubmitButton>
+        </form>
+      </details>}
     {agenda.error ? <p role="alert">Não foi possível consultar a agenda.</p> : entries.length ? <ul className="cards">
       {entries.map((item) => <li className="card" key={item.id}>
         <h2>{item.kind === "block" ? "Horário bloqueado" : item.service_name}</h2>
         <p>{item.professional_name} · {item.starts_at.slice(11, 16)}–{item.ends_at.slice(11, 16)} · {states[item.state]}</p>
         {item.client_name && <p>{item.client_name}</p>}
+        {item.can_edit && item.state === "scheduled" && <details><summary>Remarcar atendimento</summary>
+          <form className="account-form" action={rescheduleEntry.bind(null, shop, day, item.id, true)}>
+            <label>Nova data <input type="date" name="date" defaultValue={item.starts_at.slice(0, 10)} required /></label>
+            <label>Novo horário <input type="time" name="start" defaultValue={item.starts_at.slice(11, 16)} required /></label>
+            <SubmitButton>Salvar novo horário</SubmitButton>
+          </form>
+        </details>}
         {item.can_edit && <div className="account-links">
           {(item.state === "scheduled" ? [["completed", "Concluir"], ["no_show", "Marcar falta"], ["cancelled", "Cancelar"]]
             : item.state === "pending" ? [["scheduled", "Aprovar"], ["cancelled", "Recusar"]] : []).map(([state, label]) =>

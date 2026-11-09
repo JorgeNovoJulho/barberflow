@@ -12,21 +12,21 @@ function field(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
 }
 
-async function context(shop: string, day: string) {
+async function context(shop: string, day: string, team = false) {
   if (!isUuid(shop) || !validDay(day)) redirect("/painel");
-  const path = `/painel/${shop}/agenda`;
+  const path = team ? `/equipe/${shop}` : `/painel/${shop}/agenda`;
   const query = path + "?dia=" + day;
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: query }));
-  return { supabase, finish(status: string): never {
+  return { supabase, path, finish(status: string): never {
     revalidatePath(path);
     redirect(query + "&estado=" + status);
   } };
 }
 
-export async function createEntry(shop: string, day: string, kind: "appointment" | "block", form: FormData) {
-  const { supabase, finish } = await context(shop, day);
+export async function createEntry(shop: string, day: string, kind: "appointment" | "block", team: boolean, form: FormData) {
+  const { supabase, finish } = await context(shop, day, team);
   const professional = field(form, "professional");
   const service = field(form, "service");
   const start = field(form, "start");
@@ -62,8 +62,8 @@ export async function updateEntry(shop: string, day: string, entry: string, newS
   return finish(error || !data ? "falha" : "atualizado");
 }
 
-export async function rescheduleEntry(shop: string, day: string, entry: string, form: FormData) {
-  const { supabase, finish } = await context(shop, day);
+export async function rescheduleEntry(shop: string, day: string, entry: string, team: boolean, form: FormData) {
+  const { supabase, path, finish } = await context(shop, day, team);
   const targetDay = field(form, "date");
   const targetTime = field(form, "start");
   if (!isUuid(entry) || !validDay(targetDay) || !validTime.test(targetTime)) return finish("invalido");
@@ -74,7 +74,7 @@ export async function rescheduleEntry(shop: string, day: string, entry: string, 
   if (error?.code === "22023") return finish("indisponivel");
   if (error || !data) return finish("falha");
   revalidatePath(`/painel/${shop}/agenda`);
-  redirect(`/painel/${shop}/agenda?dia=${targetDay}&estado=remarcado`);
+  redirect(`${path}?dia=${targetDay}&estado=remarcado`);
 }
 
 export async function linkCompletedClient(shop: string, day: string, entry: string, form: FormData) {

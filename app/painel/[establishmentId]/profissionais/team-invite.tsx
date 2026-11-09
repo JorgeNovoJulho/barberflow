@@ -14,7 +14,8 @@ export function TeamInvite({ shop, professionals }: { shop: string; professional
         {professionals.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
       </select></label>
       <label><input type="checkbox" name="see_all" /> Ver a agenda de todos os profissionais</label>
-      <p>O profissional vinculado pode atualizar os estados dos próprios atendimentos. O convite vale por sete dias.</p>
+      <label><input type="checkbox" name="manage_all" /> Criar, remarcar e alterar agendamentos de todos</label>
+      <p>Gerenciar todos inclui visualizar todas as agendas. Com vínculo, a equipe pode gerenciar a própria agenda. O convite vale por sete dias.</p>
       <SubmitButton>Gerar convite</SubmitButton>
     </form>
     {state.error && <p role="alert">{state.error}</p>}
