@@ -6,6 +6,12 @@ import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
 import { closeOrder, setOrderProduct } from "../../estoque/actions";
 import { StockFeedback } from "../../estoque/feedback";
+import { closedAtLabel, orderPage, orderPeriod } from "../../comandas/filters";
+
+const paymentMethods: Record<string, string> = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Transferência", other: "Outro" };
+type Payments = { received_cents: number; payments: {
+  id: string; amount_cents: number; method: string; recorded_at: string; reversed_at: string | null; reversal_reason: string | null;
+}[] };
 
 function money(cents: number) {
   return bookingCurrency.format(cents / 100);
@@ -13,7 +19,7 @@ function money(cents: number) {
 
 export default async function Order({ params, searchParams }: {
   params: Promise<{ establishmentId: string; appointmentId: string }>;
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; periodo?: string; pagina?: string }>;
 }) {
   const { establishmentId: shop, appointmentId } = await params;
   if (!isUuid(shop) || !isUuid(appointmentId)) notFound();
@@ -21,17 +27,22 @@ export default async function Order({ params, searchParams }: {
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/comanda/${appointmentId}` }));
   const { data: appointment, error } = await supabase.from("barberflow_schedule")
-    .select("service_name,client_name,starts_at,price_cents,state").eq("establishment_id", shop).eq("id", appointmentId).eq("kind", "appointment").maybeSingle();
+    .select("service_name,client_name,client_phone,professional_id,starts_at,ends_at,notes,price_cents,state")
+    .eq("establishment_id", shop).eq("id", appointmentId).eq("kind", "appointment").maybeSingle();
   if (error) throw new Error("Não foi possível carregar o atendimento.");
   if (!appointment) notFound();
 
-  const [products, lines, receipt] = await Promise.all([
+  const [products, lines, receipt, professional] = await Promise.all([
     supabase.from("barberflow_products").select("id,name,stock,price_cents,active,sku,barcode").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_order_products").select("product_id,product_name,quantity,unit_price_cents,product_sku,product_barcode,promo_units,promo_cents,line_total_cents")
       .eq("establishment_id", shop).eq("appointment_id", appointmentId).order("product_name"),
-    supabase.from("barberflow_receipts").select("service_cents,products_cents,total_cents").eq("establishment_id", shop).eq("appointment_id", appointmentId).maybeSingle(),
+    supabase.from("barberflow_receipts").select("service_cents,products_cents,total_cents,closed_at").eq("establishment_id", shop).eq("appointment_id", appointmentId).maybeSingle(),
+    supabase.from("barberflow_professionals").select("name").eq("establishment_id", shop).eq("id", appointment.professional_id).maybeSingle(),
   ]);
-  const { estado } = await searchParams;
+  const paymentResult = receipt.data ? await supabase.rpc("barberflow_order_payments", { shop, appointment: appointmentId }) : null;
+  const payments = paymentResult?.data as Payments | null | undefined;
+  const { estado, periodo, pagina } = await searchParams;
+  const returnQuery = new URLSearchParams({ periodo: orderPeriod(periodo), pagina: String(orderPage(pagina)) });
   const items = lines.data ?? [];
   const productDetails = new Map((products.data ?? []).map((product) => [product.id, product]));
   const productOptions = (products.data ?? []).filter((product) => product.active && !items.some((line) => line.product_id === product.id));
@@ -41,9 +52,11 @@ export default async function Order({ params, searchParams }: {
   const serviceTotal = receipt.data?.service_cents ?? appointment.price_cents ?? 0;
   const productTotal = receipt.data?.products_cents ?? items.reduce((sum, item) => sum + item.line_total_cents, 0);
   const total = receipt.data?.total_cents ?? serviceTotal + productTotal;
+  const discounts = items.reduce((sum, item) => sum + item.quantity * item.unit_price_cents - item.line_total_cents, 0);
 
   return <section className="container section">
     <nav className="account-links" aria-label="Atendimento">
+      {receipt.data && <Link href={`/painel/${shop}/comandas?${returnQuery}`}>Voltar às comandas</Link>}
       <Link href={`/painel/${shop}/agenda?dia=${appointment.starts_at.slice(0, 10)}`}>Voltar à agenda</Link>
       <Link href={`/painel/${shop}/estoque`}>Estoque</Link>
     </nav>
@@ -53,7 +66,19 @@ export default async function Order({ params, searchParams }: {
       <p>{appointment.client_name} · {appointment.service_name}</p>
     </header>
     <StockFeedback status={estado} />
-    {products.error || lines.error || receipt.error ? <p role="alert">Não foi possível carregar a comanda.</p> : <>
+    {products.error || lines.error || receipt.error || professional.error ? <p role="alert">Não foi possível carregar a comanda.</p> : <>
+      <section className="card panel-form">
+        <h2>Dados do atendimento</h2>
+        <dl className="stock-product-facts">
+          <div><dt>Cliente</dt><dd>{appointment.client_name}</dd></div>
+          <div><dt>Serviço</dt><dd>{appointment.service_name}</dd></div>
+          {professional.data && <div><dt>Profissional</dt><dd>{professional.data.name}</dd></div>}
+          {appointment.client_phone && <div><dt>Contato</dt><dd>{appointment.client_phone}</dd></div>}
+          <div><dt>Data e horário</dt><dd>{appointment.starts_at.slice(0, 10).split("-").reverse().join("/")} · {appointment.starts_at.slice(11, 16)}–{appointment.ends_at.slice(11, 16)}</dd></div>
+          {receipt.data && <div><dt>Fechamento</dt><dd>{closedAtLabel(receipt.data.closed_at)}</dd></div>}
+        </dl>
+        {appointment.notes && <p><strong>Observações:</strong> {appointment.notes}</p>}
+      </section>
       <div className="order-layout">
       <aside className="card order-summary" aria-label="Resumo da comanda">
         <h2>{receipt.data ? "Comanda fechada" : draft ? "Comanda aberta" : "Comanda indisponível"}</h2>
@@ -62,6 +87,7 @@ export default async function Order({ params, searchParams }: {
           <div><dt>Produtos</dt><dd>{money(productTotal)}</dd></div>
           <div><dt>Total</dt><dd>{money(total)}</dd></div>
         </dl>
+        {discounts > 0 && <p>Descontos aplicados aos produtos: <strong>{money(discounts)}</strong></p>}
         {draft && (appointment.state === "completed"
           ? <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}><SubmitButton disabled={hasUnavailable}>Fechar comanda e baixar estoque</SubmitButton></form>
           : <p>Conclua o atendimento na agenda para fechar a comanda.</p>)}
@@ -111,6 +137,22 @@ export default async function Order({ params, searchParams }: {
       })}</ul> : <p className="card">Nenhum produto adicionado.</p>}
       </div>
       </div>
+      {receipt.data && <section className="card panel-form">
+        <h2>Pagamentos</h2>
+        {paymentResult?.error ? <p role="alert">Não foi possível consultar os pagamentos.</p>
+          : !payments ? <p><Link href={`/painel/${shop}/financeiro`}>Desbloquear o Financeiro para consultar</Link></p>
+          : <>
+            <dl className="order-totals">
+              <div><dt>Recebido</dt><dd>{money(payments.received_cents)}</dd></div>
+              <div><dt>Saldo em aberto</dt><dd>{money(total - payments.received_cents)}</dd></div>
+            </dl>
+            {payments.payments.length ? <ul>{payments.payments.map((payment) => <li key={payment.id}>
+              <strong>{money(payment.amount_cents)} · {paymentMethods[payment.method] ?? payment.method}</strong>
+              <p>Registrado em {closedAtLabel(payment.recorded_at)}</p>
+              {payment.reversed_at && <p>Estornado em {closedAtLabel(payment.reversed_at)} · {payment.reversal_reason}</p>}
+            </li>)}</ul> : <p>Nenhum pagamento registrado.</p>}
+          </>}
+      </section>}
     </>}
   </section>;
 }

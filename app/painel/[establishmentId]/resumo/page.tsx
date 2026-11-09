@@ -98,6 +98,9 @@ export default async function DashboardPage({ params, searchParams }: {
       <dl className="cards">
         {indicators.map(({ label, value, note }) => <div key={label} className="card dashboard-metric">
           <dt>{label}</dt><dd>{value}</dd>{note && <p>{note}</p>}
+          {label === "Faturamento registrado" && <p className="account-links">
+            <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
+          </p>}
         </div>)}
       </dl>
       <h2 className="panel-form">Próximos atendimentos</h2>
