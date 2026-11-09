@@ -7,6 +7,8 @@ import { SubmitButton } from "../../../auth/submit";
 import { adjustStock, saveProduct } from "./actions";
 import { StockFeedback } from "./feedback";
 import { offsetDay, saoPauloToday } from "../../../../lib/agenda";
+import { productMediaSlots, productPhotoBucket, productVideoBucket } from "../../../../lib/product-media";
+import { ProductGallery, type ProductMedia } from "./product-gallery";
 
 type Product = { id: string; name: string; sku: string; price_cents: number; stock: number; active: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null };
 
@@ -62,6 +64,22 @@ export default async function Stock({ params, searchParams }: {
   const flagged = (products.data ?? []).map((product: Product) => ({ product, warnings: alerts(product, today, cutoff) }))
     .filter(({ warnings }) => warnings.length > 0);
   const catalog = (products.data ?? []) as Product[];
+  const signed = new Map<string, string>();
+  let mediaUnavailable = false;
+  for (let index = 0; index < catalog.length; index += 100) {
+    const batch = catalog.slice(index, index + 100);
+    const paths = (slots: readonly string[]) => batch.flatMap(({ id }) => slots.map((slot) => `${shop}/${id}/${slot}`));
+    const files = await Promise.all([
+      supabase.storage.from(productPhotoBucket).createSignedUrls(paths(productMediaSlots.slice(0, -1)), 3600),
+      supabase.storage.from(productVideoBucket).createSignedUrls(paths(["video"]), 3600),
+    ]);
+    for (const result of files) {
+      if (result.error) mediaUnavailable = true;
+      for (const file of result.data ?? []) {
+        if (!file.error && file.path && file.signedUrl) signed.set(file.path, file.signedUrl);
+      }
+    }
+  }
   const activeProducts = catalog.filter(({ active }) => active);
   const productNames = new Map(catalog.map(({ id, name }) => [id, name]));
   const warningsByProduct = new Map(flagged.map(({ product, warnings }) => [product.id, warnings]));
@@ -88,12 +106,17 @@ export default async function Stock({ params, searchParams }: {
         </li>)}</ul>
       </section>}
       <h2>Produtos</h2>
+      {mediaUnavailable && <p role="status">Algumas mídias não puderam ser carregadas no catálogo.</p>}
       {catalog.length ? <ul className="cards">{catalog.map((product) => <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
         <div className="stock-product-top">
           <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Arquivado"}</span>
           {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
         </div>
         <h3>{product.name}</h3>
+        <ProductGallery name={product.name} items={productMediaSlots.flatMap((slot): ProductMedia[] => {
+          const url = signed.get(`${shop}/${product.id}/${slot}`);
+          return url ? [{ slot, kind: slot === "video" ? "video" : "photo", url }] : [];
+        })} />
         <dl className="stock-product-facts">
           <div><dt>Preço de venda</dt><dd>{bookingCurrency.format(product.price_cents / 100)}</dd></div>
           <div><dt>Estoque</dt><dd>{product.stock.toLocaleString("pt-BR")} un.</dd></div>

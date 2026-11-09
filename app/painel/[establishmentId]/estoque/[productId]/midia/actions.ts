@@ -26,5 +26,6 @@ export async function changeMedia(shop: string, product: string, slot: string, r
   const { error } = remove ? await bucket.remove([key])
     : await bucket.upload(key, file as File, { contentType: (file as File).type, upsert: true, cacheControl: "0" });
   revalidatePath(path);
+  if (!error) revalidatePath(`/painel/${shop}/estoque`);
   redirect(path + "?estado=" + (error ? "falha" : remove ? "removida" : "salva"));
 }
