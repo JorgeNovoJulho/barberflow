@@ -17,10 +17,11 @@ export async function createTeamInvite(shop: string, _previous: InviteResult, fo
   const manage_agendas = form.get("manage_all") === "on";
   const edit_clients = form.get("manage_clients") === "on";
   const edit_services = form.get("manage_services") === "on";
-  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || (professional && !isUuid(professional)) || (!professional && !see_agendas && !manage_agendas && !edit_clients && !edit_services)) {
+  const edit_professionals = form.get("manage_professionals") === "on";
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || (professional && !isUuid(professional)) || (!professional && !see_agendas && !manage_agendas && !edit_clients && !edit_services && !edit_professionals)) {
     return { error: "Informe um e-mail e vincule uma agenda ou selecione uma permissão." };
   }
-  const { data, error } = await supabase.rpc("barberflow_invite_team", { shop, invite_email: email, professional: professional || null, see_agendas, manage_agendas, edit_clients, edit_services });
+  const { data, error } = await supabase.rpc("barberflow_invite_team", { shop, invite_email: email, professional: professional || null, see_agendas, manage_agendas, edit_clients, edit_services, edit_professionals });
   if (error || typeof data !== "string") return { error: "Não foi possível gerar o convite. Confira se já existe um acesso ativo para este e-mail." };
   revalidatePath(`/painel/${shop}/profissionais`);
   return { link: new URL(`/convite-equipe/${data}`, authOrigin()).href };

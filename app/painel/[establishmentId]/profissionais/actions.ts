@@ -21,17 +21,17 @@ function result(path: string, status: string): never {
   redirect(path + "?estado=" + status);
 }
 
-async function context(shop: string, professional?: string) {
+async function context(shop: string, professional: string | undefined, delegated: boolean) {
   if (!isUuid(shop) || (professional !== undefined && !isUuid(professional))) redirect("/painel");
-  const path = `/painel/${shop}/profissionais`;
+  const path = `/${delegated ? "equipe" : "painel"}/${shop}/profissionais`;
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));
   return { path, supabase };
 }
 
-export async function saveProfessional(shop: string, professional: string | null, form: FormData) {
-  const { path, supabase } = await context(shop, professional ?? undefined);
+export async function saveProfessional(shop: string, professional: string | null, delegated: boolean, form: FormData) {
+  const { path, supabase } = await context(shop, professional ?? undefined, delegated);
   const name = value(form, "name");
   const description = value(form, "description");
   const photo_url = value(form, "photo");
@@ -49,16 +49,16 @@ export async function saveProfessional(shop: string, professional: string | null
   result(path, error || !data ? "falha" : "profissional-salvo");
 }
 
-export async function saveAssignments(shop: string, professional: string, form: FormData) {
-  const { path, supabase } = await context(shop, professional);
+export async function saveAssignments(shop: string, professional: string, delegated: boolean, form: FormData) {
+  const { path, supabase } = await context(shop, professional, delegated);
   const services = form.getAll("service").map(String);
   if (services.some((id) => !isUuid(id))) result(path, "invalido");
   const { error } = await supabase.rpc("barberflow_set_professional_services", { shop, professional, services });
   result(path, error ? "falha" : "vinculos-salvos");
 }
 
-export async function moveProfessional(shop: string, professional: string, neighbor: string, step: -1 | 1) {
-  const { path, supabase } = await context(shop, professional);
+export async function moveProfessional(shop: string, professional: string, neighbor: string, step: -1 | 1, delegated: boolean) {
+  const { path, supabase } = await context(shop, professional, delegated);
   if (!isUuid(neighbor)) result(path, "invalido");
   const { data, error } = await supabase.rpc("barberflow_move_professional", { shop, professional, neighbor, step });
   result(path, error ? "falha" : data ? "equipe-ordenada" : "equipe-alterada");
@@ -66,8 +66,8 @@ export async function moveProfessional(shop: string, professional: string, neigh
 
 const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
-export async function saveWorkingDay(shop: string, professional: string, form: FormData) {
-  const { path, supabase } = await context(shop, professional);
+export async function saveWorkingDay(shop: string, professional: string, delegated: boolean, form: FormData) {
+  const { path, supabase } = await context(shop, professional, delegated);
   const rawDay = value(form, "weekday");
   if (!/^[0-6]$/.test(rawDay)) result(path, "invalido");
   const key = { establishment_id: shop, professional_id: professional, weekday: Number(rawDay) };
