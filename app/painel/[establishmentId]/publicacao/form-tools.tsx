@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { businessDays } from "../../../../lib/business-profile";
+import { businessDays, httpsUrl } from "../../../../lib/business-profile";
 import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 import { uploadProfileMedia } from "./upload";
 
@@ -86,7 +86,51 @@ export function CopyHours({ day }: { day: number }) {
   </>;
 }
 
-export function ProfileMediaUpload({ shop, target }: { shop: string; target: "logo" | "cover" | "video" | "gallery" }) {
+export function GalleryEditor({ shop, initial }: { shop: string; initial: string[] }) {
+  const input = useRef<HTMLTextAreaElement>(null);
+  const [links, setLinks] = useState(initial);
+  const [uploading, setUploading] = useState(false);
+  function update(index: number, nextIndex?: number) {
+    const next = [...links];
+    const [item] = next.splice(index, 1);
+    if (nextIndex !== undefined) next.splice(nextIndex, 0, item);
+    if (input.current) input.current.value = next.join("\n");
+    setLinks(next);
+  }
+  return <>
+    <label>Galeria do local (até 8 links HTTPS, um por linha)
+      <textarea ref={input} name="gallery" rows={4} defaultValue={initial.join("\n")} readOnly={uploading}
+        onChange={(event) => setLinks(event.currentTarget.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean))} />
+    </label>
+    <ProfileMediaUpload shop={shop} target="gallery" onGalleryChange={setLinks} onPendingChange={setUploading} />
+    {links.length > 0 && <ol className="cards">{links.slice(0, 8).map((link, index) => <li className="card" key={index}>
+      {httpsUrl(link) ? <img className="landing-card-photo" src={link} loading="lazy" alt={`Foto ${index + 1} da galeria`} /> : <p>Link inválido.</p>}
+      <div className="account-links">
+        <button type="button" className="secondary" disabled={uploading || index === 0} onClick={() => update(index, index - 1)}>Mover para a esquerda</button>
+        <button type="button" className="secondary" disabled={uploading || index + 1 === links.length} onClick={() => update(index, index + 1)}>Mover para a direita</button>
+        <button type="button" className="secondary" disabled={uploading} onClick={() => update(index)}>Remover foto</button>
+      </div>
+    </li>)}</ol>}
+  </>;
+}
+
+export function ProfileColors({ initial }: { initial?: string }) {
+  const input = useRef<HTMLInputElement>(null);
+  const colors = ["#2450A8", "#192B54", "#262C3C", "#117A72", "#93442B", "#6537A6", "#A33462"];
+  return <>
+    <label>Cor da página pública (hexadecimal) <input ref={input} name="color" maxLength={7} defaultValue={initial} placeholder="#7C4EB0" /></label>
+    <div className="account-links" role="group" aria-label="Sugestões de cor">
+      {colors.map((color) => <button key={color} type="button" className="secondary" style={{ borderBottom: `.3rem solid ${color}` }}
+        onClick={() => { if (input.current) input.current.value = color; }}>{color}</button>)}
+      <button type="button" className="secondary" onClick={() => { if (input.current) input.current.value = ""; }}>Padrão</button>
+    </div>
+  </>;
+}
+
+export function ProfileMediaUpload({ shop, target, onGalleryChange, onPendingChange }: {
+  shop: string; target: "logo" | "cover" | "video" | "gallery";
+  onGalleryChange?: (links: string[]) => void; onPendingChange?: (pending: boolean) => void;
+}) {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
   const video = target === "video";
@@ -106,6 +150,7 @@ export function ProfileMediaUpload({ shop, target }: { shop: string; target: "lo
             return;
           }
           setPending(true);
+          onPendingChange?.(true);
           setStatus("Enviando…");
           let saved = 0;
           try {
@@ -129,6 +174,8 @@ export function ProfileMediaUpload({ shop, target }: { shop: string; target: "lo
             // The feedback below keeps successfully uploaded files in the form.
           } finally {
             setPending(false);
+            onPendingChange?.(false);
+            if (target === "gallery") onGalleryChange?.(links);
             setStatus(saved === files.length ? "Arquivo enviado. Salve a publicação para aplicar."
               : `${saved} de ${files.length} enviados. Confira o formato e o limite de ${video ? 20 : 5} MB por arquivo.`);
           }

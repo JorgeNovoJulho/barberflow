@@ -2,18 +2,19 @@
 
 import { useRef, useState } from "react";
 
-export function ShareProfile({ title }: { title: string }) {
+export function ShareProfile({ title, path }: { title: string; path?: string }) {
   const [message, setMessage] = useState("");
   return <div>
     <button type="button" className="secondary" onClick={async () => {
       try {
-        if (navigator.share) await navigator.share({ title, url: window.location.href });
+        const url = path ? new URL(path, window.location.origin).href : window.location.href;
+        if (navigator.share) await navigator.share({ title, url });
         else {
-          await navigator.clipboard.writeText(window.location.href);
+          await navigator.clipboard.writeText(url);
           setMessage("Link copiado.");
         }
       } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setMessage("Copie o endereço na barra do navegador.");
+        if (!(error instanceof DOMException && error.name === "AbortError")) setMessage(path ? "Abra a página pública para copiar o endereço." : "Copie o endereço na barra do navegador.");
       }
     }}>Compartilhar</button>
     {message && <p role="status">{message}</p>}

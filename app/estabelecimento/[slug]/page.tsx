@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { bookingCurrency, publicProfile } from "../../../lib/public-booking";
-import { businessDays, httpsUrl, readBusinessProfile, socialUrl } from "../../../lib/business-profile";
+import { businessDays, httpsUrl, readBusinessProfile, socialUrl, whatsappUrl } from "../../../lib/business-profile";
 import { supabaseServer } from "../../../lib/supabase";
 import { ShareProfile, ProfileGallery } from "./profile-controls";
 import { saoPauloToday } from "../../../lib/agenda";
@@ -30,8 +30,7 @@ export default async function Establishment({ params, searchParams }: {
   const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
   const map = httpsUrl(details.map) ?? (details.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined);
-  const phone = details.whatsapp?.replace(/\D/g, "") ?? "";
-  const whatsapp = /^(55)?\d{10,11}$/.test(phone) ? `https://wa.me/${phone.length <= 11 ? "55" + phone : phone}` : undefined;
+  const whatsapp = whatsappUrl(details.whatsapp);
   const instagram = details.instagram && /^@?[\w.]{1,30}$/.test(details.instagram)
     ? `https://www.instagram.com/${details.instagram.replace(/^@/, "")}/` : undefined;
   const gallery = (details.gallery ?? []).map(httpsUrl).filter((url): url is string => !!url);

@@ -5,7 +5,8 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { savePublication } from "./actions";
 import { businessDays, profileFields, readBusinessProfile } from "../../../../lib/business-profile";
-import { CopyHours, PostalLookup, ProfileMediaUpload } from "./form-tools";
+import { CopyHours, GalleryEditor, PostalLookup, ProfileColors, ProfileMediaUpload } from "./form-tools";
+import { ShareProfile } from "../../../estabelecimento/[slug]/profile-controls";
 
 const feedback: Record<string, string> = {
   salvo: "Configurações da página salvas.",
@@ -39,6 +40,7 @@ export default async function Publication({ params, searchParams }: {
     <div className="card panel-form">
       <p>{data.published ? "Publicada no catálogo." : "Página não publicada."}</p>
       {data.published && <p><Link href={`/estabelecimento/${data.slug}`}>Abrir página pública</Link></p>}
+      {data.published && <ShareProfile title={data.name} path={`/estabelecimento/${data.slug}`} />}
       <form className="account-form" action={savePublication.bind(null, shop)}>
         <label>Nome do estabelecimento <input name="name" required maxLength={120} defaultValue={data.name} /></label>
         <label>Endereço da página <input name="slug" minLength={3} maxLength={80} defaultValue={data.slug ?? ""} placeholder="meu-estudio" /></label>
@@ -47,16 +49,14 @@ export default async function Publication({ params, searchParams }: {
           <legend>Endereço, contatos e identidade visual</legend>
           <PostalLookup initial={profile.postalCode} />
           <label>Cidade <input name="city" maxLength={100} defaultValue={data.city} /></label>
-          {profileFields.filter(({ key }) => key !== "postalCode").map(({ key, label, max }) => <div key={key}>
+          {profileFields.filter(({ key }) => key !== "postalCode" && key !== "color").map(({ key, label, max }) => <div key={key}>
             <label>{key === "address" ? "Rua / logradouro" : label}
-              <input name={key} maxLength={max} defaultValue={profile[key]} placeholder={key === "color" ? "#7C4EB0" : undefined} />
+              <input name={key} maxLength={max} defaultValue={profile[key]} />
             </label>
             {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} />}
           </div>)}
-          <label>Galeria do local (até 8 links HTTPS, um por linha)
-            <textarea name="gallery" rows={4} defaultValue={profile.gallery?.join("\n")} />
-          </label>
-          <ProfileMediaUpload shop={shop} target="gallery" />
+          <ProfileColors initial={profile.color} />
+          <GalleryEditor shop={shop} initial={profile.gallery ?? []} />
         </fieldset>
         <fieldset>
           <legend>Horário de funcionamento divulgado na página pública</legend>

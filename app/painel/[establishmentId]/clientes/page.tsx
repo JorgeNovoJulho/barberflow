@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { bookingCurrency } from "../../../../lib/public-booking";
+import { authOrigin } from "../../../../lib/auth-path";
+import { whatsappUrl } from "../../../../lib/business-profile";
 import { SubmitButton } from "../../../auth/submit";
 import { PanelStatus } from "../../status";
 import { saveClient } from "./actions";
@@ -37,7 +39,7 @@ export default async function Clients({ params, searchParams }: {
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));
-  const { data: establishment, error: shopError } = await supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle();
+  const { data: establishment, error: shopError } = await supabase.from("barberflow_establishments").select("name,slug,published").eq("id", shop).maybeSingle();
   if (shopError) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!establishment) notFound();
 
@@ -49,6 +51,9 @@ export default async function Clients({ params, searchParams }: {
     shop, search_text: search, return_days: returnDays, sort_by: sort,
   });
   const clients = (data ?? []) as DirectoryClient[];
+  const origin = authOrigin();
+  const bookingLink = establishment.published && establishment.slug && origin.startsWith("https://")
+    ? new URL(`/estabelecimento/${establishment.slug}/agendar`, origin).href : "";
   const chosen = cliente && isUuid(cliente) ? clients.find((item) => item.id === cliente) : undefined;
   const history = chosen ? await supabase.from("barberflow_schedule").select("id,service_name,state,starts_at")
     .eq("establishment_id", shop).eq("client_id", chosen.id).order("starts_at", { ascending: false }).limit(25) : null;
@@ -83,7 +88,11 @@ export default async function Clients({ params, searchParams }: {
             {item.starts_at.slice(0, 10).split("-").reverse().join("/")} · {item.service_name} · {states[item.state]}
           </li>)}</ul> : <p>Nenhum atendimento vinculado.</p>}
       </section>}
-      {clients.length ? <ul className="cards">{clients.map((client) => <li className="card" key={client.id}>
+      {clients.length ? <ul className="cards">{clients.map((client) => {
+        const name = client.name.trim().split(/\s+/)[0];
+        const message = `Olá, ${name}! Aqui é da equipe de ${establishment.name}. Gostaria de agendar seu próximo atendimento?`;
+        const contact = client.active && whatsappUrl(client.phone, [message, bookingLink].filter(Boolean).join("\n"));
+        return <li className="card" key={client.id}>
         <h3>{client.name}</h3>
         <p>{client.active ? "Ativo" : "Inativo"}{client.phone && ` · ${client.phone}`}</p>
         <dl className="order-totals">
@@ -93,7 +102,9 @@ export default async function Clients({ params, searchParams }: {
         </dl>
         <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} /></details>
         <Link href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + "#historico"}>Ver histórico</Link>
-      </li>)}</ul> : <p>Nenhum cliente encontrado.</p>}
+        {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
+      </li>;
+      })}</ul> : <p>Nenhum cliente encontrado.</p>}
       {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}
     </>}
   </section>;

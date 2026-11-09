@@ -57,6 +57,13 @@ export function httpsUrl(value: string | undefined) {
   }
 }
 
+export function whatsappUrl(value: string | undefined, message?: string) {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  if (!/^(55)?\d{10,11}$/.test(digits)) return undefined;
+  const phone = digits.length <= 11 ? "55" + digits : digits;
+  return `https://wa.me/${phone}${message ? "?" + new URLSearchParams({ text: message }) : ""}`;
+}
+
 export function socialUrl(value: string | undefined, hosts: string[]) {
   const link = httpsUrl(value);
   if (!link) return undefined;
