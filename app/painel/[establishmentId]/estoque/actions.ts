@@ -26,27 +26,40 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const { supabase, finish } = await context(shop);
   const name = get(form, "name");
   const sku = get(form, "sku");
+  const barcode = get(form, "barcode");
   const price = parsePrice(get(form, "price"));
   const rawCost = get(form, "cost");
   const cost = rawCost ? parsePrice(rawCost) : null;
   const minimum = Number(get(form, "minimum"));
   const initial = Number(get(form, "initial"));
   const expiry = get(form, "expiry");
-  if (!name || name.length > 120 || sku.length > 60 || price === null || (product && !isUuid(product))) finish("invalido");
+  if (!name || name.length > 120 || sku.length > 60 || !/^\d{0,32}$/.test(barcode) || price === null || (product && !isUuid(product))) finish("invalido");
   if ((rawCost && cost === null) || !Number.isInteger(minimum) || minimum < 0 || minimum > 1000000
     || (!product && (!Number.isInteger(initial) || initial < 0 || initial > 1000000))
     || (expiry && !validDay(expiry))) finish("invalido");
-  const fields = { name, sku, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
+  const fields = { name, sku, barcode, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
     ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
     : await supabase.rpc("barberflow_create_product", { shop, product_name: name, product_sku: sku,
-      sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial });
+      sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);
   }
-  finish(error?.code === "23505" ? "sku" : error || !data ? "falha" : "salvo");
+  finish(error?.code === "23505" ? error.message.includes("barberflow_products_barcode") ? "barcode" : "sku" : error || !data ? "falha" : "salvo");
+}
+
+export async function saveProductPromotion(shop: string, product: string, remove: boolean, form: FormData) {
+  const { supabase, finish } = await context(shop);
+  const units = Number(get(form, "bundle_units"));
+  const cents = parsePrice(get(form, "bundle_price"));
+  const until = get(form, "offer_until");
+  if (!isUuid(product) || (!remove && (!Number.isInteger(units) || units < 1 || units > 10000 || !cents || !validDay(until)))) finish("promocao-invalida");
+  const { data, error } = await supabase.rpc("barberflow_save_product_promotion", {
+    shop, product, bundle_units: remove ? null : units, bundle_cents: remove ? null : cents, offer_until: remove ? null : until,
+  });
+  finish(error || !data ? "promocao-invalida" : remove ? "promocao-removida" : "promocao-salva");
 }
 
 export async function changeProductStatus(shop: string, product: string, operation: "freeze" | "unfreeze" | "delete") {
@@ -79,5 +92,5 @@ export async function setOrderProduct(shop: string, appointment: string, boundPr
 export async function closeOrder(shop: string, appointment: string) {
   const { supabase, finish } = await context(shop, appointment);
   const { error } = await supabase.rpc("barberflow_close_order", { shop, appointment });
-  finish(error?.code === "22023" ? "fechamento" : error ? "falha" : "fechada");
+  finish(error?.details === "promotion_expired" ? "promocao-vencida" : error?.code === "22023" ? "fechamento" : error ? "falha" : "fechada");
 }

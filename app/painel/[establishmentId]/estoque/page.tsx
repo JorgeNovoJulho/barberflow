@@ -4,13 +4,15 @@ import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { adjustStock, changeProductStatus, saveProduct } from "./actions";
+import { adjustStock, changeProductStatus, saveProduct, saveProductPromotion } from "./actions";
 import { StockFeedback } from "./feedback";
 import { offsetDay, saoPauloToday } from "../../../../lib/agenda";
 import { productMediaSlots, productPhotoBucket, productVideoBucket } from "../../../../lib/product-media";
 import { ProductGallery, type ProductMedia } from "./product-gallery";
 
-type Product = { id: string; name: string; sku: string; price_cents: number; stock: number; active: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null; deleted_at: string | null };
+type Product = { id: string; name: string; sku: string; barcode: string; price_cents: number; stock: number; active: boolean;
+  cost_cents: number | null; minimum_stock: number; expires_on: string | null; promo_units: number | null;
+  promo_cents: number | null; promo_until: string | null };
 
 function priceInput(cents: number | null | undefined) {
   return cents == null ? "" : (cents / 100).toFixed(2).replace(".", ",");
@@ -32,6 +34,7 @@ function ProductForm({ shop, product }: { shop: string; product?: Product }) {
   return <form className="account-form" action={saveProduct.bind(null, shop, product?.id ?? null)}>
     <label>Nome <input name="name" maxLength={120} required defaultValue={product?.name} /></label>
     <label>Código do produto (SKU) <input name="sku" maxLength={60} defaultValue={product?.sku} /></label>
+    <label>Código de barras <input name="barcode" inputMode="numeric" pattern="[0-9]{1,32}" maxLength={32} defaultValue={product?.barcode} /></label>
     <label>Preço de venda (R$) <input name="price" inputMode="decimal" required defaultValue={priceInput(product?.price_cents)} /></label>
     <label>Custo unitário (R$) <input name="cost" inputMode="decimal" defaultValue={priceInput(product?.cost_cents)} /></label>
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
@@ -43,7 +46,7 @@ function ProductForm({ shop, product }: { shop: string; product?: Product }) {
 
 export default async function Stock({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; busca?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
@@ -53,22 +56,25 @@ export default async function Stock({ params, searchParams }: {
   const { data: business, error } = await supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle();
   if (error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business) notFound();
-  const [products, movements] = await Promise.all([
-    supabase.from("barberflow_products").select("id,name,sku,price_cents,stock,active,cost_cents,minimum_stock,expires_on,deleted_at")
+  const { estado, busca } = await searchParams;
+  const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
+  const [products, movements, searchResult] = await Promise.all([
+    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until")
       .eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at,barberflow_products(name)")
       .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),
+    search ? supabase.rpc("barberflow_search_products", { shop, search_text: search }) : null,
   ]);
-  const { estado } = await searchParams;
   const today = saoPauloToday();
   const cutoff = offsetDay(today, 30);
   const flagged = (products.data ?? []).map((product: Product) => ({ product, warnings: alerts(product, today, cutoff) }))
     .filter(({ warnings }) => warnings.length > 0);
   const catalog = (products.data ?? []) as Product[];
+  const visibleProducts = search ? (searchResult?.data ?? []) as Product[] : catalog;
   const signed = new Map<string, string>();
   let mediaUnavailable = false;
-  for (let index = 0; index < catalog.length; index += 100) {
-    const batch = catalog.slice(index, index + 100);
+  for (let index = 0; index < visibleProducts.length; index += 100) {
+    const batch = visibleProducts.slice(index, index + 100);
     const paths = (slots: readonly string[]) => batch.flatMap(({ id }) => slots.map((slot) => `${shop}/${id}/${slot}`));
     const files = await Promise.all([
       supabase.storage.from(productPhotoBucket).createSignedUrls(paths(productMediaSlots.slice(0, -1)), 3600),
@@ -103,12 +109,21 @@ export default async function Stock({ params, searchParams }: {
       {flagged.length > 0 && <section className="card panel-form stock-alerts" aria-labelledby="stock-alerts-title">
         <h2 id="stock-alerts-title">Alertas de estoque e validade</h2>
         <ul>{flagged.map(({ product, warnings }) => <li key={product.id}>
-          <a href={`#produto-${product.id}`}>{product.name}</a> · {warnings.join(" · ")}
+          <Link href={`/painel/${shop}/estoque#produto-${product.id}`}>{product.name}</Link> · {warnings.join(" · ")}
         </li>)}</ul>
       </section>}
       <h2>Produtos</h2>
+      <form className="agenda-date" action={`/painel/${shop}/estoque`}>
+        <label>Buscar por nome, código interno ou código de barras <input type="search" name="busca" maxLength={120} defaultValue={search} /></label>
+        <button className="secondary" type="submit">Buscar</button>
+        {search && <Link href={`/painel/${shop}/estoque`}>Limpar busca</Link>}
+      </form>
       {mediaUnavailable && <p role="status">Algumas mídias não puderam ser carregadas no catálogo.</p>}
-      {catalog.length ? <ul className="cards">{catalog.map((product) => <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
+      {searchResult?.error ? <p role="alert">Não foi possível buscar os produtos.</p> : visibleProducts.length ? <ul className="cards">{visibleProducts.map((product) => {
+        const canOffer = Boolean(product.active && product.expires_on && product.expires_on >= today && product.expires_on <= cutoff);
+        const activeOffer = canOffer && product.promo_until && product.promo_until >= today && product.promo_units && product.promo_cents != null
+          && product.promo_cents < product.promo_units * product.price_cents;
+        return <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
         <div className="stock-product-top">
           <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Congelado"}</span>
           {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
@@ -119,17 +134,32 @@ export default async function Stock({ params, searchParams }: {
           return url ? [{ slot, kind: slot === "video" ? "video" : "photo", url }] : [];
         })} />
         <dl className="stock-product-facts">
+          {product.barcode && <div><dt>Código de barras</dt><dd>{product.barcode}</dd></div>}
           <div><dt>Preço de venda</dt><dd>{bookingCurrency.format(product.price_cents / 100)}</dd></div>
           <div><dt>Estoque</dt><dd>{product.stock.toLocaleString("pt-BR")} un.</dd></div>
           <div><dt>Estoque mínimo</dt><dd>{product.minimum_stock} un.</dd></div>
           {product.cost_cents !== null && <div><dt>Custo unitário</dt><dd>{bookingCurrency.format(product.cost_cents / 100)}</dd></div>}
           {product.expires_on && <div><dt>Validade</dt><dd>{product.expires_on.split("-").reverse().join("/")}</dd></div>}
         </dl>
+        {activeOffer && <p className="stock-label stock-label-active">Oferta · {product.promo_units} un. por {bookingCurrency.format((product.promo_cents ?? 0) / 100)}</p>}
         {warningsByProduct.has(product.id) && <ul className="stock-warnings">
           {warningsByProduct.get(product.id)?.map((warning) => <li key={warning}>{warning}</li>)}
         </ul>}
         <Link className="secondary" href={`/painel/${shop}/estoque/${product.id}/midia`}>Fotos e vídeo</Link>
         <details><summary>Editar produto</summary><ProductForm shop={shop} product={product} /></details>
+        {(canOffer || product.promo_units !== null) && <details>
+          <summary>{product.promo_units !== null ? "Gerenciar promoção" : "Criar promoção por validade"}</summary>
+          {canOffer && <form className="account-form" action={saveProductPromotion.bind(null, shop, product.id, false)}>
+            <label>Unidades por oferta <input name="bundle_units" type="number" min={1} max={10000} defaultValue={product.promo_units ?? 3} required /></label>
+            <label>Valor total da oferta (R$) <input name="bundle_price" inputMode="decimal" defaultValue={priceInput(product.promo_cents)} required /></label>
+            <label>Oferta válida até <input name="offer_until" type="date" min={today} max={product.expires_on ?? undefined}
+              defaultValue={activeOffer ? product.promo_until ?? undefined : product.expires_on ?? undefined} required /></label>
+            <SubmitButton>Salvar promoção</SubmitButton>
+          </form>}
+          {product.promo_units !== null && <form className="account-links" action={saveProductPromotion.bind(null, shop, product.id, true)}>
+            <SubmitButton>Remover promoção</SubmitButton>
+          </form>}
+        </details>}
         <details><summary>Registrar entrada ou saída</summary>
           <form className="account-form" action={adjustStock.bind(null, shop, product.id)}>
             <label>Quantidade com sinal <input name="amount" type="number" min={-1000000} max={1000000} required placeholder="Ex.: 5 ou -2" /></label>
@@ -148,7 +178,8 @@ export default async function Stock({ params, searchParams }: {
             <SubmitButton>Confirmar exclusão</SubmitButton>
           </form>
         </details>
-      </li>)}</ul> : <p>Nenhum produto cadastrado.</p>}
+      </li>;
+      })}</ul> : <p>{search ? "Nenhum produto corresponde à busca." : "Nenhum produto cadastrado."}</p>}
       <h2 className="panel-form">Últimas movimentações</h2>
       {movements.data?.length ? <ul className="card stock-movements">
         {movements.data.map((movement) => <li key={movement.id}>
