@@ -58,7 +58,9 @@ ver a agenda vinculada, criar e remarcar atendimentos e atualizar seus
 estados. As permissões para visualizar ou gerenciar todas as agendas
 são separadas. A permissão de Clientes habilita cadastro, edição, busca e
 histórico de atendimentos, com isolamento entre estabelecimentos e sem
-acesso a comandas. Financeiro, Serviços e Profissionais continuam pendentes.
+acesso a comandas. A permissão de Serviços habilita cadastro, edição de preços,
+ordenação, arquivamento e reativação do catálogo. Financeiro e Profissionais
+continuam pendentes.
 
 Para reproduzir esse fluxo, cada permissão precisa ser aplicada no Supabase
 e nas ações do servidor. O teste deve cobrir convite expirado, e-mail

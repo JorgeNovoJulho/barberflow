@@ -31,9 +31,9 @@ export async function createEstablishment(data: FormData) {
   finish("/painel/" + establishment.id + "/servicos", "negocio-criado");
 }
 
-export async function saveService(establishmentId: string, serviceId: string | null, data: FormData) {
+export async function saveService(establishmentId: string, serviceId: string | null, team: boolean, data: FormData) {
   if (!isUuid(establishmentId)) redirect("/painel");
-  const path = "/painel/" + establishmentId + "/servicos";
+  const path = `/${team ? "equipe" : "painel"}/${establishmentId}/servicos`;
   const supabase = await authenticated(path);
   const name = field(data, "name");
   const description = field(data, "description");
@@ -54,18 +54,18 @@ export async function saveService(establishmentId: string, serviceId: string | n
   finish(path, error || !saved ? "falha" : "salvo");
 }
 
-export async function changeServiceAvailability(establishmentId: string, serviceId: string, active: boolean) {
+export async function changeServiceAvailability(establishmentId: string, serviceId: string, active: boolean, team: boolean) {
   if (!isUuid(establishmentId) || !isUuid(serviceId)) redirect("/painel");
-  const path = "/painel/" + establishmentId + "/servicos";
+  const path = `/${team ? "equipe" : "painel"}/${establishmentId}/servicos`;
   const supabase = await authenticated(path);
   const { data, error } = await supabase.from("barberflow_services")
     .update({ active }).eq("id", serviceId).eq("establishment_id", establishmentId).select("id").maybeSingle();
   finish(path, error || !data ? "falha" : active ? "ativado" : "arquivado");
 }
 
-export async function moveService(establishmentId: string, serviceId: string, neighborId: string, step: -1 | 1) {
+export async function moveService(establishmentId: string, serviceId: string, neighborId: string, step: -1 | 1, team: boolean) {
   if (!isUuid(establishmentId) || !isUuid(serviceId) || !isUuid(neighborId)) redirect("/painel");
-  const path = `/painel/${establishmentId}/servicos`;
+  const path = `/${team ? "equipe" : "painel"}/${establishmentId}/servicos`;
   const supabase = await authenticated(path);
   const { data, error } = await supabase.rpc("barberflow_move_service", {
     shop: establishmentId, service: serviceId, neighbor: neighborId, step,

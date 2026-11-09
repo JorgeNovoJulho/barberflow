@@ -34,11 +34,12 @@ export default async function TeamAgenda({ params, searchParams }: {
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
-  const [memberships, agenda, offerings, clientAccess] = await Promise.all([
+  const [memberships, agenda, offerings, clientAccess, serviceAccess] = await Promise.all([
     supabase.rpc("barberflow_my_team_shops"),
     supabase.rpc("barberflow_team_agenda", { shop, agenda_day: day }),
     supabase.rpc("barberflow_team_offerings", { shop }),
     supabase.rpc("barberflow_team_can_edit_clients", { shop }),
+    supabase.rpc("barberflow_team_can_edit_services", { shop }),
   ]);
   if (memberships.error) throw new Error("Não foi possível consultar os acessos da equipe.");
   const business = (memberships.data as { id: string; name: string }[]).find((item) => item.id === shop);
@@ -54,6 +55,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     <Link href="/painel">Voltar ao painel</Link>
     <p className="eyebrow">{business.name}</p><h1>Agenda da equipe</h1>
     {clientAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/clientes`}>Clientes da equipe</Link></p>}
+    {serviceAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/servicos`}>Serviços e preços</Link></p>}
     <form className="agenda-date">
       <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
       <button type="submit" className="secondary">Abrir dia</button>

@@ -16,6 +16,7 @@ export function TeamInvite({ shop, professionals }: { shop: string; professional
       <label><input type="checkbox" name="see_all" /> Ver a agenda de todos os profissionais</label>
       <label><input type="checkbox" name="manage_all" /> Criar, remarcar e alterar agendamentos de todos</label>
       <label><input type="checkbox" name="manage_clients" /> Ver e editar a base de clientes</label>
+      <label><input type="checkbox" name="manage_services" /> Gerenciar serviços e preços</label>
       <p>Gerenciar todos inclui visualizar todas as agendas. Com vínculo, a equipe pode gerenciar a própria agenda. O convite vale por sete dias.</p>
       <SubmitButton>Gerar convite</SubmitButton>
     </form>
