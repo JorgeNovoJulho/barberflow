@@ -36,6 +36,10 @@ export default async function Publication({ params, searchParams }: {
     <Link href="/painel">Meus estabelecimentos</Link>
     <p className="eyebrow">{data.name}</p>
     <h1>Página pública</h1>
+    <nav className="account-links" aria-label="Vitrine e prévia">
+      <Link className="primary" href={'/painel/' + shop + '/publicacao/previa'}>Ver prévia da página</Link>
+      <Link className="secondary" href={'/painel/' + shop + '/vitrine'}>Vendas e Pix da vitrine</Link>
+    </nav>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     <div className="card panel-form">
       <p>{data.published ? "Publicada no catálogo." : "Página não publicada."}</p>

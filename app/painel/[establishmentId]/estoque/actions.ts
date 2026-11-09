@@ -27,22 +27,24 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const name = get(form, "name");
   const sku = get(form, "sku");
   const barcode = get(form, "barcode");
+  const description = get(form, "description");
+  const showcase = form.has("showcase");
   const price = parsePrice(get(form, "price"));
   const rawCost = get(form, "cost");
   const cost = rawCost ? parsePrice(rawCost) : null;
   const minimum = Number(get(form, "minimum"));
   const initial = Number(get(form, "initial"));
   const expiry = get(form, "expiry");
-  if (!name || name.length > 120 || sku.length > 60 || !/^\d{0,32}$/.test(barcode) || price === null || (product && !isUuid(product))) finish("invalido");
+  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || price === null || (product && !isUuid(product))) finish("invalido");
   if ((rawCost && cost === null) || !Number.isInteger(minimum) || minimum < 0 || minimum > 1000000
     || (!product && (!Number.isInteger(initial) || initial < 0 || initial > 1000000))
     || (expiry && !validDay(expiry))) finish("invalido");
-  const fields = { name, sku, barcode, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
+  const fields = { name, sku, barcode, description, showcase, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
     ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
     : await supabase.rpc("barberflow_create_product", { shop, product_name: name, product_sku: sku,
-      sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode });
+      sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);

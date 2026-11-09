@@ -26,6 +26,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/#duvidas">Dúvidas</Link>
     {user && <Link href="/painel">Meu painel</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
+    {user && <Link href="/minhas-compras">Minhas compras</Link>}
     {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}
   </>;
 

@@ -10,7 +10,7 @@ const links = [
   ["assinatura", "Assinatura"],
 ] as const;
 
-export function WorkspaceNav({ shop, name, unread }: { shop: string; name: string; unread: number }) {
+export function WorkspaceNav({ shop, name, unread, paidOrders }: { shop: string; name: string; unread: number; paidOrders?: number }) {
   const pathname = usePathname();
   const base = `/painel/${shop}`;
   const current = (href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -24,6 +24,9 @@ export function WorkspaceNav({ shop, name, unread }: { shop: string; name: strin
       {links.map(([id, label]) => <Link key={id} href={`${base}/${id}`}
         aria-current={current(`${base}/${id}`) ? "page" : undefined}>{label}</Link>)}
     </nav>
+    {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
+      Pedidos da vitrine{paidOrders > 0 && <span aria-label={paidOrders + " novos pagamentos"}>{paidOrders}</span>}
+    </Link>}
     <Link className="workspace-notices" href={`${base}/resumo?notificacoes=1#notificacoes`}>
       Notificações{unread > 0 && <span aria-label={`${unread} não lidas`}>{unread}</span>}
     </Link>

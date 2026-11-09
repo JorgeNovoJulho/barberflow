@@ -503,3 +503,14 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
   .business-cover { animation: hero-image-in .75s ease-out both; }
   .public-intro { animation: appear .35s ease-out both; }
 }
+
+.showcase-card { min-width: 0; }
+.showcase-card summary { display: grid; gap: .4rem; cursor: pointer; }
+.showcase-card details[open] > summary .showcase-cover,
+.showcase-card details[open] > summary .showcase-open { display: none; }
+.showcase-cover { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .75rem; }
+.showcase-open { text-decoration: underline; text-underline-offset: .18em; }
+.showcase-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.showcase-order { min-width: 0; overflow-wrap: anywhere; }
+.showcase-pix-code { display: grid; gap: .35rem; margin-block: .75rem; }
+.showcase-pix-code textarea { width: 100%; resize: vertical; }

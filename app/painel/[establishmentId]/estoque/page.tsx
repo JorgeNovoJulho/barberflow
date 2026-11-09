@@ -11,7 +11,7 @@ import { productMediaSlots, productPhotoBucket, productVideoBucket } from "../..
 import { ProductGallery, type ProductMedia } from "./product-gallery";
 
 type Product = { id: string; name: string; sku: string; barcode: string; price_cents: number; stock: number; active: boolean;
-  cost_cents: number | null; minimum_stock: number; expires_on: string | null; promo_units: number | null;
+  description: string; showcase: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null; promo_units: number | null;
   promo_cents: number | null; promo_until: string | null };
 
 function priceInput(cents: number | null | undefined) {
@@ -40,6 +40,8 @@ function ProductForm({ shop, product }: { shop: string; product?: Product }) {
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
     <label>Estoque mínimo <input name="minimum" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required /></label>
     <label>Data de validade <input name="expiry" type="date" defaultValue={product?.expires_on ?? ""} /></label>
+    <label>Descrição na vitrine <textarea name="description" rows={3} maxLength={1500} defaultValue={product?.description} /></label>
+    <label><input type="checkbox" name="showcase" defaultChecked={product?.showcase} /> Exibir na vitrine da página pública</label>
     <SubmitButton>Salvar produto</SubmitButton>
   </form>;
 }
@@ -59,7 +61,7 @@ export default async function Stock({ params, searchParams }: {
   const { estado, busca } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [products, movements, searchResult] = await Promise.all([
-    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until")
+    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase")
       .eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at,barberflow_products(name)")
       .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),
