@@ -19,7 +19,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const { busca, estado } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [settings, businesses] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions").single(),
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,support_whatsapp").single(),
     search ? supabase.rpc("barberflow_billing_businesses", { search_text: search }) : Promise.resolve({ data: [], error: null }),
   ]);
   const config = settings.data;
@@ -44,6 +44,8 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
         <label>Dias de teste para novos estabelecimentos <input name="trial" type="number" min={0} max={365} defaultValue={config.trial_days} required /></label>
       </div>
       <label>Chave Pix <input name="pix" maxLength={160} defaultValue={config.pix_key} /></label>
+      <label>Favorecido Pix <input name="beneficiary" maxLength={120} defaultValue={config.pix_beneficiary} /></label>
+      <label>WhatsApp para comprovantes <input name="whatsapp" type="tel" maxLength={22} defaultValue={config.support_whatsapp} placeholder="+55 DDD número" /></label>
       <label>Instruções de pagamento <textarea name="instructions" rows={4} maxLength={1500} defaultValue={config.instructions} /></label>
       <SubmitButton>Salvar configuração</SubmitButton>
     </form> : <p role="alert">Não foi possível carregar a configuração.</p>}

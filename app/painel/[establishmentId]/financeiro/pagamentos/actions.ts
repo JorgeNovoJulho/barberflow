@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../../../../lib/establishments";
+import { authOrigin } from "../../../../../lib/auth-path";
 import { normalizePixKey, pixLabel } from "../../../../../lib/pix";
 import { supabaseServer } from "../../../../../lib/supabase";
-import { cardAdmin, createCardCheckout, findCardPayment, mercadoPagoCollector, openCardToken, sealCardToken,
+import { cardAdmin, chargeProvider, createAsaasCheckout, createCardCheckout, findAsaasPayment, findCardPayment,
+  mercadoPagoCollector, openCardToken, sealCardToken, verifyAsaas,
   type CardCharge } from "../../../../../lib/card-payments";
 
 async function paymentContext(shop: string, receipt?: string) {
@@ -39,14 +41,18 @@ export async function saveCardAccount(shop: string, remove: boolean, form: FormD
   const admin = cardAdmin();
   if (!admin) return finish("ambiente");
   const token = String(form.get("token") ?? "").trim();
-  const sandbox = form.get("mode") === "test";
+  const mode = form.get("mode");
+  const provider = form.get("provider");
+  const sandbox = mode === "test";
   let collector: number | null = null;
   let ciphertext: string | null = null;
   if (!remove) {
-    if (!/^[A-Za-z0-9_-]{20,300}$/.test(token) || (!sandbox && token.startsWith("TEST-"))) return finish("dados");
+    if ((mode !== "test" && mode !== "live") || (provider !== "asaas" && provider !== "mercado_pago")
+      || !/^[\x21-\x7e]{20,300}$/.test(token) || (!sandbox && token.startsWith("TEST-"))) return finish("dados");
     try {
-      collector = await mercadoPagoCollector(token);
-      ciphertext = sealCardToken(shop, token);
+      if (provider === "asaas") await verifyAsaas(token, sandbox);
+      else collector = await mercadoPagoCollector(token);
+      ciphertext = (provider === "asaas" ? "asaas." : "") + sealCardToken(shop, token);
     } catch {
       return finish("credencial");
     }
@@ -66,7 +72,11 @@ export async function cardCheckout(shop: string, receipt: string) {
   if (charge.checkout_url) return finish("link");
   let url: string;
   try {
-    url = await createCardCheckout(openCardToken(shop, charge.sealed_token), charge);
+    const provider = chargeProvider(charge);
+    const token = openCardToken(shop, charge.sealed_token.replace(/^asaas\./, ""));
+    url = provider === "asaas"
+      ? await createAsaasCheckout(token, charge, authOrigin())
+      : await createCardCheckout(token, charge);
   } catch {
     return finish("provedor");
   }
@@ -83,7 +93,8 @@ export async function syncCardCheckout(shop: string, receipt: string) {
   if (result.error || !charge) return finish("indisponivel");
   let payment: string | null;
   try {
-    payment = await findCardPayment(openCardToken(shop, charge.sealed_token), charge);
+    const token = openCardToken(shop, charge.sealed_token.replace(/^asaas\./, ""));
+    payment = await (chargeProvider(charge) === "asaas" ? findAsaasPayment(token, charge) : findCardPayment(token, charge));
   } catch {
     return finish("provedor");
   }

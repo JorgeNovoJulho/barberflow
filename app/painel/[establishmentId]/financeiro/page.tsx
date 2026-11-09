@@ -120,7 +120,7 @@ export default async function Finance({ params, searchParams }: {
                 <strong>{money(payment.amount_cents)} · {methods[payment.method]}</strong>
                 <p>{date(payment.recorded_at)}</p>
                 {payment.reversed_at ? <p>Estornado em {date(payment.reversed_at)} · {payment.reversal_reason}</p>
-                  : integratedPayments.has(payment.id) ? <p>Cartão integrado. Solicite o estorno no Mercado Pago.</p>
+                  : integratedPayments.has(payment.id) ? <p>Cartão integrado. Solicite o estorno no provedor.</p>
                   : controls?.error || openCardCharges.has(bill.appointment_id) ? null : <details><summary>Estornar recebimento</summary>
                     <form className="account-form" action={reversePayment.bind(null, shop, payment.id)}>
                       <label>Motivo <input name="reason" maxLength={240} required /></label>

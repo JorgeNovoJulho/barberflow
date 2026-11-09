@@ -22,10 +22,13 @@ export async function savePlanSettings(form: FormData) {
   const trial = value(form, "trial");
   const trial_days = Number(trial);
   const pix_key = value(form, "pix");
+  const pix_beneficiary = value(form, "beneficiary");
+  const support_whatsapp = value(form, "whatsapp").replace(/[\s()+.-]/g, "");
+  if (pix_beneficiary.length > 120 || !/^([1-9]\d{9,14})?$/.test(support_whatsapp)) finish("invalido");
   const instructions = value(form, "instructions");
   if (!monthly_cents || !yearly_cents || !/^\d{1,3}$/.test(trial) || trial_days > 365 || pix_key.length > 160 || instructions.length > 1500) finish("invalido");
   const { data, error } = await supabase.from("barberflow_plan_settings")
-    .update({ monthly_cents, yearly_cents, trial_days, pix_key, instructions }).eq("singleton", true).select("singleton").maybeSingle();
+    .update({ monthly_cents, yearly_cents, trial_days, pix_key, instructions, pix_beneficiary, support_whatsapp }).eq("singleton", true).select("singleton").maybeSingle();
   revalidatePath("/planos");
   finish(error || !data ? "falha" : "configurado");
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../../lib/establishments";
-import { cardAdmin } from "../../../../../lib/card-payments";
+import { cardAdmin, cardProviders, type CardProvider } from "../../../../../lib/card-payments";
 import { pixLabel } from "../../../../../lib/pix";
 import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
@@ -32,7 +32,7 @@ export default async function PaymentSettings({ params, searchParams }: {
   ]);
   const { pagamento } = await searchParams;
   const cardAvailable = !!cardAdmin();
-  const account = cards.data?.account as { collector: number; sandbox: boolean } | null | undefined;
+  const account = cards.data?.account as { provider: CardProvider; sandbox: boolean } | null | undefined;
   return <section className="container section" id="recebimento">
     <Link href={path}>Voltar ao Financeiro</Link>
     <p className="eyebrow">{business.data.name}</p>
@@ -57,17 +57,20 @@ export default async function PaymentSettings({ params, searchParams }: {
     </section>
     <section className="card panel-form">
       <h2>Cartões de crédito e débito</h2>
-      <p>O checkout abre no Mercado Pago. As opções de cartão dependem da conta e dos meios disponíveis no provedor.</p>
+      <p>Escolha Asaas para crédito ou Mercado Pago para crédito e débito, conforme disponibilidade da conta.</p>
       {cards.error ? <p role="alert">Não foi possível carregar a conta de cartões.</p> : <>
-        <p>{account ? `Conta ${account.collector} conectada · ${account.sandbox ? "teste" : "produção"}` : "Conta Mercado Pago ainda não conectada."}</p>
+        <p>{account ? `${cardProviders[account.provider]} conectado · ${account.sandbox ? "teste" : "produção"}` : "Nenhum provedor conectado."}</p>
         {!cardAvailable && <p role="status">Integração aguardando configuração do servidor.</p>}
         <form className="account-form" action={saveCardAccount.bind(null, shop, false)}>
+          <label>Provedor <select name="provider" defaultValue={account?.provider ?? "asaas"}>
+            <option value="asaas">Asaas</option><option value="mercado_pago">Mercado Pago</option>
+          </select></label>
           <label>Ambiente <select name="mode" defaultValue={account?.sandbox === false ? "live" : "test"}>
             <option value="test">Teste</option><option value="live">Produção</option>
           </select></label>
           <label>Access Token <input name="token" type="password" autoComplete="off" minLength={20} maxLength={300}
             required disabled={!cardAvailable} /></label>
-          <SubmitButton disabled={!cardAvailable}>Validar e conectar Mercado Pago</SubmitButton>
+          <SubmitButton disabled={!cardAvailable}>Validar e conectar provedor</SubmitButton>
         </form>
         {account && <form action={saveCardAccount.bind(null, shop, true)}>
           <button className="secondary" type="submit" disabled={!cardAvailable}>Desconectar para novas cobranças</button>

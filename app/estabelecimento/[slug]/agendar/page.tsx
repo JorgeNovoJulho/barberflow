@@ -24,6 +24,12 @@ export default async function Booking({ params, searchParams }: {
   const person = service?.professionals.find((entry) => entry.id === profissional);
   const today = saoPauloToday();
   const supabase = await supabaseServer();
+  const availability = await supabase?.rpc("barberflow_booking_enabled", { profile_slug: slug });
+  if (availability?.error || availability?.data === false) return <section className="container section">
+    <Link href={"/estabelecimento/" + slug}>Voltar para {profile.name}</Link>
+    <h1>Agendar atendimento</h1>
+    <p role="status">Os agendamentos online deste estabelecimento estão indisponíveis no momento.</p>
+  </section>;
   const horizon = supabase && await supabase.rpc("barberflow_booking_limit", { profile_slug: slug });
   const limit = offsetDay(today, typeof horizon?.data === "number" ? horizon.data : 30);
   const day = typeof dia === "string" && validDay(dia) && dia >= today && dia <= limit ? dia : today;

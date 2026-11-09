@@ -39,6 +39,75 @@ export type CardCharge = {
   sealed_token: string; checkout_url: string | null; expires_at: string;
 };
 
+export const cardProviders = { asaas: "Asaas", mercado_pago: "Mercado Pago" } as const;
+export type CardProvider = keyof typeof cardProviders;
+
+export function chargeProvider(charge: CardCharge): CardProvider {
+  return charge.sealed_token.startsWith("asaas.") ? "asaas" : "mercado_pago";
+}
+
+async function asaas<T>(token: string, sandbox: boolean, path: string, body?: unknown): Promise<T> {
+  const host = sandbox ? "https://api-sandbox.asaas.com" : "https://api.asaas.com";
+  const response = await fetch(host + "/v3" + path, {
+    method: body ? "POST" : "GET", cache: "no-store", redirect: "error",
+    signal: AbortSignal.timeout(8000),
+    headers: { access_token: token, "User-Agent": "BARBERFLOW/1.0", "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) throw new Error("Asaas request failed");
+  return await response.json() as T;
+}
+
+export async function verifyAsaas(token: string, sandbox: boolean) {
+  await asaas(token, sandbox, "/myAccount/accountNumber");
+}
+
+function asaasSession(url: string, sandbox?: boolean) {
+  try {
+    const value = new URL(url);
+    const expectedHost = sandbox === undefined ? ["asaas.com", "sandbox.asaas.com"] : [sandbox ? "sandbox.asaas.com" : "asaas.com"];
+    const id = value.searchParams.get("id");
+    if (value.protocol === "https:" && !value.username && !value.password && !value.port
+      && expectedHost.includes(value.hostname) && value.pathname === "/checkoutSession/show"
+      && id && /^[a-z0-9-]{10,100}$/i.test(id)) return id;
+  } catch { }
+  return null;
+}
+
+export function isCardCheckout(url: string) {
+  return !!asaasSession(url) || isMercadoPagoCheckout(url);
+}
+
+export async function createAsaasCheckout(token: string, charge: CardCharge, returnUrl: string) {
+  const minutes = Math.floor((Date.parse(charge.expires_at) - Date.now()) / 60000);
+  if (minutes < 10) throw new Error("Asaas checkout window expired");
+  const result = await asaas<{ id: string }>(token, charge.sandbox, "/checkouts", {
+    billingTypes: ["CREDIT_CARD"], chargeTypes: ["DETACHED"], minutesToExpire: minutes,
+    externalReference: charge.id,
+    callback: { successUrl: returnUrl, cancelUrl: returnUrl, expiredUrl: returnUrl },
+    items: [{ name: "Comanda BARBERFLOW", description: "Saldo da comanda", quantity: 1, value: charge.amount / 100 }],
+  });
+  const url = "https://" + (charge.sandbox ? "sandbox.asaas.com" : "asaas.com")
+    + "/checkoutSession/show?" + new URLSearchParams({ id: result.id });
+  if (!asaasSession(url, charge.sandbox)) throw new Error("Unexpected Asaas checkout ID");
+  return url;
+}
+
+export async function findAsaasPayment(token: string, charge: CardCharge) {
+  const id = charge.checkout_url && asaasSession(charge.checkout_url, charge.sandbox);
+  if (!id) return null;
+  type Payment = { id: string; checkoutSession: string; value: number; billingType: string; status: string; deleted?: boolean };
+  const result = await asaas<{ data: Payment[]; hasMore: boolean }>(token, charge.sandbox,
+    "/payments?" + new URLSearchParams({ checkoutSession: id }));
+  if (result.hasMore || !Array.isArray(result.data)) return "review";
+  if (!result.data.length) return null;
+  const [payment] = result.data;
+  if (result.data.length !== 1 || !/^pay_[a-z0-9]+$/i.test(payment.id) || payment.checkoutSession !== id
+    || payment.billingType !== "CREDIT_CARD" || Math.round(payment.value * 100) !== charge.amount || payment.deleted
+    || !["CONFIRMED", "RECEIVED"].includes(payment.status)) return "review";
+  return "asaas:" + payment.id;
+}
+
 async function mercadoPago<T>(token: string, path: string, body?: unknown) {
   const response = await fetch("https://api.mercadopago.com" + path, {
     method: body ? "POST" : "GET", cache: "no-store", redirect: "error",

@@ -75,8 +75,8 @@ Para cartões, configure SUPABASE_SERVICE_ROLE_KEY e BARBERFLOW_PAYMENT_SECRET
 somente no servidor. Gere a segunda variável com
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 e preserve a chave entre implantações. O Access Token informado no painel
-é criptografado com essa chave. Valide primeiro com uma conta de teste
-brasileira do Mercado Pago. Depois de pagar no checkout, use Consultar
-pagamento no Mercado Pago na comanda. Pagamentos de teste não baixam o caixa.
+é criptografado com essa chave. Selecione Asaas ou Mercado Pago por estabelecimento. Valide primeiro com uma conta de teste
+do provedor. O checkout Asaas deste fluxo recebe crédito. Para débito, use Mercado Pago onde disponível. Depois de pagar no checkout, use Consultar
+pagamento no provedor na comanda. Pagamentos de teste não baixam o caixa.
 A conciliação compara a referência, a conta, a moeda, o valor e o meio de
 pagamento. Estornos de cartões integrados devem ser tratados no provedor.
