@@ -217,3 +217,9 @@ dl.cards:has(> .dashboard-metric) { align-items: stretch; grid-template-columns:
 @media (max-width: 23rem) {
   .landing .specialties { grid-template-columns: 1fr; }
 }
+
+.finance-password-field > label { display: block; margin-block-end: .25rem; }
+.finance-password-input { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: .45rem; }
+.finance-password-input input:not([type="radio"], [type="checkbox"]) { margin: 0; }
+.finance-password-recovery { margin-block-start: .65rem; border-bottom: 0; }
+.finance-password-recovery .account-form { margin-block-start: .75rem; }

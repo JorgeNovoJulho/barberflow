@@ -4,7 +4,8 @@ import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { lockFinance, recordPayment, reversePayment, unlockFinance } from "./actions";
+import { lockFinance, recordPayment, resetFinancePassword, reversePayment, unlockFinance } from "./actions";
+import { PasswordField } from "./password-field";
 import { FinanceEntriesPanel, type FinanceEntries } from "./lancamentos";
 import { saoPauloToday } from "../../../../lib/agenda";
 import { financeGuide } from "./guias";
@@ -15,6 +16,16 @@ const feedback: Record<string, string> = {
   fechado: "Área financeira bloqueada.",
   bloqueado: "Muitas tentativas. Aguarde até 15 minutos para tentar de novo.",
   "senha-invalida": "Confira a senha financeira e a confirmação, quando solicitada.",
+  "senha-alterada": "Senha financeira alterada. Desbloqueie o Financeiro com a nova senha.",
+  "recuperacao-dados": "Confira a senha da conta, a nova senha financeira e a confirmação.",
+  "recuperacao-invalid": "Use uma senha financeira de pelo menos oito caracteres e até 72 bytes.",
+  "recuperacao-incorrect": "A senha de login do BARBERFLOW está incorreta.",
+  "recuperacao-reused": "Use uma senha financeira diferente da senha da sua conta.",
+  "recuperacao-blocked": "Muitas tentativas de recuperação. Aguarde até 15 minutos e tente novamente.",
+  "recuperacao-mfa": "Conclua a verificação em duas etapas da sua conta antes de recuperar a senha financeira.",
+  "recuperacao-no_password": "Defina uma senha de login para sua conta BARBERFLOW antes de recuperar a senha financeira.",
+  "recuperacao-denied": "A recuperação está disponível apenas para o proprietário do estabelecimento.",
+  "recuperacao-falha": "Não foi possível recuperar a senha financeira.",
   dados: "Confira os dados informados.",
   falha: "Não foi possível concluir a operação.",
   recebido: "Recebimento registrado.",
@@ -71,10 +82,21 @@ export default async function Finance({ params, searchParams }: {
         <h2>{setup ? "Criar senha financeira" : "Desbloquear financeiro"}</h2>
         <p>Use uma senha exclusiva do BARBERFLOW, com pelo menos oito caracteres.</p>
         <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
-          <label>Senha financeira <input name="secret" type="password" minLength={8} maxLength={72} required autoComplete={setup ? "new-password" : "current-password"} /></label>
-          {setup && <label>Confirmar senha financeira <input name="confirmation" type="password" minLength={8} maxLength={72} required autoComplete="new-password" /></label>}
+          <PasswordField label="Senha financeira" name="secret" autoComplete={setup ? "new-password" : "current-password"} />
+          {setup && <PasswordField label="Confirmar senha financeira" name="confirmation" autoComplete="new-password" />}
           <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>
         </form>
+        {!setup && <details className="finance-password-recovery" open={typeof estado === "string" && estado.startsWith("recuperacao-")}>
+          <summary>Esqueci a senha financeira</summary>
+          <p>Confirme a senha que você usa para entrar no BARBERFLOW e escolha uma nova senha exclusiva para o Financeiro.</p>
+          <form className="account-form" action={resetFinancePassword.bind(null, shop)}>
+            <PasswordField label="Senha de login do BARBERFLOW" name="account_secret" minLength={1} autoComplete="current-password" />
+            <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
+            <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
+            <SubmitButton>Trocar senha financeira</SubmitButton>
+          </form>
+          <p><Link href="/recuperar-senha">Esqueci também a senha da conta</Link></p>
+        </details>}
       </div> : <>
         <form action={lockFinance.bind(null, shop)}><SubmitButton>Bloquear financeiro</SubmitButton></form>
         <nav className="account-links" aria-label="Financeiro">

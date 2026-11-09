@@ -34,6 +34,19 @@ export async function lockFinance(shop: string) {
   return finish(error ? "falha" : "fechado");
 }
 
+export async function resetFinancePassword(shop: string, form: FormData) {
+  const { supabase, finish } = await context(shop);
+  const account = String(form.get("account_secret") ?? "");
+  const secret = String(form.get("new_secret") ?? "");
+  if (!account || Buffer.byteLength(account) > 72 || secret.length < 8
+    || Buffer.byteLength(secret) > 72 || secret !== form.get("confirmation")) return finish("recuperacao-dados");
+  const { data, error } = await supabase.rpc("barberflow_reset_finance_password", {
+    shop, account_secret: account, new_secret: secret,
+  });
+  if (error || typeof data !== "string") return finish("recuperacao-falha");
+  return finish(data === "reset" ? "senha-alterada" : "recuperacao-" + data);
+}
+
 export async function recordPayment(shop: string, receipt: string, requestId: string, form: FormData) {
   const { supabase, finish } = await context(shop);
   const cents = parsePrice(String(form.get("amount") ?? ""));
