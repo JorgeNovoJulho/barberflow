@@ -11,14 +11,22 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fpainel");
 
-  const { data: businesses, error } = await supabase.from("barberflow_establishments")
-    .select("id,name,segment").order("name");
+  const [{ data: businesses, error }, team] = await Promise.all([
+    supabase.from("barberflow_establishments").select("id,name,segment").order("name"),
+    supabase.rpc("barberflow_my_team_shops"),
+  ]);
   const { estado } = await searchParams;
 
   return <section className="container section">
     <p className="eyebrow">Painel BARBERFLOW</p>
     <h1>Meus estabelecimentos</h1>
     <PanelStatus status={estado} />
+    {!!team.data?.length && <section className="panel-form">
+      <h2>Minhas equipes</h2>
+      <ul className="cards">{(team.data as { id: string; name: string }[]).map((shop) => <li className="card" key={shop.id}>
+        <Link href={`/equipe/${shop.id}`}>{shop.name} · Abrir agenda</Link>
+      </li>)}</ul>
+    </section>}
     {error ? <p role="alert">Não foi possível carregar seus estabelecimentos.</p>
       : businesses?.length ? <ul className="cards">
         {businesses.map(({ id, name, segment }) => <li className="card" key={id}>

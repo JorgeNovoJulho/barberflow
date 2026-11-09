@@ -18,7 +18,7 @@ entrega de convites, eventos em segundo plano ou regras de bloqueio de planos.
 | Notificações | Contador, novas reservas, data da notificação, link para a agenda e marcar todas como lidas | Presentes na Visão geral, com acesso e contador no cabeçalho interno do estabelecimento. |
 | Agenda | Anterior, hoje, próximo, seletor de data, visões dia, semana e lista, bloquear horário e novo atendimento | Presentes. A lista do BARBERFLOW cobre sete dias a partir da data selecionada. |
 | Clientes | Cadastro, busca, retorno de 15, 20, 30, 45, 60 e 90 dias, ordenação, última visita, quantidade de atendimentos, total, histórico e WhatsApp | Presentes. A base financeira exibida é o valor de comandas fechadas. |
-| Profissionais | Cadastro, edição, ordenação, foto, comissão, horário próprio ou herdado, equipe com acesso ao painel e convite | Parcial. O BARBERFLOW tem cadastro, foto por upload ou URL, ordenação no painel e no perfil público, comissões, vínculo com serviços e expediente próprio ou herdado. Faltam convites com permissões. |
+| Profissionais | Cadastro, edição, ordenação, foto, comissão, horário próprio ou herdado, equipe com acesso ao painel e convite | O BARBERFLOW tem cadastro, upload, ordenação, comissões, expediente próprio ou herdado, convite, revogação e agenda delegada. A paridade de permissões ainda está parcial. |
 | Serviços | Cadastro, edição, reordenação e exclusão | Cadastro, edição, ordenação, arquivamento e reativação presentes. Falta confirmar como a referência trata exclusão de serviços com histórico. |
 | Financeiro e relatórios | Intervalo de datas, filtro por profissional, comissão, faturamento diário e por profissional, serviços mais vendidos, dias e horários movimentados e CSV | Presentes. O BARBERFLOW inclui ainda caixa, recebimentos e pagamentos, guias de despesas, produtos vendidos e comissões de produtos. |
 | Fidelidade | Configuração da meta e do benefício, todos os serviços ou seleção, clientes mais próximos e horários vagos | Presentes. A seleção vazia representa todos os serviços. |
@@ -51,6 +51,12 @@ As permissões observadas são independentes:
 - Ver financeiro e relatórios.
 - Gerenciar serviços e preços.
 - Gerenciar profissionais, horários e imagens.
+
+O BARBERFLOW gera um link de uso único com sete dias de validade, vinculado
+ao e-mail confirmado, e permite revogar o acesso. A área delegada permite
+ver a agenda vinculada, atualizar estados dos próprios atendimentos e,
+quando autorizado, consultar todas as agendas. A criação e remarcação por
+delegados e as demais permissões de módulos continuam pendentes.
 
 Para reproduzir esse fluxo, cada permissão precisa ser aplicada no Supabase
 e nas ações do servidor. O teste deve cobrir convite expirado, e-mail

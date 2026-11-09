@@ -6,6 +6,8 @@ import { SubmitButton } from "../../../auth/submit";
 import { PanelStatus } from "../../status";
 import { moveProfessional, saveAssignments, saveProfessional, saveWorkingDay } from "./actions";
 import { ProfileMediaUpload } from "../publicacao/form-tools";
+import { TeamInvite } from "./team-invite";
+import { revokeTeamAccess } from "./team-actions";
 
 const weekdays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 
@@ -60,12 +62,13 @@ export default async function Professionals({ params, searchParams }: {
   const { data: establishment, error } = await supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle();
   if (error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!establishment) notFound();
-  const [professionals, services, assignments, hours] = await Promise.all([
+  const [professionals, services, assignments, hours, team] = await Promise.all([
     supabase.from("barberflow_professionals").select("id,name,description,active,photo_url,commission_bps,product_commission_bps,inherit_business_hours")
       .eq("establishment_id", shop).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     supabase.from("barberflow_services").select("id,name,active").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_professional_hours").select("professional_id,weekday,starts_at,ends_at,break_start,break_end").eq("establishment_id", shop),
+    supabase.rpc("barberflow_team_members", { shop }),
   ]);
   const { estado } = await searchParams;
 
@@ -112,6 +115,20 @@ export default async function Professionals({ params, searchParams }: {
           </details>
         </article>;
       })}
+      <section className="panel-form">
+        <h2>Equipe com acesso ao painel</h2>
+        <details className="card"><summary>Convidar</summary>
+          <TeamInvite shop={shop} professionals={(professionals.data ?? []).filter((person) => person.active)} />
+        </details>
+        {team.error ? <p role="alert">Não foi possível consultar os convites.</p> : team.data?.length ? <ul className="cards">
+          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
+            <h3>{member.email}</h3>
+            <p>{member.accepted_at ? "Aceito" : Date.parse(member.expires_at) <= Date.now() ? "Expirado" : "Pendente"} · {member.see_all ? "Visualiza todas as agendas" : "Visualiza a agenda vinculada"}</p>
+            <p>Vínculo: {professionals.data?.find((person) => person.id === member.professional_id)?.name ?? "Nenhum"}</p>
+            <form action={revokeTeamAccess.bind(null, shop, member.id)}><SubmitButton>Revogar acesso</SubmitButton></form>
+          </li>)}
+        </ul> : <p>Nenhum convite ou acesso ativo.</p>}
+      </section>
     </>}
   </section>;
 }
