@@ -36,3 +36,23 @@ entrega de convites, eventos em segundo plano ou regras de bloqueio de planos.
 4. Refatorar a interface após essa revisão, com testes de responsividade
    e movimento reduzido. Usar a pasta de referências visuais indicada pelo
    usuário como direção de arte.
+
+## Convites e permissões da equipe
+
+O formulário de convite do GridBarber gera um convite válido por sete dias,
+restrito ao e-mail informado. O vínculo com a agenda de um profissional é
+opcional. Com vínculo, o acesso inicial cobre a própria agenda.
+
+As permissões observadas são independentes:
+
+- Ver a agenda de todos os profissionais.
+- Criar, remarcar e alterar agendamentos de todos.
+- Ver e editar a base de clientes.
+- Ver financeiro e relatórios.
+- Gerenciar serviços e preços.
+- Gerenciar profissionais, horários e imagens.
+
+Para reproduzir esse fluxo, cada permissão precisa ser aplicada no Supabase
+e nas ações do servidor. O teste deve cobrir convite expirado, e-mail
+divergente, revogação, acesso a outro estabelecimento e tentativas de
+contornar as restrições por chamadas diretas.
