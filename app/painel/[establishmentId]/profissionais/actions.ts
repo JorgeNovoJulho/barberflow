@@ -40,7 +40,8 @@ export async function saveProfessional(shop: string, professional: string | null
   if ((photo_url && (photo_url.length > 500 || !httpsUrl(photo_url)))
     || commission_bps === null || product_commission_bps === null) result(path, "invalido");
   if (!name || name.length > 120 || description.length > 1000) result(path, "invalido");
-  const profile = { name, description, photo_url, commission_bps, product_commission_bps };
+  const profile = { name, description, photo_url, commission_bps, product_commission_bps,
+    inherit_business_hours: form.get("inherit_business_hours") === "on" };
   const query = professional
     ? supabase.from("barberflow_professionals").update({ ...profile, active: form.get("active") === "on" }).eq("establishment_id", shop).eq("id", professional)
     : supabase.from("barberflow_professionals").insert({ ...profile, establishment_id: shop });
@@ -54,6 +55,13 @@ export async function saveAssignments(shop: string, professional: string, form: 
   if (services.some((id) => !isUuid(id))) result(path, "invalido");
   const { error } = await supabase.rpc("barberflow_set_professional_services", { shop, professional, services });
   result(path, error ? "falha" : "vinculos-salvos");
+}
+
+export async function moveProfessional(shop: string, professional: string, neighbor: string, step: -1 | 1) {
+  const { path, supabase } = await context(shop, professional);
+  if (!isUuid(neighbor)) result(path, "invalido");
+  const { data, error } = await supabase.rpc("barberflow_move_professional", { shop, professional, neighbor, step });
+  result(path, error ? "falha" : data ? "equipe-ordenada" : "equipe-alterada");
 }
 
 const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;

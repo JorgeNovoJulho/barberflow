@@ -8,6 +8,8 @@ const messages: Record<string, string> = {
   ativado: "Serviço reativado.",
   arquivado: "Serviço arquivado.",
   "profissional-salvo": "Profissional salvo.",
+  "equipe-ordenada": "Ordem da equipe atualizada.",
+  "equipe-alterada": "Confira a ordem atual da equipe antes de mover o profissional.",
   "vinculos-salvos": "Serviços vinculados.",
   "horario-salvo": "Horário salvo.",
   "horario-invalido": "Confira a ordem dos horários. O intervalo deve ficar dentro do expediente.",

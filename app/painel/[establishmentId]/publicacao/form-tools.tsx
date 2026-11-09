@@ -127,15 +127,15 @@ export function ProfileColors({ initial }: { initial?: string }) {
   </>;
 }
 
-export function ProfileMediaUpload({ shop, target, onGalleryChange, onPendingChange }: {
-  shop: string; target: "logo" | "cover" | "video" | "gallery";
+export function ProfileMediaUpload({ shop, target, professional, onGalleryChange, onPendingChange }: {
+  shop: string; target: "logo" | "cover" | "video" | "gallery" | "photo"; professional?: string;
   onGalleryChange?: (links: string[]) => void; onPendingChange?: (pending: boolean) => void;
 }) {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
   const video = target === "video";
   return <div>
-    <label>{target === "gallery" ? "Enviar fotos da galeria" : video ? "Enviar vídeo" : target === "logo" ? "Enviar logotipo" : "Enviar capa"}
+    <label>{target === "gallery" ? "Enviar fotos da galeria" : video ? "Enviar vídeo" : target === "logo" ? "Enviar logotipo" : target === "photo" ? "Enviar foto do profissional" : "Enviar capa"}
       <input type="file" multiple={target === "gallery"} disabled={pending}
         accept={(video ? productVideoTypes : productImageTypes).join(",")}
         onChange={async (event) => {
@@ -160,7 +160,7 @@ export function ProfileMediaUpload({ shop, target, onGalleryChange, onPendingCha
               const slot = target === "gallery"
                 ? Array.from({ length: 8 }, (_, index) => `gallery-${index + 1}`)
                   .find((candidate) => !links.some((link) => link.split("?")[0].endsWith(`/${shop}/${candidate}`)))
-                : target;
+                : target === "photo" ? `professional-${professional}` : target;
               if (!slot) break;
               const url = await uploadProfileMedia(shop, slot, data);
               if (!url) break;
@@ -176,7 +176,7 @@ export function ProfileMediaUpload({ shop, target, onGalleryChange, onPendingCha
             setPending(false);
             onPendingChange?.(false);
             if (target === "gallery") onGalleryChange?.(links);
-            setStatus(saved === files.length ? "Arquivo enviado. Salve a publicação para aplicar."
+            setStatus(saved === files.length ? (target === "photo" ? "Foto enviada. Salve o profissional para aplicar." : "Arquivo enviado. Salve a publicação para aplicar.")
               : `${saved} de ${files.length} enviados. Confira o formato e o limite de ${video ? 20 : 5} MB por arquivo.`);
           }
         }} />
