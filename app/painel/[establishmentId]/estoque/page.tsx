@@ -61,13 +61,25 @@ export default async function Stock({ params, searchParams }: {
   const cutoff = offsetDay(today, 30);
   const flagged = (products.data ?? []).map((product: Product) => ({ product, warnings: alerts(product, today, cutoff) }))
     .filter(({ warnings }) => warnings.length > 0);
-  return <section className="container section">
+  const catalog = (products.data ?? []) as Product[];
+  const activeProducts = catalog.filter(({ active }) => active);
+  const productNames = new Map(catalog.map(({ id, name }) => [id, name]));
+  const warningsByProduct = new Map(flagged.map(({ product, warnings }) => [product.id, warnings]));
+  return <section className="container section stock-workspace">
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link><Link href={`/painel/${shop}/agenda`}>Agenda</Link>
     </nav>
-    <p className="eyebrow">{business.name}</p><h1>Estoque</h1>
+    <header className="operational-heading">
+      <p className="eyebrow">{business.name}</p><h1>Estoque</h1>
+      <p>Produtos, quantidades, validade e movimentações do estabelecimento.</p>
+    </header>
     <StockFeedback status={estado} />
     {products.error || movements.error ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
+      <dl className="cards stock-metrics">
+        <div className="card dashboard-metric"><dt>Produtos à venda</dt><dd>{activeProducts.length}</dd></div>
+        <div className="card dashboard-metric"><dt>Unidades em produtos à venda</dt><dd>{activeProducts.reduce((total, item) => total + item.stock, 0).toLocaleString("pt-BR")}</dd></div>
+        <div className="card dashboard-metric"><dt>Produtos com alerta</dt><dd>{flagged.length}</dd></div>
+      </dl>
       <details className="card panel-form"><summary>Novo produto</summary><ProductForm shop={shop} /></details>
       {flagged.length > 0 && <section className="card panel-form stock-alerts" aria-labelledby="stock-alerts-title">
         <h2 id="stock-alerts-title">Alertas de estoque e validade</h2>
@@ -76,12 +88,22 @@ export default async function Stock({ params, searchParams }: {
         </li>)}</ul>
       </section>}
       <h2>Produtos</h2>
-      {products.data?.length ? <ul className="cards">{products.data.map((product: Product) => <li key={product.id} id={`produto-${product.id}`} className="card">
+      {catalog.length ? <ul className="cards">{catalog.map((product) => <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
+        <div className="stock-product-top">
+          <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Arquivado"}</span>
+          {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
+        </div>
         <h3>{product.name}</h3>
-        <p>{bookingCurrency.format(product.price_cents / 100)} · {product.stock} un. · {product.active ? "À venda" : "Arquivado"}</p>
-        <p>Mínimo: {product.minimum_stock} un.{product.cost_cents !== null && ` · Custo unitário: ${bookingCurrency.format(product.cost_cents / 100)}`}</p>
-        {product.expires_on && <p>Validade: {product.expires_on.split("-").reverse().join("/")}</p>}
-        {product.sku && <p>SKU {product.sku}</p>}
+        <dl className="stock-product-facts">
+          <div><dt>Preço de venda</dt><dd>{bookingCurrency.format(product.price_cents / 100)}</dd></div>
+          <div><dt>Estoque</dt><dd>{product.stock.toLocaleString("pt-BR")} un.</dd></div>
+          <div><dt>Estoque mínimo</dt><dd>{product.minimum_stock} un.</dd></div>
+          {product.cost_cents !== null && <div><dt>Custo unitário</dt><dd>{bookingCurrency.format(product.cost_cents / 100)}</dd></div>}
+          {product.expires_on && <div><dt>Validade</dt><dd>{product.expires_on.split("-").reverse().join("/")}</dd></div>}
+        </dl>
+        {warningsByProduct.has(product.id) && <ul className="stock-warnings">
+          {warningsByProduct.get(product.id)?.map((warning) => <li key={warning}>{warning}</li>)}
+        </ul>}
         <Link className="secondary" href={`/painel/${shop}/estoque/${product.id}/midia`}>Fotos e vídeo</Link>
         <details><summary>Editar produto</summary><ProductForm shop={shop} product={product} /></details>
         <details><summary>Registrar entrada ou saída</summary>
@@ -93,10 +115,11 @@ export default async function Stock({ params, searchParams }: {
         </details>
       </li>)}</ul> : <p>Nenhum produto cadastrado.</p>}
       <h2 className="panel-form">Últimas movimentações</h2>
-      {movements.data?.length ? <ul className="cards">
-        {movements.data.map((movement) => <li className="card" key={movement.id}>
-          <strong>{movement.delta > 0 ? "+" : ""}{movement.delta} un. · {products.data?.find(({ id }) => id === movement.product_id)?.name}</strong>
-          <p>{movement.reason} · {new Date(movement.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
+      {movements.data?.length ? <ul className="card stock-movements">
+        {movements.data.map((movement) => <li key={movement.id}>
+          <span className={`stock-label${movement.delta > 0 ? " stock-label-active" : " stock-label-out"}`}>{movement.delta > 0 ? "+" : ""}{movement.delta} un.</span>
+          <div><strong>{productNames.get(movement.product_id) ?? "Produto"}</strong>
+          <p>{movement.reason} · {new Date(movement.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p></div>
         </li>)}
       </ul> : <p>Nenhuma movimentação registrada.</p>}
     </>}

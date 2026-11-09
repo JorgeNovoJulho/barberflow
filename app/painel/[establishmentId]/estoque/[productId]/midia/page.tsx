@@ -43,19 +43,22 @@ export default async function ProductMedia({ params, searchParams }: {
   const { estado } = await searchParams;
   return <section className="container section">
     <Link href={base}>Voltar ao estoque</Link>
-    <p className="eyebrow">{product.name}</p><h1>Fotos e vídeo</h1>
-    <p>Envie até cinco fotos de 5 MB cada e um vídeo de até 20 MB. Os arquivos ficam disponíveis no painel do estabelecimento.</p>
+    <header className="operational-heading">
+      <p className="eyebrow">{product.name}</p><h1>Fotos e vídeo</h1>
+      <p>Envie até cinco fotos de 5 MB cada e um vídeo de até 20 MB. Os arquivos ficam disponíveis no painel do estabelecimento.</p>
+    </header>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     {media.some(({ error }) => error) ? <p role="alert">Não foi possível carregar a mídia.</p> : <ul className="cards">
       {productMediaSlots.map((slot, index) => {
         const video = slot === "video";
         const url = urls.get(slot);
         const title = video ? "Vídeo" : `Foto ${index + 1}`;
-        return <li key={slot} className="card">
+        return <li key={slot} className="card stock-media-card">
           <h2>{title}</h2>
-          {url && (video
+          {url ? (video
             ? <video className="product-media-preview" controls preload="metadata" src={url} />
-            : <img className="product-media-preview" src={url} alt={`${title} de ${product.name}`} />)}
+            : <img className="product-media-preview" src={url} alt={`${title} de ${product.name}`} loading="lazy" />)
+            : <p className="stock-media-empty">Nenhum arquivo nesta posição</p>}
           <form className="account-form" action={changeMedia.bind(null, shop, productId, slot, false)}>
             <label>{url ? "Substituir arquivo" : "Selecionar arquivo"} <input name="file" type="file" required
               accept={(video ? productVideoTypes : productImageTypes).join(",")} /></label>

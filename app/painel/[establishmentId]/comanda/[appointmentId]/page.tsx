@@ -43,11 +43,15 @@ export default async function Order({ params, searchParams }: {
       <Link href={`/painel/${shop}/agenda?dia=${appointment.starts_at.slice(0, 10)}`}>Voltar à agenda</Link>
       <Link href={`/painel/${shop}/estoque`}>Estoque</Link>
     </nav>
-    <h1>Comanda</h1>
-    <p>{appointment.client_name} · {appointment.service_name}</p>
+    <header className="operational-heading">
+      <p className="eyebrow">Atendimento</p>
+      <h1>Comanda</h1>
+      <p>{appointment.client_name} · {appointment.service_name}</p>
+    </header>
     <StockFeedback status={estado} />
     {products.error || lines.error || receipt.error ? <p role="alert">Não foi possível carregar a comanda.</p> : <>
-      <div className="card panel-form">
+      <div className="order-layout">
+      <aside className="card order-summary" aria-label="Resumo da comanda">
         <h2>{receipt.data ? "Comanda fechada" : draft ? "Comanda aberta" : "Comanda indisponível"}</h2>
         <dl className="order-totals">
           <div><dt>Serviço</dt><dd>{money(serviceTotal)}</dd></div>
@@ -57,7 +61,8 @@ export default async function Order({ params, searchParams }: {
         {draft && (appointment.state === "completed"
           ? <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}><SubmitButton>Fechar comanda e baixar estoque</SubmitButton></form>
           : <p>Conclua o atendimento na agenda para fechar a comanda.</p>)}
-      </div>
+      </aside>
+      <div className="order-items">
       {draft && productOptions.length > 0 && <details className="card panel-form">
         <summary>Adicionar produto</summary>
         <form className="account-form" action={setOrderProduct.bind(null, shop, appointmentId, null)}>
@@ -70,8 +75,9 @@ export default async function Order({ params, searchParams }: {
         </form>
       </details>}
       <h2>Produtos da comanda</h2>
-      {items.length ? <ul className="cards">{items.map((item) => <li className="card" key={item.product_id}>
-        <h3>{item.product_name}</h3><p>{item.quantity} × {money(item.unit_price_cents)} · {money(item.quantity * item.unit_price_cents)}</p>
+      {items.length ? <ul className="cards">{items.map((item) => <li className="card order-product" key={item.product_id}>
+        <div className="order-product-line"><h3>{item.product_name}</h3><strong>{money(item.quantity * item.unit_price_cents)}</strong></div>
+        <p>{item.quantity} × {money(item.unit_price_cents)}</p>
         {draft && <details><summary>Alterar quantidade ou remover</summary>
           <form className="account-form" action={setOrderProduct.bind(null, shop, appointmentId, item.product_id)}>
             <label>Quantidade <input type="number" name="units" min={0} max={10000} defaultValue={item.quantity} required /></label>
@@ -79,7 +85,9 @@ export default async function Order({ params, searchParams }: {
             <SubmitButton>Atualizar item</SubmitButton>
           </form>
         </details>}
-      </li>)}</ul> : <p>Nenhum produto adicionado.</p>}
+      </li>)}</ul> : <p className="card">Nenhum produto adicionado.</p>}
+      </div>
+      </div>
     </>}
   </section>;
 }
