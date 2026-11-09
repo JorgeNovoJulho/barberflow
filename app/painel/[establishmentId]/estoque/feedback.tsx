@@ -3,11 +3,15 @@ const messages: Record<string, string> = {
   falha: "Não foi possível concluir a operação.",
   sku: "Já existe um produto com esse código.",
   salvo: "Produto salvo.",
+  excluido: "Produto excluído do catálogo. O histórico foi preservado.",
+  congelado: "Produto congelado e indisponível para venda.",
+  descongelado: "Produto disponível para venda.",
+  "produto-indisponivel": "O produto foi congelado ou excluído. Retire-o da comanda ou escolha outro item.",
   saldo: "O ajuste ultrapassa o limite de estoque ou deixaria o saldo negativo.",
   movimento: "Movimentação registrada.",
   item: "Comanda atualizada.",
   fechada: "Comanda fechada e estoque atualizado.",
-  fechamento: "Conclua o atendimento e confira o estoque de todos os itens antes de fechar.",
+  fechamento: "Conclua o atendimento, confira o estoque e retire produtos indisponíveis antes de fechar.",
 };
 
 export function StockFeedback({ status }: { status?: string }) {

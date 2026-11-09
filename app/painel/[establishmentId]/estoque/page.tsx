@@ -4,13 +4,13 @@ import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { adjustStock, saveProduct } from "./actions";
+import { adjustStock, changeProductStatus, saveProduct } from "./actions";
 import { StockFeedback } from "./feedback";
 import { offsetDay, saoPauloToday } from "../../../../lib/agenda";
 import { productMediaSlots, productPhotoBucket, productVideoBucket } from "../../../../lib/product-media";
 import { ProductGallery, type ProductMedia } from "./product-gallery";
 
-type Product = { id: string; name: string; sku: string; price_cents: number; stock: number; active: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null };
+type Product = { id: string; name: string; sku: string; price_cents: number; stock: number; active: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null; deleted_at: string | null };
 
 function priceInput(cents: number | null | undefined) {
   return cents == null ? "" : (cents / 100).toFixed(2).replace(".", ",");
@@ -37,7 +37,6 @@ function ProductForm({ shop, product }: { shop: string; product?: Product }) {
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
     <label>Estoque mínimo <input name="minimum" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required /></label>
     <label>Data de validade <input name="expiry" type="date" defaultValue={product?.expires_on ?? ""} /></label>
-    {product && <label><input name="active" type="checkbox" defaultChecked={product.active} /> Produto à venda</label>}
     <SubmitButton>Salvar produto</SubmitButton>
   </form>;
 }
@@ -55,8 +54,10 @@ export default async function Stock({ params, searchParams }: {
   if (error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business) notFound();
   const [products, movements] = await Promise.all([
-    supabase.from("barberflow_products").select("id,name,sku,price_cents,stock,active,cost_cents,minimum_stock,expires_on").eq("establishment_id", shop).order("name"),
-    supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at").eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),
+    supabase.from("barberflow_products").select("id,name,sku,price_cents,stock,active,cost_cents,minimum_stock,expires_on,deleted_at")
+      .eq("establishment_id", shop).is("deleted_at", null).order("name"),
+    supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at,barberflow_products(name)")
+      .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),
   ]);
   const { estado } = await searchParams;
   const today = saoPauloToday();
@@ -109,7 +110,7 @@ export default async function Stock({ params, searchParams }: {
       {mediaUnavailable && <p role="status">Algumas mídias não puderam ser carregadas no catálogo.</p>}
       {catalog.length ? <ul className="cards">{catalog.map((product) => <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
         <div className="stock-product-top">
-          <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Arquivado"}</span>
+          <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Congelado"}</span>
           {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
         </div>
         <h3>{product.name}</h3>
@@ -136,12 +137,23 @@ export default async function Stock({ params, searchParams }: {
             <SubmitButton>Registrar movimentação</SubmitButton>
           </form>
         </details>
+        <div className="account-links">
+          <form action={changeProductStatus.bind(null, shop, product.id, product.active ? "freeze" : "unfreeze")}>
+            <SubmitButton>{product.active ? "Congelar produto" : "Descongelar produto"}</SubmitButton>
+          </form>
+        </div>
+        <details><summary>Excluir produto</summary>
+          <p>O produto sairá do catálogo. O histórico de vendas e movimentações será preservado.</p>
+          <form className="account-links" action={changeProductStatus.bind(null, shop, product.id, "delete")}>
+            <SubmitButton>Confirmar exclusão</SubmitButton>
+          </form>
+        </details>
       </li>)}</ul> : <p>Nenhum produto cadastrado.</p>}
       <h2 className="panel-form">Últimas movimentações</h2>
       {movements.data?.length ? <ul className="card stock-movements">
         {movements.data.map((movement) => <li key={movement.id}>
           <span className={`stock-label${movement.delta > 0 ? " stock-label-active" : " stock-label-out"}`}>{movement.delta > 0 ? "+" : ""}{movement.delta} un.</span>
-          <div><strong>{productNames.get(movement.product_id) ?? "Produto"}</strong>
+          <div><strong>{(movement.barberflow_products as unknown as { name: string } | null)?.name ?? productNames.get(movement.product_id) ?? "Produto"}</strong>
           <p>{movement.reason} · {new Date(movement.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p></div>
         </li>)}
       </ul> : <p>Nenhuma movimentação registrada.</p>}

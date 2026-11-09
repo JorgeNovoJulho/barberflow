@@ -34,6 +34,8 @@ export default async function Order({ params, searchParams }: {
   const items = lines.data ?? [];
   const productOptions = (products.data ?? []).filter((product) => product.active && !items.some((line) => line.product_id === product.id));
   const draft = !receipt.data && ["scheduled", "completed"].includes(appointment.state);
+  const activeProducts = new Set((products.data ?? []).filter(({ active }) => active).map(({ id }) => id));
+  const hasUnavailable = draft && items.some(({ product_id }) => !activeProducts.has(product_id));
   const serviceTotal = receipt.data?.service_cents ?? appointment.price_cents ?? 0;
   const productTotal = receipt.data?.products_cents ?? items.reduce((sum, item) => sum + item.quantity * item.unit_price_cents, 0);
   const total = receipt.data?.total_cents ?? serviceTotal + productTotal;
@@ -59,8 +61,9 @@ export default async function Order({ params, searchParams }: {
           <div><dt>Total</dt><dd>{money(total)}</dd></div>
         </dl>
         {draft && (appointment.state === "completed"
-          ? <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}><SubmitButton>Fechar comanda e baixar estoque</SubmitButton></form>
+          ? <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}><SubmitButton disabled={hasUnavailable}>Fechar comanda e baixar estoque</SubmitButton></form>
           : <p>Conclua o atendimento na agenda para fechar a comanda.</p>)}
+        {hasUnavailable && <p role="status">Retire os produtos congelados ou excluídos antes de fechar a comanda.</p>}
       </aside>
       <div className="order-items">
       {draft && productOptions.length > 0 && <details className="card panel-form">
@@ -78,7 +81,11 @@ export default async function Order({ params, searchParams }: {
       {items.length ? <ul className="cards">{items.map((item) => <li className="card order-product" key={item.product_id}>
         <div className="order-product-line"><h3>{item.product_name}</h3><strong>{money(item.quantity * item.unit_price_cents)}</strong></div>
         <p>{item.quantity} × {money(item.unit_price_cents)}</p>
-        {draft && <details><summary>Alterar quantidade ou remover</summary>
+        {draft && !activeProducts.has(item.product_id) && <form className="account-links" action={setOrderProduct.bind(null, shop, appointmentId, item.product_id)}>
+          <input type="hidden" name="units" value={0} />
+          <SubmitButton>Remover produto indisponível</SubmitButton>
+        </form>}
+        {draft && activeProducts.has(item.product_id) && <details><summary>Alterar quantidade ou remover</summary>
           <form className="account-form" action={setOrderProduct.bind(null, shop, appointmentId, item.product_id)}>
             <label>Quantidade <input type="number" name="units" min={0} max={10000} defaultValue={item.quantity} required /></label>
             <p>Use zero para remover o produto da comanda.</p>

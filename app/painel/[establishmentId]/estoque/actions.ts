@@ -38,7 +38,7 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
     || (expiry && !validDay(expiry))) finish("invalido");
   const fields = { name, sku, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
-    ? await supabase.from("barberflow_products").update({ ...fields, active: form.get("active") === "on" })
+    ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
     : await supabase.rpc("barberflow_create_product", { shop, product_name: name, product_sku: sku,
       sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial });
@@ -47,6 +47,14 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);
   }
   finish(error?.code === "23505" ? "sku" : error || !data ? "falha" : "salvo");
+}
+
+export async function changeProductStatus(shop: string, product: string, operation: "freeze" | "unfreeze" | "delete") {
+  const { supabase, finish } = await context(shop);
+  if (!isUuid(product)) finish("invalido");
+  const { data, error } = await supabase.rpc("barberflow_set_product_status", { shop, product, operation });
+  if (error || !data) finish("falha");
+  finish(operation === "delete" ? "excluido" : operation === "freeze" ? "congelado" : "descongelado");
 }
 
 export async function adjustStock(shop: string, product: string, form: FormData) {
@@ -65,7 +73,7 @@ export async function setOrderProduct(shop: string, appointment: string, boundPr
   const units = Number(raw);
   if (!isUuid(product) || !/^\d+$/.test(raw) || units > 10000 || (!boundProduct && units === 0)) finish("invalido");
   const { error } = await supabase.rpc("barberflow_set_order_product", { shop, appointment, product, units });
-  finish(error ? "falha" : "item");
+  finish(error?.details === "product_inactive" ? "produto-indisponivel" : error ? "falha" : "item");
 }
 
 export async function closeOrder(shop: string, appointment: string) {

@@ -27,7 +27,7 @@ export default async function ProductMedia({ params, searchParams }: {
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: `${base}/${productId}/midia` }));
   const { data: product, error } = await supabase.from("barberflow_products").select("name")
-    .eq("establishment_id", shop).eq("id", productId).maybeSingle();
+    .eq("establishment_id", shop).eq("id", productId).is("deleted_at", null).maybeSingle();
   if (error) throw new Error("Não foi possível carregar o produto.");
   if (!product) notFound();
 
