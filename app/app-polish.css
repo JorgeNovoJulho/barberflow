@@ -179,3 +179,7 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .public-directory .directory-services:hover { background: #ffe3c2; }
 .public-directory .directory-services:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 @media (max-width: 36rem) { .directory-services { flex-basis: 100%; } }
+
+.legal-document { max-width: 52rem; }
+.legal-document h2 { margin-top: 2rem; }
+.legal-document p { line-height: 1.7; overflow-wrap: anywhere; }

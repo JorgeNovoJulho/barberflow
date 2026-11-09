@@ -15,7 +15,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <p>Use pelo menos oito caracteres, com letras e números.</p>
       <Password isNew confirmation />
       {policies
-        ? <label className="accept"><input name="terms" type="checkbox" required /> <span>Li e aceito os <a href={policies.terms}>Termos de uso</a> e a <a href={policies.privacy}>Política de privacidade</a>.</span></label>
+        ? <label className="accept"><input name="terms" type="checkbox" required /> <span>Aceito os <a href={policies.terms}>Termos de Uso</a> e confirmo que li a <a href={policies.privacy}>Política de Privacidade</a>.</span></label>
         : <p>{testSignup ? "Ambiente local de teste. Use uma conta de teste." : "O cadastro será liberado quando os termos e a política de privacidade forem configurados."}</p>}
   </AccountForm>;
 }

@@ -13,6 +13,15 @@ export function localTestSignup() {
   return origin.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
 }
 
+export function legalIdentity() {
+  const operator = process.env.BARBERFLOW_LEGAL_OPERATOR?.trim();
+  const email = process.env.BARBERFLOW_PRIVACY_EMAIL?.trim();
+  const registration = process.env.BARBERFLOW_LEGAL_CNPJ?.trim();
+  return operator && email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ? { operator, email, registration }
+    : null;
+}
+
 export function policyLinks() {
   const terms = process.env.BARBERFLOW_TERMS_URL;
   const privacy = process.env.BARBERFLOW_PRIVACY_URL;
@@ -20,6 +29,9 @@ export function policyLinks() {
   try {
     const urls = [new URL(terms, authOrigin()), new URL(privacy, authOrigin())];
     if (urls.some((url) => !["http:", "https:"].includes(url.protocol))) return null;
+    const hosted = urls.some((url) => url.origin === authOrigin()
+      && ["/termos-de-uso", "/politica-de-privacidade"].includes(url.pathname.replace(/\/$/, "")));
+    if (hosted && !legalIdentity()) return null;
     return { terms: urls[0].href, privacy: urls[1].href };
   } catch {
     return null;

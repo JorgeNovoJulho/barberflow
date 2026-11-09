@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
 import { MobileNav } from "./mobile-nav";
@@ -23,6 +24,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
   const theme = isThemeId(preference?.theme) ? preference.theme : defaultTheme;
+  const policies = policyLinks();
   const navigation = <>
     <Link href="/#segmentos">Para quem</Link>
     <Link href="/estabelecimentos">Encontrar serviços</Link>
@@ -55,7 +57,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
         <footer className="footer">
           <div className="container footer-content">
             <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>
-            <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link></nav>
+            <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link>{policies && <><a href={policies.terms}>Termos de Uso</a><a href={policies.privacy}>Política de Privacidade</a></>}</nav>
           </div>
         </footer>
       </body>
