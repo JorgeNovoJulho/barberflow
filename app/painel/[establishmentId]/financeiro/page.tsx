@@ -4,7 +4,7 @@ import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { lockFinance, recordPayment, resetFinancePassword, reversePayment, unlockFinance } from "./actions";
+import { lockFinance, recordPayment, requestFinanceEmail, resetFinancePassword, resetFinanceWithEmail, reversePayment, unlockFinance } from "./actions";
 import { PasswordField } from "./password-field";
 import { FinanceEntriesPanel, type FinanceEntries } from "./lancamentos";
 import { saoPauloToday } from "../../../../lib/agenda";
@@ -26,6 +26,15 @@ const feedback: Record<string, string> = {
   "recuperacao-no_password": "Defina uma senha de login para sua conta BARBERFLOW antes de recuperar a senha financeira.",
   "recuperacao-denied": "A recuperação está disponível apenas para o proprietário do estabelecimento.",
   "recuperacao-falha": "Não foi possível recuperar a senha financeira.",
+  "email-verificado": "Escolha uma nova senha financeira para concluir a recuperação.",
+  "recuperacao-email-enviado": "Enviamos um link ao e-mail da sua conta. Abra-o neste mesmo navegador em até 15 minutos.",
+  "recuperacao-email-limit": "Aguarde um minuto antes de solicitar outro link.",
+  "recuperacao-email-expired": "A confirmação por e-mail expirou ou está indisponível. Solicite um novo link.",
+  "recuperacao-email-invalid": "Confira a nova senha e a confirmação.",
+  "recuperacao-email-reused": "Escolha uma senha financeira diferente da senha de login.",
+  "recuperacao-email-mfa": "Conclua a verificação em duas etapas para alterar a senha financeira.",
+  "recuperacao-email-denied": "A recuperação por e-mail exige a conta confirmada do proprietário.",
+  "recuperacao-email-falha": "Não foi possível concluir a recuperação por e-mail. Tente novamente.",
   dados: "Confira os dados informados.",
   falha: "Não foi possível concluir a operação.",
   recebido: "Recebimento registrado.",
@@ -59,6 +68,7 @@ export default async function Finance({ params, searchParams }: {
   if (!business.data || access.data === "denied") notFound();
 
   const { estado, guia } = await searchParams;
+  const emailReset = ["email-verificado", "recuperacao-email-invalid", "recuperacao-email-reused", "recuperacao-email-mfa"].includes(estado ?? "");
   const guide = financeGuide(guia);
   const setup = access.data === "setup";
   const [result, entriesResult, controls] = access.data === "unlocked" ? await Promise.all([
@@ -86,8 +96,17 @@ export default async function Finance({ params, searchParams }: {
           {setup && <PasswordField label="Confirmar senha financeira" name="confirmation" autoComplete="new-password" />}
           <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>
         </form>
-        {!setup && <details className="finance-password-recovery" open={typeof estado === "string" && estado.startsWith("recuperacao-")}>
+        {!setup && <details className="finance-password-recovery" open={emailReset || (typeof estado === "string" && estado.startsWith("recuperacao-"))}>
           <summary>Esqueci a senha financeira</summary>
+          {emailReset ? <form className="account-form" action={resetFinanceWithEmail.bind(null, shop)}>
+            <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
+            <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
+            <SubmitButton>Salvar nova senha financeira</SubmitButton>
+          </form> : <form className="account-form" action={requestFinanceEmail.bind(null, shop)}>
+            <p>Receba um link no e-mail confirmado da sua conta para criar outra senha financeira.</p>
+            <SubmitButton>Enviar link por e-mail</SubmitButton>
+          </form>}
+          <details><summary>Recuperar usando a senha de login</summary>
           <p>Confirme a senha que você usa para entrar no BARBERFLOW e escolha uma nova senha exclusiva para o Financeiro.</p>
           <form className="account-form" action={resetFinancePassword.bind(null, shop)}>
             <PasswordField label="Senha de login do BARBERFLOW" name="account_secret" minLength={1} autoComplete="current-password" />
@@ -95,6 +114,7 @@ export default async function Finance({ params, searchParams }: {
             <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
             <SubmitButton>Trocar senha financeira</SubmitButton>
           </form>
+          </details>
           <p><Link href="/recuperar-senha">Esqueci também a senha da conta</Link></p>
         </details>}
       </div> : <>

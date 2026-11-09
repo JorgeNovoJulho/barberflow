@@ -2,9 +2,22 @@
 
 import { useRef, useState } from "react";
 
-export function ShareProfile({ title, path }: { title: string; path?: string }) {
+export function ShareProfile({ title, path, showLink = false }: { title: string; path?: string; showLink?: boolean }) {
   const [message, setMessage] = useState("");
+  const input = useRef<HTMLInputElement>(null);
   return <div>
+    {showLink && path && <div className="publication-share">
+      <label>Link público <input ref={input} value={path} readOnly /></label>
+      <button type="button" className="secondary" onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(path);
+          setMessage("Link copiado.");
+        } catch {
+          input.current?.select();
+          setMessage("Copie o endereço selecionado.");
+        }
+      }}>Copiar link</button>
+    </div>}
     <button type="button" className="secondary" onClick={async () => {
       try {
         const url = path ? new URL(path, window.location.origin).href : window.location.href;

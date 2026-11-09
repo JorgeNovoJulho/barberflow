@@ -1,13 +1,26 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { businessDays, httpsUrl } from "../../../../lib/business-profile";
+import { useRef, useState, type ReactNode } from "react";
+import { businessDays, httpsUrl, publicProfileColor, publicProfileColors } from "../../../../lib/business-profile";
 import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 import { uploadProfileMedia } from "./upload";
 
 function field(form: HTMLFormElement | null, name: string) {
   const element = form?.elements.namedItem(name);
   return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : null;
+}
+
+export function PublicationForm({ children, action }: { children: ReactNode; action: (form: FormData) => Promise<void> }) {
+  const [waiting, setWaiting] = useState(false);
+  return <form className="account-form publication-form" action={action} onSubmit={(event) => {
+    if (event.currentTarget.querySelector("[data-media-pending]")) {
+      event.preventDefault();
+      setWaiting(true);
+    }
+  }}>
+    {children}
+    {waiting && <p role="status">Aguarde o envio da mídia terminar e salve novamente.</p>}
+  </form>;
 }
 
 export function PostalLookup({ initial }: { initial?: string }) {
@@ -115,16 +128,22 @@ export function GalleryEditor({ shop, initial }: { shop: string; initial: string
 }
 
 export function ProfileColors({ initial }: { initial?: string }) {
-  const input = useRef<HTMLInputElement>(null);
-  const colors = ["#2450A8", "#192B54", "#262C3C", "#117A72", "#93442B", "#6537A6", "#A33462"];
-  return <>
-    <label>Cor da página pública (hexadecimal) <input ref={input} name="color" maxLength={7} defaultValue={initial} placeholder="#7C4EB0" /></label>
-    <div className="account-links" role="group" aria-label="Sugestões de cor">
-      {colors.map((color) => <button key={color} type="button" className="secondary" style={{ borderBottom: `.3rem solid ${color}` }}
-        onClick={() => { if (input.current) input.current.value = color; }}>{color}</button>)}
-      <button type="button" className="secondary" onClick={() => { if (input.current) input.current.value = ""; }}>Padrão</button>
+  const [selected, setSelected] = useState(() => publicProfileColor(initial));
+  const name = publicProfileColors.find(({ value }) => value === selected)?.name ?? "Cor já salva";
+  return <fieldset className="public-color-picker">
+    <legend>Cor da página pública</legend>
+    <div className="public-color-options">
+      {publicProfileColors.map(({ name, value }) => <button key={value} type="button"
+        className="secondary" aria-pressed={value === selected} onClick={() => setSelected(value)}>
+        <span aria-hidden="true" style={{ background: value }} />{name}
+      </button>)}
     </div>
-  </>;
+    <input type="hidden" name="color" value={selected} />
+    <div className="public-color-preview" style={{ borderColor: selected }}>
+      <strong>Prévia · {name}</strong>
+      <span style={{ background: selected }}>Agendar horário</span>
+    </div>
+  </fieldset>;
 }
 
 export function ProfileMediaUpload({ shop, target, professional, onGalleryChange, onPendingChange }: {
@@ -149,6 +168,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
             setStatus("A galeria aceita até oito fotos.");
             return;
           }
+          picker.dataset.mediaPending = "true";
           setPending(true);
           onPendingChange?.(true);
           setStatus("Enviando…");
@@ -173,6 +193,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
           } catch {
             // The feedback below keeps successfully uploaded files in the form.
           } finally {
+            delete picker.dataset.mediaPending;
             setPending(false);
             onPendingChange?.(false);
             if (target === "gallery") onGalleryChange?.(links);

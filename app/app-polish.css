@@ -102,3 +102,24 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
   body:not(:has(> main > .editorial-landing)) { background: white; }
   main > :not(.editorial-landing) .card { box-shadow: none; }
 }
+
+.reservation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem .85rem; align-items: end; }
+.reservation-grid label { display: grid; align-content: end; }
+.reservation-grid :is(input, select) { width: 100%; min-height: 2.7rem; }
+.publication-card > label:has(> input[type="checkbox"]) { display: flex; align-items: start; gap: .45rem; }
+.publication-card > label > input[type="checkbox"] { margin: .28rem 0 0; }
+.public-color-picker { padding: .8rem; }
+.public-color-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: .4rem; }
+.public-color-options button { justify-content: flex-start; gap: .5rem; min-height: 2.65rem; }
+.public-color-options button span { width: .9rem; aspect-ratio: 1; border-radius: 50%; flex: 0 0 .9rem; }
+.public-color-options button[aria-pressed="true"] { border-color: #6950bf; box-shadow: 0 0 0 1px #6950bf; background: #f1edff; }
+.public-color-preview { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-block-start: .5rem; padding: .65rem; border-inline-start: .25rem solid; background: var(--surface); }
+.public-color-preview span { border-radius: .5rem; padding: .4rem .6rem; color: white; }
+.public-profile .public-business-profile .primary {
+  background: var(--profile-color);
+  background: color-mix(in srgb, var(--profile-color) 78%, #161026);
+  color: white;
+}
+.publication-share { display: grid; gap: .45rem; margin-block: .35rem; }
+.publication-share input { display: block; width: 100%; min-width: 0; padding: .45rem; border: 1px solid var(--border); border-radius: .4rem; }
+@media (max-width: 30rem) { .reservation-grid { grid-template-columns: minmax(0, 1fr); } }

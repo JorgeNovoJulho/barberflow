@@ -1,9 +1,10 @@
+import type { CSSProperties } from "react";
 import { serviceMediaUrls } from "../../../lib/service-media";
 import { ServiceMedia } from "../../service-media";
 import Link from "next/link";
 import { Showcase } from "./showcase";
 import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
-import { businessDays, httpsUrl, readBusinessProfile, socialUrl, whatsappUrl } from "../../../lib/business-profile";
+import { businessDays, httpsUrl, publicProfileColor, readBusinessProfile, socialUrl, whatsappUrl } from "../../../lib/business-profile";
 import { supabaseServer } from "../../../lib/supabase";
 import { ShareProfile, ProfileGallery } from "./profile-controls";
 import { saoPauloToday } from "../../../lib/agenda";
@@ -25,7 +26,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
     .map(({ professional_id, slot }) => [professional_id, slot]));
   const mediaUrls = await serviceMediaUrls(profile.services);
   const details = readBusinessProfile(profile.details);
-  const color = details.color && /^#[0-9a-f]{6}$/i.test(details.color) ? details.color : undefined;
+  const color = publicProfileColor(details.color);
   const cover = httpsUrl(details.cover);
   const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
@@ -53,7 +54,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
       <Link href={'/painel/' + previewShop + '/publicacao'}>Voltar à Página pública</Link>
       <p>Prévia da última versão salva. Agendamentos e compras ficam desativados aqui.</p>
     </div> : <Link href="/estabelecimentos">Ver estabelecimentos</Link>}
-    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color }}>
+    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
       {cover && <img className="business-cover" src={cover} alt="" decoding="async" />}
       <div className="business-heading">
       {logo && <img className="business-logo" src={logo} alt={`Logotipo de ${profile.name}`} />}

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { authOrigin } from "../../../../lib/auth-path";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { savePublication } from "./actions";
 import { businessDays, profileFields, readBusinessProfile } from "../../../../lib/business-profile";
-import { CopyHours, GalleryEditor, PostalLookup, ProfileColors, ProfileMediaUpload } from "./form-tools";
+import { CopyHours, GalleryEditor, PostalLookup, ProfileColors, ProfileMediaUpload, PublicationForm } from "./form-tools";
 import { ShareProfile } from "../../../estabelecimento/[slug]/profile-controls";
 
 const feedback: Record<string, string> = {
@@ -40,6 +41,7 @@ export default async function Publication({ params, searchParams }: {
       {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} />}
     </div>);
   const path = "/painel/" + shop;
+  const shareUrl = data.published && data.slug ? new URL("/estabelecimento/" + data.slug, authOrigin()).href : null;
 
   return <section className="container section publication-editor">
     <header className="module-heading">
@@ -58,19 +60,19 @@ export default async function Publication({ params, searchParams }: {
           <Link className="primary" href={path + "/publicacao/previa"}>Ver prévia da página</Link>
           {data.published && <Link className="secondary" href={"/estabelecimento/" + data.slug}>Abrir página pública</Link>}
           <Link className="secondary" href={path + "/vitrine"}>Vendas e Pix da vitrine</Link>
-          {data.published && <ShareProfile title={data.name} path={"/estabelecimento/" + data.slug} />}
+          {shareUrl && <ShareProfile title={data.name} path={shareUrl} showLink />}
         </div>
         <nav className="publication-jump" aria-label="Seções do editor">
           <a href="#perfil">Perfil</a><a href="#identidade">Identidade e mídia</a><a href="#contato">Endereço e contato</a>
           <a href="#horarios">Horários</a><a href="#reservas">Reservas online</a>
         </nav>
       </aside>
-      <form className="account-form publication-form" action={savePublication.bind(null, shop)}>
+      <PublicationForm action={savePublication.bind(null, shop)}>
         <section className="card publication-card" id="perfil">
           <h2>Perfil</h2>
           <div className="publication-columns">
             <label>Nome do estabelecimento <input name="name" required maxLength={120} defaultValue={data.name} /></label>
-            <label>Endereço da página <input name="slug" minLength={3} maxLength={80} defaultValue={data.slug ?? ""} placeholder="meu-estudio" /></label>
+            <label>Endereço da página <input name="slug" minLength={3} maxLength={80} defaultValue={data.slug ?? ""} placeholder="Gerado ao publicar, se vazio" /></label>
           </div>
           <label>Descrição <textarea name="description" maxLength={1200} rows={4} defaultValue={data.public_description} /></label>
         </section>
@@ -110,7 +112,7 @@ export default async function Publication({ params, searchParams }: {
           <label><input type="checkbox" name="auto_confirm" defaultChecked={data.auto_confirm} /> Confirmar automaticamente</label>
           <label><input type="checkbox" name="allow_customer_cancel" defaultChecked={data.allow_customer_cancel} /> Permitir cancelamento pelo cliente</label>
           <label><input type="checkbox" name="allow_customer_reschedule" defaultChecked={data.allow_customer_reschedule} /> Permitir remarcação pelo cliente</label>
-          <div className="form-columns">
+          <div className="reservation-grid">
             <label>Antecedência mínima (min) <input name="min_notice_minutes" type="number" required min={0} max={10080} defaultValue={data.min_notice_minutes} /></label>
             <label>Reservar até (dias) <input name="max_advance_days" type="number" required min={1} max={365} defaultValue={data.max_advance_days} /></label>
             <label>Prazo para alterações (horas antes) <input name="change_notice_hours" type="number" required min={0} max={720} defaultValue={data.change_notice_hours} /></label>
@@ -124,7 +126,7 @@ export default async function Publication({ params, searchParams }: {
           <label><input type="checkbox" name="published" defaultChecked={data.published} /> Publicar página e aceitar reservas online</label>
           <SubmitButton>Salvar publicação e regras</SubmitButton>
         </div>
-      </form>
+      </PublicationForm>
     </div>
   </section>;
 }

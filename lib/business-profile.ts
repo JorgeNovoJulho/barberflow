@@ -57,6 +57,18 @@ export function httpsUrl(value: string | undefined) {
   }
 }
 
+export const publicProfileColors = [
+  { name: "Violeta", value: "#6537A6" }, { name: "Azul royal", value: "#2450A8" },
+  { name: "Azul-marinho", value: "#192B54" }, { name: "Grafite", value: "#262C3C" },
+  { name: "Verde esmeralda", value: "#117A72" }, { name: "Verde floresta", value: "#285B38" },
+  { name: "Terracota", value: "#93442B" }, { name: "Rosa orquídea", value: "#A33462" },
+  { name: "Vinho", value: "#8E293F" }, { name: "Dourado", value: "#85601C" },
+] as const;
+
+export function publicProfileColor(value?: string) {
+  return value && /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : publicProfileColors[0].value;
+}
+
 export function whatsappUrl(value: string | undefined, message?: string) {
   const digits = value?.replace(/\D/g, "") ?? "";
   if (!/^(55)?\d{10,11}$/.test(digits)) return undefined;

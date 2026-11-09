@@ -6,18 +6,43 @@ import { isUuid, parsePrice } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { validDay } from "../../../../lib/agenda";
 import { financeGuide, isExpenseGuide, type FinanceGuide } from "./guias";
+import { authOrigin } from "../../../../lib/auth-path";
 
 async function context(shop: string) {
   if (!isUuid(shop)) redirect("/painel");
   const path = `/painel/${shop}/financeiro`;
   const supabase = await supabaseServer();
-  if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path }));
-  return { supabase, finish(status: string, guide?: FinanceGuide): never {
+  const user = supabase && (await supabase.auth.getUser()).data.user;
+  if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));
+  return { supabase, user, path, finish(status: string, guide?: FinanceGuide): never {
     revalidatePath(path);
     const query = new URLSearchParams({ estado: status });
     if (guide) query.set("guia", financeGuide(guide));
     redirect(path + "?" + query);
   } };
+}
+
+export async function requestFinanceEmail(shop: string) {
+  const { supabase, user, path, finish } = await context(shop);
+  if (!user.email || !user.email_confirmed_at) return finish("recuperacao-email-denied");
+  const request = await supabase.rpc("barberflow_request_finance_email", { shop });
+  if (request.error) return finish("recuperacao-email-falha");
+  if (request.data !== "requested") return finish("recuperacao-email-" + request.data);
+  const callback = new URL("/auth/callback", authOrigin());
+  callback.searchParams.set("next", path + "?estado=email-verificado");
+  const { error } = await supabase.auth.signInWithOtp({
+    email: user.email, options: { shouldCreateUser: false, emailRedirectTo: callback.href },
+  });
+  return finish(error?.status === 429 ? "recuperacao-email-limit" : error ? "recuperacao-email-falha" : "recuperacao-email-enviado");
+}
+
+export async function resetFinanceWithEmail(shop: string, form: FormData) {
+  const { supabase, finish } = await context(shop);
+  const secret = String(form.get("new_secret") ?? "");
+  if (secret.length < 8 || Buffer.byteLength(secret) > 72 || secret !== form.get("confirmation")) return finish("recuperacao-email-invalid");
+  const { data, error } = await supabase.rpc("barberflow_reset_finance_email", { shop, new_secret: secret });
+  if (error || typeof data !== "string") return finish("recuperacao-email-falha");
+  return finish(data === "reset" ? "senha-alterada" : "recuperacao-email-" + data);
 }
 
 export async function unlockFinance(shop: string, setup: boolean, form: FormData) {
