@@ -48,14 +48,15 @@ export default async function Establishment({ params, searchParams }: {
   const todayHours = details.hours?.[weekday];
   const open = todayHours && now >= todayHours.start && now < todayHours.end
     && (!todayHours.breakStart || now < todayHours.breakStart || now >= todayHours.breakEnd);
-  return <section className="container section">
+  return <section className="container section public-profile">
     <Link href="/estabelecimentos">Ver estabelecimentos</Link>
-    <header className="card panel-form public-business-profile" style={{ borderBlockStartColor: color }}>
-      {cover && <img className="landing-card-photo" src={cover} alt={`Capa de ${profile.name}`} />}
+    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color }}>
+      {cover && <img className="business-cover" src={cover} alt="" decoding="async" />}
+      <div className="business-heading">
       {logo && <img className="business-logo" src={logo} alt={`Logotipo de ${profile.name}`} />}
       <p className="eyebrow">{profile.city}</p>
       <h1>{profile.name}</h1>
-      {!!Object.keys(details.hours ?? {}).length && <p><strong>{open ? "Aberto agora" : "Fechado agora"}</strong></p>}
+      {!!Object.keys(details.hours ?? {}).length && <p><strong className={`business-status${open ? " is-open" : ""}`}>{open ? "Aberto agora" : "Fechado agora"}</strong></p>}
       {profile.description && <p className="intro">{profile.description}</p>}
       {details.address && <p>{address}</p>}
       <div className="account-links">
@@ -66,7 +67,14 @@ export default async function Establishment({ params, searchParams }: {
         {socials.map(([label, url]) => url && <a key={label} className="secondary" href={url} target="_blank" rel="noopener noreferrer">{label}</a>)}
         <ShareProfile title={profile.name} />
       </div>
+      </div>
     </header>
+    <nav className="account-links profile-sections" aria-label="Nesta página">
+      <Link className="secondary" href="#servicos">Serviços</Link>
+      {!!professionals.length && <Link className="secondary" href="#profissionais">Profissionais</Link>}
+      {!!gallery.length && <Link className="secondary" href="#fotos">Fotos</Link>}
+      <Link className="secondary" href="#avaliacoes">Avaliações</Link>
+    </nav>
     {!!Object.keys(details.hours ?? {}).length && <section className="card panel-form">
       <h2>Horário de funcionamento</h2>
       <dl className="order-totals business-hours">
@@ -82,11 +90,11 @@ export default async function Establishment({ params, searchParams }: {
       <h2>Vídeo do estabelecimento</h2>
       <video className="product-media-preview" src={video} controls playsInline preload="metadata" />
     </section>}
-    {!!gallery.length && <section className="panel-form">
+    {!!gallery.length && <section className="profile-section" id="fotos">
       <h2>Fotos do local</h2>
       <ProfileGallery images={gallery} title={profile.name} />
     </section>}
-    {!!professionals.length && <section>
+    {!!professionals.length && <section className="profile-section" id="profissionais">
       <h2>Profissionais</h2>
       <ul className="cards">{professionals.map((person) => {
         const photo = httpsUrl(person.photo_url);
@@ -101,14 +109,16 @@ export default async function Establishment({ params, searchParams }: {
         </li>;
       })}</ul>
     </section>}
+    <section className="profile-section" id="servicos">
     <h2>Serviços</h2>
     {profile.services.length ? <ul className="cards">{profile.services.map((service) => <li key={service.id} className="card">
       <h3>{service.name}</h3>
       {service.category && <p className="eyebrow">{service.category}</p>}
-      <p>{bookingCurrency.format(service.price_cents / 100)} · {service.duration_minutes} min</p>
+      <p><strong className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</strong> · {service.duration_minutes} min</p>
       {service.description && <p>{service.description}</p>}
       {service.professionals.length ? <Link className="primary" href={`/estabelecimento/${slug}/agendar?servico=${service.id}`}>Ver horários</Link> : <p>Sem profissionais disponíveis para este serviço.</p>}
     </li>)}</ul> : <p>Nenhum serviço publicado.</p>}
+    </section>
     <section className="card panel-form" id="avaliacoes">
       <h2>Avaliações</h2>
       {denuncia === "enviada" && <p role="status">Denúncia enviada para moderação.</p>}

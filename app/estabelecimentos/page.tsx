@@ -12,10 +12,13 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const result = supabase && await supabase.rpc("barberflow_public_directory");
   const listings = ((result?.data ?? []) as Listing[]).filter((item) =>
     (!segment || item.segment === segment) && (!query || `${item.name} ${item.city}`.toLowerCase().includes(query.toLowerCase())));
-  return <section className="container section">
-    <p className="eyebrow">Beleza e bem-estar</p>
-    <h1>Encontre profissionais e estabelecimentos</h1>
-    <form className="account-form card panel-form" action="/estabelecimentos">
+  return <section className="container section public-directory">
+    <header className="public-intro">
+      <p className="eyebrow">Catálogo de beleza e bem-estar</p>
+      <h1>Encontre profissionais e estabelecimentos</h1>
+      <p>Busque na sua cidade e veja os serviços disponíveis para agendar.</p>
+    </header>
+    <form className="account-form card panel-form directory-search" action="/estabelecimentos">
       <label>Buscar por nome ou cidade <input name="busca" maxLength={120} defaultValue={query} /></label>
       <label>Segmento <select name="segmento" defaultValue={segment}>
         <option value="">Todos os segmentos</option>
@@ -24,9 +27,14 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       <button className="primary" type="submit">Buscar</button>
     </form>
     {result?.error || !result ? <p role="alert">Não foi possível carregar o catálogo.</p>
-      : listings.length ? <ul className="cards">{listings.map((item) => <li key={item.slug} className="card">
-        <h2>{item.name}</h2><p>{item.city} · {isSegment(item.segment) ? segments[item.segment] : item.segment}</p>
-        <Link className="secondary" href={`/estabelecimento/${item.slug}`}>Ver serviços</Link>
-      </li>)}</ul> : <p>Nenhum estabelecimento encontrado.</p>}
+      : listings.length ? <>
+        <p role="status">{listings.length} {listings.length === 1 ? "estabelecimento encontrado" : "estabelecimentos encontrados"}</p>
+        <ul className="cards">{listings.map((item) => <li key={item.slug} className="card directory-card">
+          <span className="directory-monogram" aria-hidden="true">{item.name.trim().slice(0, 2).toUpperCase()}</span>
+          <p className="eyebrow">{isSegment(item.segment) ? segments[item.segment] : item.segment}</p>
+          <h2>{item.name}</h2><p>{item.city}</p>
+          <Link className="secondary" href={`/estabelecimento/${item.slug}`}>Ver serviços <span aria-hidden="true">↗</span></Link>
+        </li>)}</ul>
+      </> : <p className="card">Nenhum estabelecimento encontrado. Tente outra cidade, nome ou segmento.</p>}
   </section>;
 }

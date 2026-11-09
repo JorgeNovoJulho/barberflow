@@ -36,19 +36,32 @@ export default async function Booking({ params, searchParams }: {
   const next = service && person
     ? path + "?" + new URLSearchParams({ servico: service.id, profissional: person.id, dia: day })
     : path;
+  const availableServices = profile.services.filter((entry) => entry.professionals.some((provider) => !profissional || provider.id === profissional));
+  const step = !service ? 0 : !person || !slots.length ? 1 : 2;
 
-  return <section className="container section">
-    <Link href={`/estabelecimento/${slug}`}>{profile.name}</Link>
-    <h1>Agendar atendimento</h1>
+  return <section className="container section public-booking">
+    <Link href={`/estabelecimento/${slug}`}>Voltar para {profile.name}</Link>
+    <header className="public-intro">
+      <p className="eyebrow">{profile.name}</p>
+      <h1>Agendar atendimento</h1>
+    </header>
+    <ol className="booking-steps" aria-label="Etapas do agendamento">
+      {["Serviço", "Profissional e data", "Horário e confirmação"].map((label, index) =>
+        <li key={label} aria-current={step === index ? "step" : undefined}><span aria-hidden="true">{index + 1}</span>{label}</li>)}
+    </ol>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
-    {!service ? <ul className="cards">
-      {profile.services.filter((entry) => entry.professionals.some((person) => !profissional || person.id === profissional)).map((entry) => <li className="card" key={entry.id}>
+    <div className={service ? "booking-layout" : undefined}>
+    <div>
+    {!service ? availableServices.length ? <ul className="cards">
+      {availableServices.map((entry) => <li className="card booking-service-card" key={entry.id}>
         <h2>{entry.name}</h2>
-        <Link href={path + "?" + new URLSearchParams({ servico: entry.id, ...(profissional ? { profissional } : {}) })}>Escolher serviço</Link>
+        <p><strong className="public-service-price">{bookingCurrency.format(entry.price_cents / 100)}</strong> · {entry.duration_minutes} min</p>
+        {entry.description && <p>{entry.description}</p>}
+        <Link className="primary" href={path + "?" + new URLSearchParams({ servico: entry.id, ...(profissional ? { profissional } : {}) })}>Escolher serviço</Link>
       </li>)}
-    </ul> : <div className="card panel-form">
-      <h2>{service.name}</h2>
-      <p>{bookingCurrency.format(service.price_cents / 100)} · {service.duration_minutes} min</p>
+    </ul> : <p className="card">Nenhum serviço com profissional disponível para agendamento.</p>
+    : <div className="card booking-panel">
+      <h2>Profissional e data</h2>
       <form className="account-form" action={path}>
         <input type="hidden" name="servico" value={service.id} />
         <label>Profissional <select name="profissional" required defaultValue={person?.id ?? ""}>
@@ -56,15 +69,15 @@ export default async function Booking({ params, searchParams }: {
           {service.professionals.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
         </select></label>
         <label>Data <input type="date" name="dia" min={today} max={limit} required defaultValue={day} /></label>
-        <button className="secondary" type="submit">Buscar horários</button>
+        <button className="primary" type="submit">Buscar horários</button>
       </form>
     </div>}
     {result?.error && <p role="alert">Não foi possível carregar os horários.</p>}
-    {result && !result.error && !slots.length && <p>Nenhum horário disponível nesta data.</p>}
-    {service && person && slots.length > 0 && <div className="card panel-form">
+    {result && !result.error && !slots.length && <p className="card booking-panel">Nenhum horário disponível nesta data. Selecione outro dia ou profissional.</p>}
+    {service && person && slots.length > 0 && <div className="card booking-panel">
       <h2>Horários disponíveis</h2>
       {!user ? <>
-        <p>{slots.map(({ slot }) => slot.slice(11, 16)).join(" · ")}</p>
+        <ul className="booking-time-list" aria-label="Horários disponíveis">{slots.map(({ slot }) => <li key={slot}>{slot.slice(11, 16)}</li>)}</ul>
         <Link className="primary" href={"/login?" + new URLSearchParams({ next })}>Entrar para confirmar</Link>
       </> : <form className="account-form" action={bookOnline.bind(null, slug, service.id, person.id, day)}>
         <fieldset className="booking-slots"><legend>Escolha o horário</legend>
@@ -78,5 +91,18 @@ export default async function Booking({ params, searchParams }: {
         <SubmitButton>Confirmar agendamento</SubmitButton>
       </form>}
     </div>}
+    </div>
+    {service && <aside className="card booking-summary" aria-label="Resumo do agendamento">
+      <h2>Seu agendamento</h2>
+      <dl className="order-totals">
+        <div><dt>Serviço</dt><dd>{service.name}</dd></div>
+        <div><dt>Duração</dt><dd>{service.duration_minutes} min</dd></div>
+        {person && <div><dt>Profissional</dt><dd>{person.name}</dd></div>}
+        <div><dt>Data</dt><dd>{day.split("-").reverse().join("/")}</dd></div>
+        <div><dt>Valor</dt><dd className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</dd></div>
+      </dl>
+      <Link href={path}>Escolher outro serviço</Link>
+    </aside>}
+    </div>
   </section>;
 }
