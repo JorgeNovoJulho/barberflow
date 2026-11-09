@@ -24,6 +24,45 @@ function formatDay(day: string) {
   return day.slice(0, 10).split("-").reverse().join("/");
 }
 
+function DashboardCharts({ data }: { data: Dashboard }) {
+  const states = [
+    { label: "Concluídos", count: data.completed, color: "#12a878" },
+    { label: "Cancelados", count: data.cancelled, color: "#f59b26" },
+    { label: "Não compareceram", count: data.no_show, color: "#ec5787" },
+    { label: "Aguardando aprovação", count: data.pending, color: "#2485ed" },
+    { label: "Demais atendimentos", count: Math.max(0, data.appointments - data.completed - data.cancelled - data.no_show - data.pending), color: "#7852ed" },
+  ];
+  const total = states.reduce((sum, item) => sum + item.count, 0);
+  let angle = 0;
+  const bands = states.filter(({ count }) => count > 0).map(({ count, color }) => {
+    const start = angle;
+    angle += count / total * 360;
+    return `${color} ${start}deg ${angle}deg`;
+  });
+  const peak = Math.max(1, data.appointments, data.previous_appointments);
+  return <div className="dashboard-chart-grid">
+    <section className="card dashboard-chart">
+      <h3>Situação dos atendimentos</h3>
+      <div className="dashboard-chart-content">
+        <div className="dashboard-ring" aria-hidden="true" style={bands.length ? { background: `conic-gradient(${bands.join(",")})` } : undefined}>
+          <div><strong>{total}</strong><small>Total</small></div>
+        </div>
+        <ul>{states.map(({ label, count, color }) => <li key={label}>
+          <span className="dashboard-legend-dot" style={{ background: color }} aria-hidden="true" />
+          <span>{label}</span><strong>{count}</strong>
+        </li>)}</ul>
+      </div>
+    </section>
+    <section className="card dashboard-chart dashboard-comparison">
+      <h3>Comparativo de agendamentos</h3>
+      {[["Período atual", data.appointments], ["Período anterior", data.previous_appointments]].map(([label, count]) =>
+        <label key={label}><span>{label} <strong>{count}</strong></span>
+          <meter min={0} max={peak} value={Number(count)} />
+        </label>)}
+    </section>
+  </div>;
+}
+
 export default async function DashboardPage({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
   searchParams: Promise<{ periodo?: string; notificacoes?: string; aviso?: string }>;
@@ -99,13 +138,15 @@ export default async function DashboardPage({ params, searchParams }: {
     {report.error || !data ? <p role="alert">Não foi possível carregar os indicadores.</p> : <>
       <p className="panel-form">{data.first_day === data.today ? formatDay(data.today) : `${formatDay(data.first_day)} a ${formatDay(data.today)}`}</p>
       <dl className="cards">
-        {indicators.map(({ label, value, note }) => <div key={label} className="card dashboard-metric">
-          <dt>{label}</dt><dd>{value}</dd>{note && <p>{note}</p>}
+        {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric">
+          <dt><span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
+          <dd>{value}</dd>{note && <p>{note}</p>}
           {label === "Faturamento registrado" && <p className="account-links">
             <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
           </p>}
         </div>)}
       </dl>
+      <DashboardCharts data={data} />
       <h2 className="panel-form">Próximos atendimentos</h2>
       <Link href={`/painel/${shop}/agenda?visao=lista`}>Abrir agenda</Link>
       {data.upcoming.length ? <ul className="cards">{data.upcoming.map((item) => <li key={item.id} className="card">

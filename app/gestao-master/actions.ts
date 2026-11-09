@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
-import { isSection, validImageUrl } from "../../lib/landing";
+import { isSection, landingDefaults, parseLandingSettings, validImageUrl } from "../../lib/landing";
 import { requireMaster } from "../../lib/master";
 
 const route = "/gestao-master";
@@ -17,6 +17,16 @@ function done(status: string): never {
   revalidatePath("/");
   revalidatePath(route);
   redirect(route + "?estado=" + status);
+}
+
+export async function saveLandingSettings(form: FormData) {
+  const supabase = await requireMaster();
+  const raw = Object.fromEntries(Object.keys(landingDefaults).map((key) => [key, value(form, key)]));
+  const appearance = parseLandingSettings({ ...raw, discovery: form.has("discovery"), motion: form.has("motion") });
+  if (Object.entries(raw).some(([key, input]) => appearance[key as keyof typeof landingDefaults] !== input)) done("invalido");
+  const { data, error } = await supabase.from("barberflow_landing_settings").update({ appearance })
+    .eq("singleton", true).select("singleton").maybeSingle();
+  done(error || !data ? "falha" : "aparencia");
 }
 
 export async function saveBlock(id: string | null, form: FormData) {

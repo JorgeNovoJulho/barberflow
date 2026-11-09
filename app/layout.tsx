@@ -8,6 +8,7 @@ import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/plus-jakarta-sans/wght.css";
 import "./styles.css";
 import "./visual.css";
+import "./editorial.css";
 
 export const metadata: Metadata = {
   title: { default: "BARBERFLOW", template: "%s | BARBERFLOW" },
