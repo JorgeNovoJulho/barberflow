@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
+import { clientPhotoLinks } from "../../../../lib/client-photos";
 import { supabaseServer } from "../../../../lib/supabase";
 import { ClientForm, type Client } from "../../../painel/[establishmentId]/clientes/client-form";
 import { PanelStatus } from "../../../painel/status";
@@ -24,11 +25,12 @@ export default async function TeamClients({ params, searchParams }: {
 
   const { busca, cliente, estado } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
-  const query = supabase.from("barberflow_clients").select("id,name,phone,preferences,notes,active")
+  const query = supabase.from("barberflow_clients").select("id,name,phone,preferences,notes,active,email,instagram,facebook,tiktok,youtube,photo_path")
     .eq("establishment_id", shop).order("name").order("id").limit(100);
   if (search) query.ilike("name", "%" + search.replace(/[\\%_]/g, "\\$&") + "%");
   const { data, error } = await query;
   const clients = (data ?? []) as Client[];
+  const photos = await clientPhotoLinks(supabase, clients);
   const selected = clients.find(({ id }) => id === cliente);
   const history = selected ? await supabase.rpc("barberflow_team_client_history", { shop, client: selected.id }) : null;
   const visits = (history?.data ?? []) as { id: string; service_name: string; state: string; starts_at: string }[];
@@ -51,7 +53,7 @@ export default async function TeamClients({ params, searchParams }: {
     {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client) => <li className="card" key={client.id}>
       <h2>{client.name}</h2>
       <p>{client.active ? "Ativo" : "Inativo"}{client.phone && ` · ${client.phone}`}</p>
-      <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} team /></details>
+      <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
       <Link href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + "#historico"}>Ver histórico</Link>
     </li>)}</ul> : <p>Nenhum cliente encontrado.</p>}
     {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}

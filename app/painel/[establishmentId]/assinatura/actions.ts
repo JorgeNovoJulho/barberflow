@@ -23,11 +23,11 @@ export async function preferPlan(shop: string, form: FormData) {
   redirect(path + "?estado=" + (error || !data ? "falha" : "salvo"));
 }
 
-export async function issueSubscriptionPix(shop: string, period: string) {
+export async function issueSubscriptionPix(shop: string, period: string, attach = false) {
   const { supabase, path } = await subscriptionContext(shop);
   if (!isPlanPeriod(period)) redirect(path + "?estado=pix-falha");
   const { data, error } = await supabase.rpc("barberflow_issue_subscription_pix", { shop, selected_period: period });
-  redirect(path + (error || !data ? "?estado=pix-falha" : "#pix-" + data));
+  redirect(path + (error || !data ? "?estado=pix-falha" : (attach ? "?comprovante=" + data + "#comprovante-" : "#pix-") + data));
 }
 
 export async function sendSubscriptionProof(shop: string, charge: string, form: FormData) {

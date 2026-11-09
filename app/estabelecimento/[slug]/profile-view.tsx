@@ -1,3 +1,4 @@
+import { isStudioCover } from "../../../lib/cover-studio";
 import type { CSSProperties } from "react";
 import { serviceMediaUrls } from "../../../lib/service-media";
 import { ServiceMedia } from "../../service-media";
@@ -11,8 +12,8 @@ import { saoPauloToday } from "../../../lib/agenda";
 import { SubmitButton } from "../../auth/submit";
 import { reportReview } from "./review-actions";
 
-export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
-  profile: PublicProfile; previewShop?: string; denuncia?: string; vitrine?: string;
+export async function ProfileView({ profile, previewShop, denuncia, vitrine, produtos }: {
+  profile: PublicProfile; previewShop?: string; denuncia?: string; vitrine?: string; produtos?: string;
 }) {
   const { slug } = profile;
   const supabase = await supabaseServer();
@@ -28,6 +29,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
   const details = readBusinessProfile(profile.details);
   const color = publicProfileColor(details.color);
   const cover = httpsUrl(details.cover);
+  const studioCover = isStudioCover(cover);
   const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
   const map = httpsUrl(details.map) ?? (details.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined);
@@ -54,8 +56,8 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
       <Link href={'/painel/' + previewShop + '/publicacao'}>Voltar à Página pública</Link>
       <p>Prévia da última versão salva. Agendamentos e compras ficam desativados aqui.</p>
     </div> : <Link href="/estabelecimentos">Ver estabelecimentos</Link>}
-    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
-      {cover && <img className="business-cover" src={cover} alt="" decoding="async" />}
+    <header className={`public-business-profile${studioCover ? " has-studio-cover" : cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
+      {cover && <img className={studioCover ? "business-studio-cover" : "business-cover"} src={cover} alt="" decoding="async" />}
       <div className="business-heading">
       {logo && <img className="business-logo" src={logo} alt={`Logotipo de ${profile.name}`} />}
       <p className="eyebrow">{profile.city}</p>
@@ -118,14 +120,14 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
     <h2>Serviços</h2>
     {profile.services.length ? <ul className="cards">{profile.services.map((service) => <li key={service.id} className="card">
       <h3>{service.name}</h3>
-      <ServiceMedia service={service} urls={mediaUrls} />
+      <ServiceMedia service={service} urls={mediaUrls} compact />
       {service.category && <p className="eyebrow">{service.category}</p>}
       <p><strong className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</strong> · {service.duration_minutes} min</p>
       {service.description && <p>{service.description}</p>}
       {previewShop ? null : service.professionals.length ? <Link className="primary" href={`/estabelecimento/${slug}/agendar?servico=${service.id}`}>Ver horários</Link> : <p>Sem profissionais disponíveis para este serviço.</p>}
     </li>)}</ul> : <p>Nenhum serviço publicado.</p>}
     </section>
-    <Showcase slug={slug} previewShop={previewShop} status={vitrine} />
+    <Showcase slug={slug} previewShop={previewShop} status={vitrine} page={produtos} />
     <section className="card panel-form" id="avaliacoes">
       <h2>Avaliações</h2>
       {denuncia === "enviada" && <p role="status">Denúncia enviada para moderação.</p>}

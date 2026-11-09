@@ -41,7 +41,8 @@ function ProductForm({ shop, product }: { shop: string; product?: Product }) {
     <label>Estoque mínimo <input name="minimum" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required /></label>
     <label>Data de validade <input name="expiry" type="date" defaultValue={product?.expires_on ?? ""} /></label>
     <label>Descrição na vitrine <textarea name="description" rows={3} maxLength={1500} defaultValue={product?.description} /></label>
-    <label><input type="checkbox" name="showcase" defaultChecked={product?.showcase} /> Exibir na vitrine da página pública</label>
+    {product ? <label><input type="checkbox" name="showcase" defaultChecked={product.showcase} /> Exibir na vitrine da página pública</label>
+      : <p>O produto será exibido na vitrine assim que estiver disponível para venda.</p>}
     <SubmitButton>Salvar produto</SubmitButton>
   </form>;
 }

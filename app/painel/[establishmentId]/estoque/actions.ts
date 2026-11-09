@@ -28,7 +28,7 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const sku = get(form, "sku");
   const barcode = get(form, "barcode");
   const description = get(form, "description");
-  const showcase = form.has("showcase");
+  const showcase = product === null || form.has("showcase");
   const price = parsePrice(get(form, "price"));
   const rawCost = get(form, "cost");
   const cost = rawCost ? parsePrice(rawCost) : null;

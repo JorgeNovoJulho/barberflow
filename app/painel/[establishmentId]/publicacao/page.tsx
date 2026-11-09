@@ -7,6 +7,7 @@ import { SubmitButton } from "../../../auth/submit";
 import { savePublication } from "./actions";
 import { businessDays, profileFields, readBusinessProfile } from "../../../../lib/business-profile";
 import { CopyHours, GalleryEditor, PostalLookup, ProfileColors, ProfileMediaUpload, PublicationForm } from "./form-tools";
+import { CoverStudio } from "./cover-studio";
 import { ShareProfile } from "../../../estabelecimento/[slug]/profile-controls";
 
 const feedback: Record<string, string> = {
@@ -79,6 +80,7 @@ export default async function Publication({ params, searchParams }: {
         <section className="card publication-card" id="identidade">
           <h2>Identidade e mídia</h2>
           <div className="publication-columns">{fields(["logo", "cover"])}</div>
+          <CoverStudio shop={shop} name={data.name} />
           {fields(["video"])}
           <ProfileColors initial={profile.color} />
           <GalleryEditor shop={shop} initial={profile.gallery ?? []} />

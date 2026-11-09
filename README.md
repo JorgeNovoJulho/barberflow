@@ -34,11 +34,10 @@ do ambiente do aplicativo.
 - Assinaturas com teste para novos estabelecimentos e confirmação manual de
   pagamentos, além da gestão master de conteúdo, avaliações e assinaturas.
 
-O painel master exige uma conta confirmada e cadastrada no banco como master.
-Em uma instalação nova, a migração de administração registra a conta
-autorizada se ela já existir e estiver confirmada. Caso a conta seja criada
-depois, o administrador do banco precisa cadastrá-la na tabela privada
-`barberflow_private.master_account`.
+Mantenha a confirmação de e-mail habilitada no Supabase Auth. Após o cadastro
+e a confirmação de `jorgericardosalgado@gmail.com`, o banco vincula o
+identificador da conta ao painel master. Entre em `/gestao-master` com essa
+conta. A gestão de assinaturas fica em `/gestao-master/assinaturas`.
 
 ## Atualização no GitHub
 
@@ -50,10 +49,24 @@ em `.env.local`, e `.env.example` documenta os nomes das variáveis.
 
 ## Implantação web
 
-O domínio previsto para produção é `topbarberflow.com.br`. Na implantação,
-configure o DNS no provedor de hospedagem, use
-`BARBERFLOW_ORIGIN=https://topbarberflow.com.br` e autorize
-`https://topbarberflow.com.br/auth/callback` no Supabase Auth.
+1. No hPanel, adicione um aplicativo Node.js com suporte a Next.js. Importe
+   `JorgeNovoJulho/barberflow`, branch `main`, pela integração do aplicativo
+   Node.js. Use a raiz do repositório, Node.js 24 e o build `npm run build`.
+2. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+   `BARBERFLOW_ORIGIN=https://topbarberflow.com.br`, `BARBERFLOW_TERMS_URL` e
+   `BARBERFLOW_PRIVACY_URL` no ambiente da hospedagem. As duas últimas devem
+   apontar para os documentos oficiais antes de habilitar o cadastro público.
+   Desabilite `BARBERFLOW_LOCAL_TEST_SIGNUP` na hospedagem.
+3. Em Supabase Auth → URL Configuration, configure o Site URL como
+   `https://topbarberflow.com.br` e acrescente
+   `https://topbarberflow.com.br/auth/callback` aos redirects permitidos.
+   Mantenha os callbacks locais já usados para desenvolvimento.
+4. Conecte `topbarberflow.com.br` ao aplicativo no hPanel. Use o IP informado
+   para o aplicativo se a hospedagem solicitar a troca do registro A da raiz.
+   Preserve o CNAME `www` e configure o redirecionamento para HTTPS sem `www`.
+5. Teste login, confirmação e recuperação por e-mail, página pública,
+   agendamento, upload e assinatura com contas dedicadas. Para testes de
+   cartão, use as chaves de sandbox dos provedores.
 
 ## Atualização local no Windows
 

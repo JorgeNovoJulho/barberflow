@@ -32,7 +32,7 @@ function ProfessionalForm({ shop, professional, delegated }: { shop: string; pro
     <fieldset>
       <legend>Redes sociais e contato</legend>
       <div className="publication-columns">
-        <label>Instagram <input name="instagram" maxLength={31} placeholder="@usuario" defaultValue={professional?.instagram} /></label>
+        <label>Instagram <input name="instagram" maxLength={180} placeholder="@usuario ou link do perfil" defaultValue={professional?.instagram} /></label>
         <label>WhatsApp com DDD <input name="whatsapp" type="tel" maxLength={20} placeholder="(11) 99999-9999" defaultValue={professional?.whatsapp} /></label>
         <label>Facebook <input name="facebook" type="url" maxLength={500} defaultValue={professional?.facebook} /></label>
         <label>TikTok <input name="tiktok" type="url" maxLength={500} defaultValue={professional?.tiktok} /></label>
@@ -40,8 +40,8 @@ function ProfessionalForm({ shop, professional, delegated }: { shop: string; pro
       </div>
     </fieldset>
     <div className="form-columns">
-      <label>Comissão sobre serviços (%) <input name="commission" inputMode="decimal" defaultValue={(professional?.commission_bps ?? 0) / 100} required /></label>
-      <label>Comissão sobre produtos (%) <input name="product_commission" inputMode="decimal" defaultValue={(professional?.product_commission_bps ?? 0) / 100} required /></label>
+      <label>Comissão sobre serviços (%) <input name="commission" inputMode="decimal" defaultValue={(professional?.commission_bps ?? 0) / 100} /></label>
+      <label>Comissão sobre produtos (%) <input name="product_commission" inputMode="decimal" defaultValue={(professional?.product_commission_bps ?? 0) / 100} /></label>
     </div>
     <label><input type="checkbox" name="inherit_business_hours" defaultChecked={professional?.inherit_business_hours} /> Usar o horário de funcionamento do estabelecimento</label>
     {professional && <label><input type="checkbox" name="active" defaultChecked={professional.active} /> Profissional ativo</label>}

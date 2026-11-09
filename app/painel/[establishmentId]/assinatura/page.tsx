@@ -16,7 +16,7 @@ const dateLabel = (day: string) => day.split("-").reverse().join("/");
 
 export default async function Subscription({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; comprovante?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
@@ -49,7 +49,7 @@ export default async function Subscription({ params, searchParams }: {
     const code = charge.status === "pending" ? showcasePix({ ...charge, total_cents: charge.amount_cents }) : null;
     return { charge, code, qr: code ? await QRCode.toDataURL(code, { width: 240, margin: 4 }) : null };
   }));
-  const { estado } = await searchParams;
+  const { estado, comprovante } = await searchParams;
   const trialUntil = subscription.data?.trial_until;
   const trialActive = Boolean(trialUntil && trialUntil > today);
   const queued = history.data?.filter((item) => item.starts_on > today).at(-1);
@@ -108,11 +108,24 @@ export default async function Subscription({ params, searchParams }: {
           <p>Favorecido: {prices.pix_beneficiary}</p>
           <div className="account-links">
             {(Object.keys(planNames) as PlanPeriod[]).map((period) =>
-              <form key={period} action={issueSubscriptionPix.bind(null, shop, period)}>
+              <form key={period} action={issueSubscriptionPix.bind(null, shop, period, false)}>
                 <SubmitButton>{`Gerar Pix · ${planNames[period]} · ${planPrice(prices, period)}`}</SubmitButton>
               </form>)}
           </div>
         </> : <p>A configuração de recebimento Pix está pendente na administração.</p>}
+        <div className="account-links" aria-label="Enviar comprovante por modalidade">
+          {(Object.keys(planNames) as PlanPeriod[]).map((period) => {
+            const existing = checkout.find(({ charge }) => charge.period === period && charge.status === "pending");
+            const underReview = checkout.find(({ charge }) => charge.period === period && charge.status === "submitted");
+            const label = `Enviar comprovante · ${planNames[period]}`;
+            if (underReview) return <Link className="secondary" key={period} href={`#pix-${underReview.charge.id}`}>Em análise · {planNames[period]}</Link>;
+            if (existing) return <Link className="secondary" key={period}
+              href={`?comprovante=${existing.charge.id}#comprovante-${existing.charge.id}`}>{label}</Link>;
+            return <form key={period} action={issueSubscriptionPix.bind(null, shop, period, true)}>
+              <SubmitButton disabled={!pixReady}>{label}</SubmitButton>
+            </form>;
+          })}
+        </div>
         {prices.support_whatsapp && <a href={"https://wa.me/" + prices.support_whatsapp} target="_blank" rel="noopener noreferrer">Suporte pelo WhatsApp</a>}
       </section>
       {checkout.map(({ charge, code, qr }) => {
@@ -127,12 +140,15 @@ export default async function Subscription({ params, searchParams }: {
             <img src={qr} width={240} height={240} alt="QR Code para pagamento da assinatura via Pix" style={{ maxWidth: "100%", height: "auto" }} />
             <label>Pix Copia e Cola <textarea rows={3} value={code} readOnly /></label>
             <CopyPix value={code} code />
+            <details id={"comprovante-" + charge.id} open={comprovante === charge.id}>
+              <summary>Anexar comprovante · {planNames[charge.period as PlanPeriod]}</summary>
             <form className="account-form" action={sendSubscriptionProof.bind(null, shop, charge.id)}>
               <label>Comprovante do pagamento (PDF, JPG, PNG ou WebP, até 5 MB)
                 <input name="proof" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
               </label>
               <SubmitButton>Enviar comprovante</SubmitButton>
             </form>
+            </details>
           </>}
         </section>;
       })}

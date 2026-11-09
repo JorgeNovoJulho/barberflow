@@ -25,12 +25,14 @@ export function ShowcaseCard({ product, media, login, canBuy, preview, buyAction
   }
   const max = Math.min(product.available, 100);
   const total = showcaseTotal(product, units);
+  const photo = media.find(({ kind }) => kind === "photo");
   return <li className="card stock-product showcase-card">
     <details>
       <summary>
-        {media[0] && <img className="showcase-cover" src={media[0].url} alt="" loading="lazy" />}
+        {photo ? <img className="showcase-cover" src={photo.url} alt="" loading="lazy" /> : <span className="showcase-placeholder">Sem foto</span>}
         <strong>{product.name}</strong>
         <span>{currency.format(product.price_cents / 100)} por unidade</span>
+        <small>{product.available} em estoque{product.sku && ` · SKU ${product.sku}`}</small>
         <span className="showcase-open">Ver fotos e detalhes</span>
       </summary>
       <ProductGallery name={product.name} items={media} />

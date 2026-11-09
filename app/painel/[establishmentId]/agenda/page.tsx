@@ -86,15 +86,16 @@ export default async function Agenda({ params, searchParams }: {
       <Link className="secondary" aria-current={listView ? "page" : undefined} href={href(day, "lista")}>Lista</Link>
     </nav>
     <div className="agenda-toolbar">
-      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? -7 : -1))}>Anterior</Link>
-      <Link className="secondary" href={href(today)}>Hoje</Link>
-      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? 7 : 1))}>Próximo</Link>
-      <form className="agenda-date" action={path}>
+      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? -7 : -1))} data-agenda-tone="violet">Anterior</Link>
+      <Link className="secondary" href={href(today)} data-agenda-tone="green">Hoje</Link>
+      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? 7 : 1))} data-agenda-tone="violet">Próximo</Link>
+      <form className="agenda-date" action={path} method="get" key={`${view}-${day}`}>
         {view !== "dia" && <input type="hidden" name="visao" value={view} />}
         <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
-        <button type="submit" className="secondary">Abrir {view}</button>
+        <button type="submit" className="secondary" data-agenda-tone="blue">Abrir {view}</button>
       </form>
     </div>
+    <p><Link className="primary" href={href(day, "dia") + "&novo=1#novo"}>+ Agendar para um cliente</Link></p>
     {estado && Object.hasOwn(messages, estado) && <p role="status">{messages[estado]}</p>}
     <h2>{weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : listView ? "Registros dos próximos 7 dias" : dateLabel}</h2>
     {[entries, professionals, services, assignments, clients].some((response) => response.error)
@@ -123,7 +124,7 @@ export default async function Agenda({ params, searchParams }: {
       ) : <>
       <div className="agenda-forms">
         <details className="card" id="novo" open={novo === "1"}>
-          <summary>Novo atendimento</summary>
+          <summary data-agenda-tone="green">Novo agendamento manual</summary>
           {offerings.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", false)}>
             <AppointmentFields key={`${suggestedProvider?.id ?? ""}-${suggestedService?.id ?? ""}`} providers={offerings}
               initialProfessional={suggestedProvider?.id} initialService={suggestedService?.id} />
@@ -136,10 +137,10 @@ export default async function Agenda({ params, searchParams }: {
             <label>WhatsApp do cliente avulso <input type="tel" name="phone" maxLength={30} /></label>
             <label>Observações <textarea name="note" maxLength={1000} rows={2} /></label>
             <SubmitButton>Agendar atendimento</SubmitButton>
-          </form> : <p>Vincule serviços ativos a um profissional para agendar.</p>}
+          </form> : <p>Para agendar, <Link href={`/painel/${shop}/profissionais`}>vincule um serviço a um profissional ativo</Link>.</p>}
         </details>
         <details className="card">
-          <summary>Bloquear horário</summary>
+          <summary data-agenda-tone="amber">Bloquear horário</summary>
           {active.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "block", false)}>
             <label>Profissional <select name="professional" defaultValue="" required>
               <option value="" disabled>Selecione</option>

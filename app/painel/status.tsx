@@ -11,7 +11,9 @@ const messages: Record<string, string> = {
   ativado: "Serviço reativado.",
   arquivado: "Serviço arquivado.",
   "profissional-salvo": "Profissional salvo.",
-  "profissional-contatos": "Confira o usuário do Instagram, o WhatsApp com DDD e os links HTTPS das redes sociais.",
+  "profissional-contatos": "Use um @usuário ou link de perfil do Instagram, WhatsApp com DDD e links HTTPS de Facebook, TikTok ou YouTube.",
+  "profissional-permissao": "Sua conta não tem permissão para salvar este profissional.",
+  "profissional-banco": "O banco recusou o cadastro do profissional. Tente novamente e, se persistir, informe o horário da tentativa ao suporte.",
   "profissional-imagem": "Selecione uma foto JPG, PNG, WebP ou AVIF de até 5 MB.",
   "profissional-upload": "Não foi possível enviar a foto. Selecione o arquivo novamente e tente salvar.",
   "equipe-ordenada": "Ordem da equipe atualizada.",
@@ -20,6 +22,7 @@ const messages: Record<string, string> = {
   "vinculos-salvos": "Serviços vinculados.",
   "horario-salvo": "Horário salvo.",
   "horario-invalido": "Confira a ordem dos horários. O intervalo deve ficar dentro do expediente.",
+  "cliente-imagem": "Não foi possível enviar a foto. Use JPG, PNG, WebP ou AVIF de até 5 MB.",
   "cliente-salvo": "Cliente salvo.",
 };
 

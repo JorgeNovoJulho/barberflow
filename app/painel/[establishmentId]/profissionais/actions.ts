@@ -12,7 +12,7 @@ function value(data: FormData, field: string) {
 }
 
 function commissionRate(raw: string) {
-  const rate = raw.replace(",", ".");
+  const rate = (raw || "0").replace(",", ".");
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number(rate) > 100) return null;
   return Math.round(Number(rate) * 100);
 }
@@ -38,7 +38,9 @@ export async function saveProfessional(shop: string, professional: string | null
   const photo = form.get("photo_file");
   const upload = photo instanceof File && photo.size > 0 ? photo : null;
   let photo_url = value(form, "photo");
-  const instagram = value(form, "instagram");
+  const rawInstagram = value(form, "instagram");
+  const instagramUrl = socialUrl(rawInstagram, ["instagram.com"]);
+  const instagram = instagramUrl ? new URL(instagramUrl).pathname.replace(/^\/|\/$/g, "") : rawInstagram;
   const facebook = value(form, "facebook");
   const tiktok = value(form, "tiktok");
   const youtube = value(form, "youtube");
@@ -69,7 +71,11 @@ export async function saveProfessional(shop: string, professional: string | null
     : supabase.from("barberflow_professionals").insert({ ...profile, establishment_id: shop });
   const { data, error } = await query.select("id").maybeSingle();
   if ((error || !data) && object) await bucket.remove([object]);
-  result(path, error || !data ? "falha" : "profissional-salvo");
+  if (error) {
+    console.error("Falha ao salvar profissional", { code: error.code });
+    result(path, error.code === "42501" ? "profissional-permissao" : "profissional-banco");
+  }
+  result(path, !data ? "profissional-permissao" : "profissional-salvo");
 }
 
 export async function saveAssignments(shop: string, professional: string, delegated: boolean, form: FormData) {

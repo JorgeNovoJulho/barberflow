@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
+import { clientPhotoLinks } from "../../../../lib/client-photos";
 import { supabaseServer } from "../../../../lib/supabase";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { authOrigin } from "../../../../lib/auth-path";
@@ -39,6 +40,7 @@ export default async function Clients({ params, searchParams }: {
     shop, search_text: search, return_days: returnDays, sort_by: sort,
   });
   const clients = (data ?? []) as DirectoryClient[];
+  const photos = await clientPhotoLinks(supabase, clients);
   const origin = authOrigin();
   const bookingLink = establishment.published && establishment.slug && origin.startsWith("https://")
     ? new URL(`/estabelecimento/${establishment.slug}/agendar`, origin).href : "";
@@ -88,7 +90,7 @@ export default async function Clients({ params, searchParams }: {
           <div><dt>Atendimentos concluídos</dt><dd>{client.visits}</dd></div>
           <div><dt>Total em comandas fechadas</dt><dd>{bookingCurrency.format(client.billed_cents / 100)}</dd></div>
         </dl>
-        <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} /></details>
+        <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
         <Link href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + "#historico"}>Ver histórico</Link>
         {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
       </li>;

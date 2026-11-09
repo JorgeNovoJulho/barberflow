@@ -1,6 +1,8 @@
 export type ShowcaseProduct = {
   id: string;
   shop_id: string;
+  sku: string;
+  total_count: number;
   name: string;
   description: string;
   price_cents: number;

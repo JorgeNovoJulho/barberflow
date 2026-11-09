@@ -19,7 +19,7 @@ const feedback: Record<string, string> = {
 const amount = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 export default async function BillingAdmin({ searchParams }: { searchParams: Promise<{ busca?: string; estado?: string }> }) {
-  const supabase = await requireMaster();
+  const supabase = await requireMaster("/gestao-master/assinaturas");
   const { busca, estado } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [settings, businesses, pending] = await Promise.all([
