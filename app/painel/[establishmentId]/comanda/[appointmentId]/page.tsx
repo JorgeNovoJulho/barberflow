@@ -6,6 +6,7 @@ import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
 import { closeOrder, setOrderProduct } from "../../estoque/actions";
 import { StockFeedback } from "../../estoque/feedback";
+import { CollectPayment } from "./collect-payment";
 import { closedAtLabel, orderPage, orderPeriod, orderTab } from "../../comandas/filters";
 
 const paymentMethods: Record<string, string> = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Transferência", other: "Outro" };
@@ -19,7 +20,7 @@ function money(cents: number) {
 
 export default async function Order({ params, searchParams }: {
   params: Promise<{ establishmentId: string; appointmentId: string }>;
-  searchParams: Promise<{ estado?: string; periodo?: string; pagina?: string; aba?: string }>;
+  searchParams: Promise<{ estado?: string; periodo?: string; pagina?: string; aba?: string; pagamento?: string }>;
 }) {
   const { establishmentId: shop, appointmentId } = await params;
   if (!isUuid(shop) || !isUuid(appointmentId)) notFound();
@@ -39,9 +40,14 @@ export default async function Order({ params, searchParams }: {
     supabase.from("barberflow_receipts").select("service_cents,products_cents,total_cents,closed_at").eq("establishment_id", shop).eq("appointment_id", appointmentId).maybeSingle(),
     supabase.from("barberflow_professionals").select("name").eq("establishment_id", shop).eq("id", appointment.professional_id).maybeSingle(),
   ]);
-  const paymentResult = receipt.data ? await supabase.rpc("barberflow_order_payments", { shop, appointment: appointmentId }) : null;
+
+  const [paymentResult, pix, cards] = receipt.data ? await Promise.all([
+    supabase.rpc("barberflow_order_payments", { shop, appointment: appointmentId }),
+    supabase.rpc("barberflow_business_pix", { shop }),
+    supabase.rpc("barberflow_card_status", { shop, receipt: appointmentId }),
+  ]) : [];
   const payments = paymentResult?.data as Payments | null | undefined;
-  const { estado, periodo, pagina, aba } = await searchParams;
+  const { estado, periodo, pagina, aba, pagamento } = await searchParams;
   const returnQuery = new URLSearchParams({ aba: orderTab(aba ?? (receipt.data ? "fechadas" : "abertas")),
     periodo: orderPeriod(periodo), pagina: String(orderPage(pagina)) });
   const items = lines.data ?? [];
@@ -138,7 +144,7 @@ export default async function Order({ params, searchParams }: {
       })}</ul> : <p className="card">Nenhum produto adicionado.</p>}
       </div>
       </div>
-      {receipt.data && <section className="card panel-form">
+      {receipt.data && <section className="card panel-form" id="recebimento">
         <h2>Pagamentos</h2>
         {paymentResult?.error ? <p role="alert">Não foi possível consultar os pagamentos.</p>
           : !payments ? <p><Link href={`/painel/${shop}/financeiro`}>Desbloquear o Financeiro para consultar</Link></p>
@@ -147,6 +153,9 @@ export default async function Order({ params, searchParams }: {
               <div><dt>Recebido</dt><dd>{money(payments.received_cents)}</dd></div>
               <div><dt>Saldo em aberto</dt><dd>{money(total - payments.received_cents)}</dd></div>
             </dl>
+            {pix?.error || cards?.error ? <p role="alert">Não foi possível consultar as opções de cobrança.</p>
+              : <CollectPayment shop={shop} receipt={appointmentId} balance={total - payments.received_cents}
+                pix={pix?.data ?? null} cards={cards?.data ?? null} status={pagamento} />}
             {payments.payments.length ? <ul>{payments.payments.map((payment) => <li key={payment.id}>
               <strong>{money(payment.amount_cents)} · {paymentMethods[payment.method] ?? payment.method}</strong>
               <p>Registrado em {closedAtLabel(payment.recorded_at)}</p>

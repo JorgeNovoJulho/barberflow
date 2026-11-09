@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
-import { pixLabel, pixTransactionId } from "../../../../lib/pix";
+import { pixTransactionId } from "../../../../lib/pix";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { formatShowcaseDate, showcaseStatus } from "../../../../lib/showcase";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { disableShowcasePix, saveShowcasePix, updateShowcaseOrder } from "./actions";
+import { updateShowcaseOrder } from "./actions";
 
 const feedback: Record<string, string> = {
-  pix: "Dados do Pix salvos. Produtos habilitados na vitrine já podem ser comprados na página publicada.",
-  pausado: "Novas compras pausadas. Os pedidos existentes continuam disponíveis para conferência.",
   pago: "Pix confirmado. Estoque e caixa atualizados. Aviso de separação registrado.",
   atualizado: "Pedido atualizado.",
   invalido: "Confira os campos preenchidos.",
@@ -31,16 +29,13 @@ export default async function ShowcaseOrders({ params, searchParams }: {
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/vitrine` }));
-  const business = await supabase.from("barberflow_establishments").select("name,city")
+  const business = await supabase.from("barberflow_establishments").select("name")
     .eq("id", shop).eq("owner_id", user.id).maybeSingle();
   if (business.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business.data) notFound();
-  const [pix, orders] = await Promise.all([
-    supabase.from("barberflow_showcase_pix").select("pix_key,merchant,city").eq("establishment_id", shop).maybeSingle(),
-    supabase.from("barberflow_showcase_orders")
+  const orders = await supabase.from("barberflow_showcase_orders")
       .select("id,buyer_name,product_name,quantity,total_cents,status,created_at,expires_at,bank_reference,read_at")
-      .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(100),
-  ]);
+      .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(100);
   const { estado } = await searchParams;
   const purchases = (orders.data ?? []) as Order[];
   const needsSeparation = purchases.filter((order) => order.status === "paid");
@@ -86,18 +81,8 @@ export default async function ShowcaseOrders({ params, searchParams }: {
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     <section className="card panel-form">
       <h2>Pix da vitrine</h2>
-      <p>Cadastre a chave da conta que recebe os pagamentos do estabelecimento. Confirme cada crédito pelo extrato antes da separação.</p>
-      {pix.error ? <p role="alert">Não foi possível carregar a configuração do Pix.</p> : <>
-        <form className="account-form" action={saveShowcasePix.bind(null, shop)}>
-          <label>Chave Pix <input name="key" maxLength={77} required defaultValue={pix.data?.pix_key} /></label>
-          <label>Nome do recebedor <input name="merchant" maxLength={25} required defaultValue={pix.data?.merchant ?? pixLabel(business.data.name, 25)} /></label>
-          <label>Cidade do recebedor <input name="city" maxLength={15} required defaultValue={pix.data?.city ?? pixLabel(business.data.city, 15)} /></label>
-          <SubmitButton>Salvar dados do Pix</SubmitButton>
-        </form>
-        {pix.data && <form action={disableShowcasePix.bind(null, shop)}>
-          <button type="submit" className="secondary">Pausar novas compras</button>
-        </form>}
-      </>}
+      <p>As compras usam a conta Pix geral do estabelecimento.</p>
+      <Link className="secondary" href={'/painel/' + shop + '/financeiro/pagamentos'}>Configurar recebimentos no Financeiro</Link>
     </section>
     <h2>Pagos para separar</h2>
     {orders.error ? <p role="alert">Não foi possível carregar os pedidos.</p>

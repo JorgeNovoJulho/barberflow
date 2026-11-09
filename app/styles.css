@@ -514,3 +514,7 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 .showcase-order { min-width: 0; overflow-wrap: anywhere; }
 .showcase-pix-code { display: grid; gap: .35rem; margin-block: .75rem; }
 .showcase-pix-code textarea { width: 100%; resize: vertical; }
+
+.collection-options { display: grid; gap: 1rem; }
+.collection-options form + form { margin-block-start: .65rem; }
+.payment-qr { display: block; max-width: 100%; height: auto; border-radius: .5rem; }

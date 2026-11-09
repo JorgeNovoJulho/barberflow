@@ -50,11 +50,15 @@ export default async function Finance({ params, searchParams }: {
   const { estado, guia } = await searchParams;
   const guide = financeGuide(guia);
   const setup = access.data === "setup";
-  const [result, entriesResult] = access.data === "unlocked" ? await Promise.all([
+  const [result, entriesResult, controls] = access.data === "unlocked" ? await Promise.all([
     supabase.rpc("barberflow_receivables", { shop }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
-  ]) : [null, null];
+    supabase.rpc("barberflow_card_controls", { shop }),
+  ]) : [null, null, null];
   const ledger = result?.data as Ledger | null;
   const entries = entriesResult?.data as FinanceEntries | null;
+  const cardControls = (controls?.data ?? []) as { receipt_id: string; payment_id: string | null }[];
+  const openCardCharges = new Set(cardControls.filter((row) => !row.payment_id).map((row) => row.receipt_id));
+  const integratedPayments = new Set(cardControls.map((row) => row.payment_id));
   return <section className="container section">
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link>
@@ -74,6 +78,7 @@ export default async function Finance({ params, searchParams }: {
       </div> : <>
         <form action={lockFinance.bind(null, shop)}><SubmitButton>Bloquear financeiro</SubmitButton></form>
         <nav className="account-links" aria-label="Financeiro">
+          <Link className="secondary" href={'/painel/' + shop + '/financeiro/pagamentos'}>Configurar Pix e cartões</Link>
           <Link className="secondary" href={`/painel/${shop}/financeiro/relatorios`}>Relatórios e fechamentos</Link>
           <Link className="secondary" href={`/painel/${shop}/financeiro/desempenho`}>Desempenho</Link>
           <Link href="?guia=fixed#lancamentos">Contas a pagar</Link>
@@ -88,6 +93,7 @@ export default async function Finance({ params, searchParams }: {
         {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={saoPauloToday()} />}
         <h2 className="panel-form" id="comandas">Contas a receber de comandas</h2>
         <p>Até 100 comandas, com pendências primeiro. Os totais consideram todas as comandas.</p>
+        {controls?.error && <p role="alert">Não foi possível verificar as cobranças integradas. Atualize antes de alterar um recebimento.</p>}
         {ledger.bills.length ? <ul className="cards">{ledger.bills.map((bill) => {
           const remaining = bill.total_cents - bill.received_cents;
           return <li className="card" key={bill.appointment_id}>
@@ -97,7 +103,9 @@ export default async function Finance({ params, searchParams }: {
               <div><dt>Recebido</dt><dd>{money(bill.received_cents)}</dd></div>
               <div><dt>Em aberto</dt><dd>{money(remaining)}</dd></div>
             </dl>
-            {remaining > 0 && <details><summary>Registrar recebimento</summary>
+            <p><Link href={'/painel/' + shop + '/comanda/' + bill.appointment_id + '#recebimento'}>Abrir comanda e opções de pagamento</Link></p>
+            {openCardCharges.has(bill.appointment_id) && <p>Consulte a cobrança por cartão em aberto na comanda.</p>}
+            {remaining > 0 && !controls?.error && !openCardCharges.has(bill.appointment_id) && <details><summary>Registrar recebimento</summary>
               <form className="account-form" action={recordPayment.bind(null, shop, bill.appointment_id, crypto.randomUUID())}>
                 <label>Valor recebido (R$) <input name="amount" inputMode="decimal" required defaultValue={(remaining / 100).toFixed(2).replace(".", ",")} /></label>
                 <label>Forma de pagamento <select name="method" required defaultValue="">
@@ -112,7 +120,8 @@ export default async function Finance({ params, searchParams }: {
                 <strong>{money(payment.amount_cents)} · {methods[payment.method]}</strong>
                 <p>{date(payment.recorded_at)}</p>
                 {payment.reversed_at ? <p>Estornado em {date(payment.reversed_at)} · {payment.reversal_reason}</p>
-                  : <details><summary>Estornar recebimento</summary>
+                  : integratedPayments.has(payment.id) ? <p>Cartão integrado. Solicite o estorno no Mercado Pago.</p>
+                  : controls?.error || openCardCharges.has(bill.appointment_id) ? null : <details><summary>Estornar recebimento</summary>
                     <form className="account-form" action={reversePayment.bind(null, shop, payment.id)}>
                       <label>Motivo <input name="reason" maxLength={240} required /></label>
                       <SubmitButton>Confirmar estorno</SubmitButton>

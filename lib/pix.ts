@@ -1,3 +1,11 @@
+export function normalizePixKey(raw: string) {
+  const value = raw.trim();
+  if (value.length > 77) return null;
+  if (/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(value)) return value.toLowerCase();
+  if (/^[!-~]+$/.test(value) && /^[^@]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)) return value.toLowerCase();
+  const normalized = value.replace(/[()./\s-]/g, "");
+  return /^(?:\d{11}|\d{14}|\+[1-9]\d{7,14})$/.test(normalized) ? normalized : null;
+}
 export function pixLabel(value: string, limit: number) {
   return value.normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9 .-]/gi, " ").replace(/\s+/g, " ")
     .trim().toUpperCase().slice(0, limit).trimEnd();

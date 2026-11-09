@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid, parsePrice } from "../../../../lib/establishments";
-import { pixLabel } from "../../../../lib/pix";
+
 import { supabaseServer } from "../../../../lib/supabase";
 
 async function showcaseContext(shop: string) {
@@ -15,22 +15,6 @@ async function showcaseContext(shop: string) {
     revalidatePath(`/painel/${shop}`, "layout");
     redirect(path + "?estado=" + state);
   } };
-}
-
-export async function saveShowcasePix(shop: string, form: FormData) {
-  const { supabase, finish } = await showcaseContext(shop);
-  const pix_key = String(form.get("key") ?? "").trim();
-  const merchant = pixLabel(String(form.get("merchant") ?? ""), 25);
-  const city = pixLabel(String(form.get("city") ?? ""), 15);
-  if (!/^[\x21-\x7e]{1,77}$/.test(pix_key) || !merchant || !city) finish("invalido");
-  const { error } = await supabase.from("barberflow_showcase_pix").upsert({ establishment_id: shop, pix_key, merchant, city });
-  finish(error ? "falha" : "pix");
-}
-
-export async function disableShowcasePix(shop: string) {
-  const { supabase, finish } = await showcaseContext(shop);
-  const { error } = await supabase.from("barberflow_showcase_pix").delete().eq("establishment_id", shop);
-  finish(error ? "falha" : "pausado");
 }
 
 export async function updateShowcaseOrder(shop: string, order: string, operation: "confirm" | "ready" | "collected" | "read", form: FormData) {

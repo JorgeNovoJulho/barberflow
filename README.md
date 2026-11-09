@@ -54,3 +54,29 @@ O domínio previsto para produção é `topbarberflow.com.br`. Na implantação,
 configure o DNS no provedor de hospedagem, use
 `BARBERFLOW_ORIGIN=https://topbarberflow.com.br` e autorize
 `https://topbarberflow.com.br/auth/callback` no Supabase Auth.
+
+## Atualização local no Windows
+
+Use PowerShell 7 e execute npm run release:local para recompilar e trocar a
+versão servida na porta 3000. A compilação ocorre em uma pasta separada.
+Arquivos estáticos da versão anterior continuam disponíveis para abas já
+abertas. A troca só é aceita após a verificação da página inicial e de seu CSS.
+Para migrar um servidor BARBERFLOW já iniciado manualmente, confira quem está
+usando a porta e execute npm run release:local -- -ReplaceLegacy uma vez.
+
+## Recebimentos de estabelecimentos
+
+Em Financeiro, desbloqueie a sessão e abra Configurar Pix e cartões. A conta
+Pix é compartilhada pela vitrine e pelas comandas. A comanda fechada gera QR
+e Pix Copia e Cola com o saldo pendente. Registre o crédito após a conferência
+do extrato.
+
+Para cartões, configure SUPABASE_SERVICE_ROLE_KEY e BARBERFLOW_PAYMENT_SECRET
+somente no servidor. Gere a segunda variável com
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+e preserve a chave entre implantações. O Access Token informado no painel
+é criptografado com essa chave. Valide primeiro com uma conta de teste
+brasileira do Mercado Pago. Depois de pagar no checkout, use Consultar
+pagamento no Mercado Pago na comanda. Pagamentos de teste não baixam o caixa.
+A conciliação compara a referência, a conta, a moeda, o valor e o meio de
+pagamento. Estornos de cartões integrados devem ser tratados no provedor.
