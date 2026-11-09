@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 
-export async function saveClient(shop: string, client: string | null, form: FormData) {
+export async function saveClient(shop: string, client: string | null, team: boolean, form: FormData) {
   if (!isUuid(shop) || (client !== null && !isUuid(client))) redirect("/painel");
-  const path = `/painel/${shop}/clientes`;
+  const path = team ? `/equipe/${shop}/clientes` : `/painel/${shop}/clientes`;
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));

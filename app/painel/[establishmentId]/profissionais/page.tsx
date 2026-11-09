@@ -121,9 +121,10 @@ export default async function Professionals({ params, searchParams }: {
           <TeamInvite shop={shop} professionals={(professionals.data ?? []).filter((person) => person.active)} />
         </details>
         {team.error ? <p role="alert">Não foi possível consultar os convites.</p> : team.data?.length ? <ul className="cards">
-          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; manage_all: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
+          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; manage_all: boolean; manage_clients: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
             <h3>{member.email}</h3>
-            <p>{member.accepted_at ? "Aceito" : Date.parse(member.expires_at) <= Date.now() ? "Expirado" : "Pendente"} · {member.manage_all ? "Gerencia todas as agendas" : member.see_all ? "Visualiza todas as agendas" : "Gerencia a agenda vinculada"}</p>
+            <p>{member.accepted_at ? "Aceito" : Date.parse(member.expires_at) <= Date.now() ? "Expirado" : "Pendente"} · {member.manage_all ? "Gerencia todas as agendas" : member.see_all ? "Visualiza todas as agendas" : member.professional_id ? "Gerencia a agenda vinculada" : "Sem acesso à agenda"}</p>
+            {member.manage_clients && <p>Gerencia a base de clientes.</p>}
             <p>Vínculo: {professionals.data?.find((person) => person.id === member.professional_id)?.name ?? "Nenhum"}</p>
             <form action={revokeTeamAccess.bind(null, shop, member.id)}><SubmitButton>Revogar acesso</SubmitButton></form>
           </li>)}

@@ -5,25 +5,13 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { authOrigin } from "../../../../lib/auth-path";
 import { whatsappUrl } from "../../../../lib/business-profile";
-import { SubmitButton } from "../../../auth/submit";
 import { PanelStatus } from "../../status";
-import { saveClient } from "./actions";
+import { ClientForm, type Client } from "./client-form";
 
-type Client = { id: string; name: string; phone: string; preferences: string; notes: string; active: boolean };
 type DirectoryClient = Client & { last_visit: string | null; visits: number; billed_cents: number };
 const returnOptions = [15, 20, 30, 45, 60, 90];
 const sorting = { visit: "Última visita", spend: "Maior faturamento", recent: "Cadastro recente", name: "Nome" };
 
-function ClientForm({ shop, client }: { shop: string; client?: Client }) {
-  return <form className="account-form" action={saveClient.bind(null, shop, client?.id ?? null)}>
-    <label>Nome <input name="name" maxLength={120} required defaultValue={client?.name} /></label>
-    <label>WhatsApp <input name="phone" type="tel" maxLength={30} defaultValue={client?.phone} /></label>
-    <label>Preferências <textarea name="preferences" rows={2} maxLength={1000} defaultValue={client?.preferences} /></label>
-    <label>Observações internas <textarea name="notes" rows={2} maxLength={1000} defaultValue={client?.notes} /></label>
-    {client && <label><input name="active" type="checkbox" defaultChecked={client.active} /> Cliente ativo</label>}
-    <SubmitButton>Salvar cliente</SubmitButton>
-  </form>;
-}
 
 const states: Record<string, string> = {
   pending: "Aguardando confirmação", scheduled: "Agendado", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu",
