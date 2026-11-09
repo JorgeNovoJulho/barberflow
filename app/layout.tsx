@@ -9,6 +9,7 @@ import "@fontsource-variable/plus-jakarta-sans/wght.css";
 import "./styles.css";
 import "./visual.css";
 import "./editorial.css";
+import "./app-polish.css";
 
 export const metadata: Metadata = {
   title: { default: "BARBERFLOW", template: "%s | BARBERFLOW" },
@@ -51,9 +52,11 @@ export default async function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main>{children}</main>
-        <footer className="container footer">
-          <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>
-          <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link></nav>
+        <footer className="footer">
+          <div className="container footer-content">
+            <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>
+            <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link></nav>
+          </div>
         </footer>
       </body>
     </html>

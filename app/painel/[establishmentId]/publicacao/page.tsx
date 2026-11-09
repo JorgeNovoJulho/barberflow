@@ -32,38 +32,64 @@ export default async function Publication({ params, searchParams }: {
   if (!data) notFound();
   const { estado } = await searchParams;
   const profile = readBusinessProfile(data.profile_details);
-  return <section className="container section">
-    <Link href="/painel">Meus estabelecimentos</Link>
-    <p className="eyebrow">{data.name}</p>
-    <h1>Página pública</h1>
-    <nav className="account-links" aria-label="Vitrine e prévia">
-      <Link className="primary" href={'/painel/' + shop + '/publicacao/previa'}>Ver prévia da página</Link>
-      <Link className="secondary" href={'/painel/' + shop + '/vitrine'}>Vendas e Pix da vitrine</Link>
-    </nav>
-    {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
-    <div className="card panel-form">
-      <p>{data.published ? "Publicada no catálogo." : "Página não publicada."}</p>
-      {data.published && <p><Link href={`/estabelecimento/${data.slug}`}>Abrir página pública</Link></p>}
-      {data.published && <ShareProfile title={data.name} path={`/estabelecimento/${data.slug}`} />}
-      <form className="account-form" action={savePublication.bind(null, shop)}>
-        <label>Nome do estabelecimento <input name="name" required maxLength={120} defaultValue={data.name} /></label>
-        <label>Endereço da página <input name="slug" minLength={3} maxLength={80} defaultValue={data.slug ?? ""} placeholder="meu-estudio" /></label>
-        <label>Descrição <textarea name="description" maxLength={1200} rows={4} defaultValue={data.public_description} /></label>
-        <fieldset>
-          <legend>Endereço, contatos e identidade visual</legend>
-          <PostalLookup initial={profile.postalCode} />
-          <label>Cidade <input name="city" maxLength={100} defaultValue={data.city} /></label>
-          {profileFields.filter(({ key }) => key !== "postalCode" && key !== "color").map(({ key, label, max }) => <div key={key}>
-            <label>{key === "address" ? "Rua / logradouro" : label}
-              <input name={key} maxLength={max} defaultValue={profile[key]} />
-            </label>
-            {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} />}
-          </div>)}
+  const fields = (keys: readonly string[]) => profileFields.filter(({ key }) => keys.includes(key)).map(({ key, label, max }) =>
+    <div key={key}>
+      <label>{key === "address" ? "Rua / logradouro" : label}
+        <input name={key} maxLength={max} defaultValue={profile[key]} />
+      </label>
+      {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} />}
+    </div>);
+  const path = "/painel/" + shop;
+
+  return <section className="container section publication-editor">
+    <header className="module-heading">
+      <Link className="module-back" href="/painel">Meus estabelecimentos</Link>
+      <p className="eyebrow">{data.name}</p>
+      <h1>Página pública</h1>
+      <p>Organize a apresentação do estabelecimento e configure como os clientes podem reservar.</p>
+    </header>
+    {estado && Object.hasOwn(feedback, estado) && <p className="publication-feedback" role="status">{feedback[estado]}</p>}
+    <div className="publication-layout">
+      <aside className="card publication-sidebar" aria-labelledby="publication-status">
+        <p className="eyebrow">Visibilidade</p>
+        <h2 id="publication-status">{data.published ? "Página publicada" : "Página em rascunho"}</h2>
+        <p>{data.published ? "Seu perfil está visível no catálogo." : "Use a prévia para conferir o perfil antes de publicar."}</p>
+        <div className="publication-actions">
+          <Link className="primary" href={path + "/publicacao/previa"}>Ver prévia da página</Link>
+          {data.published && <Link className="secondary" href={"/estabelecimento/" + data.slug}>Abrir página pública</Link>}
+          <Link className="secondary" href={path + "/vitrine"}>Vendas e Pix da vitrine</Link>
+          {data.published && <ShareProfile title={data.name} path={"/estabelecimento/" + data.slug} />}
+        </div>
+        <nav className="publication-jump" aria-label="Seções do editor">
+          <a href="#perfil">Perfil</a><a href="#identidade">Identidade e mídia</a><a href="#contato">Endereço e contato</a>
+          <a href="#horarios">Horários</a><a href="#reservas">Reservas online</a>
+        </nav>
+      </aside>
+      <form className="account-form publication-form" action={savePublication.bind(null, shop)}>
+        <section className="card publication-card" id="perfil">
+          <h2>Perfil</h2>
+          <div className="publication-columns">
+            <label>Nome do estabelecimento <input name="name" required maxLength={120} defaultValue={data.name} /></label>
+            <label>Endereço da página <input name="slug" minLength={3} maxLength={80} defaultValue={data.slug ?? ""} placeholder="meu-estudio" /></label>
+          </div>
+          <label>Descrição <textarea name="description" maxLength={1200} rows={4} defaultValue={data.public_description} /></label>
+        </section>
+        <section className="card publication-card" id="identidade">
+          <h2>Identidade e mídia</h2>
+          <div className="publication-columns">{fields(["logo", "cover"])}</div>
+          {fields(["video"])}
           <ProfileColors initial={profile.color} />
           <GalleryEditor shop={shop} initial={profile.gallery ?? []} />
-        </fieldset>
-        <fieldset>
-          <legend>Horário de funcionamento divulgado na página pública</legend>
+        </section>
+        <section className="card publication-card" id="contato">
+          <h2>Endereço e contato</h2>
+          <PostalLookup initial={profile.postalCode} />
+          <div className="publication-columns">
+            <label>Cidade <input name="city" maxLength={100} defaultValue={data.city} /></label>
+            {fields(["address", "number", "complement", "neighborhood", "region", "map", "whatsapp", "instagram", "facebook", "tiktok", "youtube"])}
+          </div>
+        </section>
+        <fieldset className="card publication-card" id="horarios"><legend>Horário de funcionamento</legend>
           {businessDays.map((label, day) => {
             const hours = profile.hours?.[day];
             return <details key={label}>
@@ -79,9 +105,8 @@ export default async function Publication({ params, searchParams }: {
             </details>;
           })}
         </fieldset>
-        <label><input type="checkbox" name="published" defaultChecked={data.published} /> Publicar página e aceitar reservas online</label>
-        <fieldset>
-          <legend>Regras de reserva online</legend>
+
+        <fieldset className="card publication-card" id="reservas"><legend>Regras de reserva online</legend>
           <label><input type="checkbox" name="auto_confirm" defaultChecked={data.auto_confirm} /> Confirmar automaticamente</label>
           <label><input type="checkbox" name="allow_customer_cancel" defaultChecked={data.allow_customer_cancel} /> Permitir cancelamento pelo cliente</label>
           <label><input type="checkbox" name="allow_customer_reschedule" defaultChecked={data.allow_customer_reschedule} /> Permitir remarcação pelo cliente</label>
@@ -95,7 +120,10 @@ export default async function Publication({ params, searchParams }: {
             </select></label>
           </div>
         </fieldset>
-        <SubmitButton>Salvar publicação e regras</SubmitButton>
+        <div className="card publication-save">
+          <label><input type="checkbox" name="published" defaultChecked={data.published} /> Publicar página e aceitar reservas online</label>
+          <SubmitButton>Salvar publicação e regras</SubmitButton>
+        </div>
       </form>
     </div>
   </section>;
