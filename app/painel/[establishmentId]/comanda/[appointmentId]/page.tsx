@@ -6,7 +6,7 @@ import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
 import { closeOrder, setOrderProduct } from "../../estoque/actions";
 import { StockFeedback } from "../../estoque/feedback";
-import { closedAtLabel, orderPage, orderPeriod } from "../../comandas/filters";
+import { closedAtLabel, orderPage, orderPeriod, orderTab } from "../../comandas/filters";
 
 const paymentMethods: Record<string, string> = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Transferência", other: "Outro" };
 type Payments = { received_cents: number; payments: {
@@ -19,7 +19,7 @@ function money(cents: number) {
 
 export default async function Order({ params, searchParams }: {
   params: Promise<{ establishmentId: string; appointmentId: string }>;
-  searchParams: Promise<{ estado?: string; periodo?: string; pagina?: string }>;
+  searchParams: Promise<{ estado?: string; periodo?: string; pagina?: string; aba?: string }>;
 }) {
   const { establishmentId: shop, appointmentId } = await params;
   if (!isUuid(shop) || !isUuid(appointmentId)) notFound();
@@ -41,8 +41,9 @@ export default async function Order({ params, searchParams }: {
   ]);
   const paymentResult = receipt.data ? await supabase.rpc("barberflow_order_payments", { shop, appointment: appointmentId }) : null;
   const payments = paymentResult?.data as Payments | null | undefined;
-  const { estado, periodo, pagina } = await searchParams;
-  const returnQuery = new URLSearchParams({ periodo: orderPeriod(periodo), pagina: String(orderPage(pagina)) });
+  const { estado, periodo, pagina, aba } = await searchParams;
+  const returnQuery = new URLSearchParams({ aba: orderTab(aba ?? (receipt.data ? "fechadas" : "abertas")),
+    periodo: orderPeriod(periodo), pagina: String(orderPage(pagina)) });
   const items = lines.data ?? [];
   const productDetails = new Map((products.data ?? []).map((product) => [product.id, product]));
   const productOptions = (products.data ?? []).filter((product) => product.active && !items.some((line) => line.product_id === product.id));
@@ -56,7 +57,7 @@ export default async function Order({ params, searchParams }: {
 
   return <section className="container section">
     <nav className="account-links" aria-label="Atendimento">
-      {receipt.data && <Link href={`/painel/${shop}/comandas?${returnQuery}`}>Voltar às comandas</Link>}
+      <Link href={`/painel/${shop}/comandas?${returnQuery}`}>Voltar às comandas</Link>
       <Link href={`/painel/${shop}/agenda?dia=${appointment.starts_at.slice(0, 10)}`}>Voltar à agenda</Link>
       <Link href={`/painel/${shop}/estoque`}>Estoque</Link>
     </nav>

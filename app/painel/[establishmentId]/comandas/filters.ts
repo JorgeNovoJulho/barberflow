@@ -10,4 +10,8 @@ export function orderPage(value: unknown) {
   return typeof value === "string" && /^\d{1,7}$/.test(value) && Number(value) >= 1 && Number(value) <= 1000000 ? Number(value) : 1;
 }
 
+export function orderTab(value: unknown) {
+  return value === "abertas" ? "abertas" : "fechadas";
+}
+
 export const closedAtLabel = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
