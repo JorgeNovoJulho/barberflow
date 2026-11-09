@@ -1,4 +1,5 @@
 import { supabaseServer } from "./supabase";
+import type { ServiceMediaPaths } from "./service-media";
 
 export const slugPattern = /^(?=.{3,80}$)[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -9,10 +10,10 @@ export type PublicProfile = {
   segment: string;
   description: string;
   details?: unknown;
-  services: {
+  services: (ServiceMediaPaths & {
     id: string; name: string; description: string; category: string; price_cents: number; duration_minutes: number;
     professionals: { id: string; name: string; photo_url?: string }[];
-  }[];
+  })[];
 };
 
 export async function publicProfile(slug: string) {

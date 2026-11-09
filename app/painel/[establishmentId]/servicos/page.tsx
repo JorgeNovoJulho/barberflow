@@ -19,7 +19,7 @@ export default async function Services({ params, searchParams }: {
   if (!establishment) notFound();
 
   const { data: services, error } = await supabase.from("barberflow_services")
-    .select("id,name,description,category,price_cents,duration_minutes,active,display_order")
+    .select("id,name,description,category,price_cents,duration_minutes,active,display_order,photo_path,video_path").is("deleted_at", null)
     .eq("establishment_id", establishmentId).order("active", { ascending: false }).order("display_order").order("name").order("id");
   const { estado } = await searchParams;
 

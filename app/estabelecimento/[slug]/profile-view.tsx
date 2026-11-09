@@ -1,3 +1,5 @@
+import { serviceMediaUrls } from "../../../lib/service-media";
+import { ServiceMedia } from "../../service-media";
 import Link from "next/link";
 import { Showcase } from "./showcase";
 import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
@@ -21,6 +23,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
   const reviews = (reviewResult?.data ?? []) as { id: string; rating: number; comment: string; author: string; created_at: string }[];
   const slots = new Map(((slotResult?.data ?? []) as { professional_id: string; slot: string }[])
     .map(({ professional_id, slot }) => [professional_id, slot]));
+  const mediaUrls = await serviceMediaUrls(profile.services);
   const details = readBusinessProfile(profile.details);
   const color = details.color && /^#[0-9a-f]{6}$/i.test(details.color) ? details.color : undefined;
   const cover = httpsUrl(details.cover);
@@ -114,6 +117,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine }: {
     <h2>Serviços</h2>
     {profile.services.length ? <ul className="cards">{profile.services.map((service) => <li key={service.id} className="card">
       <h3>{service.name}</h3>
+      <ServiceMedia service={service} urls={mediaUrls} />
       {service.category && <p className="eyebrow">{service.category}</p>}
       <p><strong className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</strong> · {service.duration_minutes} min</p>
       {service.description && <p>{service.description}</p>}

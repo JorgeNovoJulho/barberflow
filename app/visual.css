@@ -223,3 +223,8 @@ dl.cards:has(> .dashboard-metric) { align-items: stretch; grid-template-columns:
 .finance-password-input input:not([type="radio"], [type="checkbox"]) { margin: 0; }
 .finance-password-recovery { margin-block-start: .65rem; border-bottom: 0; }
 .finance-password-recovery .account-form { margin-block-start: .75rem; }
+
+.service-media { display: grid; gap: .45rem; margin-block: .5rem .8rem; }
+.service-media img, .service-media video { display: block; width: 100%; max-height: 14rem; aspect-ratio: 16 / 9; border-radius: .65rem; background: #151928; }
+.service-media img { object-fit: cover; }
+.service-media video { object-fit: contain; }

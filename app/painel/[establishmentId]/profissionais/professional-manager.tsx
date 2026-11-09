@@ -98,7 +98,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     supabase.from("barberflow_professionals").select("id,name,description,active,photo_url,commission_bps,product_commission_bps,inherit_business_hours,instagram,facebook,tiktok,youtube,whatsapp")
       .eq("establishment_id", shop).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     delegated ? supabase.rpc("barberflow_team_assignment_services", { shop })
-      : supabase.from("barberflow_services").select("id,name,active").eq("establishment_id", shop).order("name"),
+      : supabase.from("barberflow_services").select("id,name,active").eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_professional_hours").select("professional_id,weekday,starts_at,ends_at,break_start,break_end").eq("establishment_id", shop),
     delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members", { shop }),

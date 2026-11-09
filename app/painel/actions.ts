@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { isSegment, isUuid, parsePrice } from "../../lib/establishments";
 import { supabaseServer } from "../../lib/supabase";
+import { productImageLimit, productImageTypes, productVideoTypes } from "../../lib/product-media";
+import { serviceMediaBucket, serviceVideoLimit } from "../../lib/service-media";
 
 function field(data: FormData, key: string) {
   return String(data.get(key) ?? "").trim();
@@ -46,11 +48,38 @@ export async function saveService(establishmentId: string, serviceId: string | n
     || !Number.isInteger(display_order) || display_order < 0 || display_order > 9999
     || (serviceId !== null && !isUuid(serviceId))) finish(path, "invalido");
 
-  const fields = { name, description, category, price_cents: price, duration_minutes: minutes, display_order };
+  const media = [
+    { kind: "photo", column: "photo_path", file: data.get("photo"), types: productImageTypes, limit: productImageLimit },
+    { kind: "video", column: "video_path", file: data.get("video"), types: productVideoTypes, limit: serviceVideoLimit },
+  ] as const;
+  for (const { file, types, limit } of media) {
+    if (file instanceof File && file.size && (file.size > limit || !types.includes(file.type))) finish(path, "servico-midia-invalida");
+  }
+  const bucket = supabase.storage.from(serviceMediaBucket);
+  const uploaded: string[] = [];
+  const mediaFields: { photo_path?: string; video_path?: string } = {};
+  for (const { kind, column, file } of media) {
+    if (file instanceof File && file.size) {
+      const object = `${establishmentId}/${crypto.randomUUID()}-${kind}`;
+      const { error } = await bucket.upload(object, file, { contentType: file.type });
+      if (error) {
+        if (uploaded.length) await bucket.remove(uploaded);
+        finish(path, "servico-midia-falha");
+      }
+      uploaded.push(object);
+      mediaFields[column] = object;
+    } else if (data.get(`remove_${kind}`) === "on") {
+      mediaFields[column] = "";
+    }
+  }
+  const fields = { name, description, category, price_cents: price, duration_minutes: minutes, display_order, ...mediaFields };
   const query = serviceId
-    ? supabase.from("barberflow_services").update(fields).eq("id", serviceId).eq("establishment_id", establishmentId)
+    ? supabase.from("barberflow_services").update(fields).eq("id", serviceId).eq("establishment_id", establishmentId).is("deleted_at", null)
     : supabase.from("barberflow_services").insert({ ...fields, establishment_id: establishmentId });
   const { data: saved, error } = await query.select("id").maybeSingle();
+  if (uploaded.length && ((!error && !saved) || error?.code.startsWith("23") || error?.code === "42501")) {
+    await bucket.remove(uploaded);
+  }
   finish(path, error || !saved ? "falha" : "salvo");
 }
 
@@ -59,8 +88,16 @@ export async function changeServiceAvailability(establishmentId: string, service
   const path = `/${team ? "equipe" : "painel"}/${establishmentId}/servicos`;
   const supabase = await authenticated(path);
   const { data, error } = await supabase.from("barberflow_services")
-    .update({ active }).eq("id", serviceId).eq("establishment_id", establishmentId).select("id").maybeSingle();
+    .update({ active }).eq("id", serviceId).eq("establishment_id", establishmentId).is("deleted_at", null).select("id").maybeSingle();
   finish(path, error || !data ? "falha" : active ? "ativado" : "arquivado");
+}
+
+export async function deleteService(establishmentId: string, serviceId: string, team: boolean) {
+  if (!isUuid(establishmentId) || !isUuid(serviceId)) redirect("/painel");
+  const path = `/${team ? "equipe" : "painel"}/${establishmentId}/servicos`;
+  const supabase = await authenticated(path);
+  const { data, error } = await supabase.rpc("barberflow_delete_service", { shop: establishmentId, service: serviceId });
+  finish(path, error || !data ? "falha" : "servico-excluido");
 }
 
 export async function moveService(establishmentId: string, serviceId: string, neighborId: string, step: -1 | 1, team: boolean) {

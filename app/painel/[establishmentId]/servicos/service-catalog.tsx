@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { SubmitButton } from "../../../auth/submit";
-import { changeServiceAvailability, moveService, saveService } from "../../actions";
+import { changeServiceAvailability, deleteService, moveService, saveService } from "../../actions";
 import { PanelStatus } from "../../status";
+import { ServiceMedia } from "../../../service-media";
+import { serviceMediaUrls, type ServiceMediaPaths } from "../../../../lib/service-media";
+import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-type Service = {
+type Service = ServiceMediaPaths & {
   id: string;
   name: string;
   description: string;
@@ -21,6 +24,15 @@ function ServiceForm({ establishmentId, service, team }: { establishmentId: stri
     <label>Nome <input name="name" required maxLength={120} defaultValue={service?.name} /></label>
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={service?.description} /></label>
     <label>Categoria <input name="category" maxLength={80} defaultValue={service?.category} /></label>
+    <fieldset>
+      <legend>Foto e vídeo</legend>
+      <label>{service?.photo_path ? "Substituir foto" : "Enviar foto"} <input type="file" name="photo" accept={productImageTypes.join(",")} /></label>
+      <small>JPG, PNG, WebP ou AVIF, até 5 MB.</small>
+      {service?.photo_path && <label><input type="checkbox" name="remove_photo" /> Remover foto salva</label>}
+      <label>{service?.video_path ? "Substituir vídeo" : "Enviar vídeo"} <input type="file" name="video" accept={productVideoTypes.join(",")} /></label>
+      <small>MP4 ou WebM, até 15 MB. Os arquivos são enviados ao salvar.</small>
+      {service?.video_path && <label><input type="checkbox" name="remove_video" /> Remover vídeo salvo</label>}
+    </fieldset>
     <div className="form-columns">
       <label>Valor (R$) <input name="price" inputMode="decimal" required placeholder="0,00"
         defaultValue={service ? (service.price_cents / 100).toFixed(2).replace(".", ",") : undefined} /></label>
@@ -31,9 +43,10 @@ function ServiceForm({ establishmentId, service, team }: { establishmentId: stri
   </form>;
 }
 
-export function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false }: {
+export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false }: {
   establishmentId: string; name: string; services: Service[]; failed: boolean; estado?: string; team?: boolean;
 }) {
+  const urls = await serviceMediaUrls(services);
   return <section className="container section">
     <Link href={team ? `/equipe/${establishmentId}` : "/painel"}>{team ? "Voltar à equipe" : "Meus estabelecimentos"}</Link>
     <p className="eyebrow">{name}</p>
@@ -46,6 +59,7 @@ export function ServiceCatalog({ establishmentId, name, services, failed, estado
       {services?.length ? <ul className="cards">
         {services.map((service: Service, index) => <li className="card" key={service.id}>
           <h3>{service.name}</h3>
+          <ServiceMedia service={service} urls={urls} />
           <p>{currency.format(service.price_cents / 100)} · {service.duration_minutes} min · {service.active ? "Ativo" : "Arquivado"}</p>
           {service.category && <p>{service.category}</p>}
           {service.description && <p>{service.description}</p>}
@@ -63,6 +77,13 @@ export function ServiceCatalog({ establishmentId, name, services, failed, estado
           <form className="account-links" action={changeServiceAvailability.bind(null, establishmentId, service.id, !service.active, team)}>
             <SubmitButton>{service.active ? "Arquivar serviço" : "Reativar serviço"}</SubmitButton>
           </form>
+          <details>
+            <summary>Excluir serviço</summary>
+            <p>O serviço sairá do catálogo. Agendamentos e registros anteriores serão preservados.</p>
+            <form className="account-links" action={deleteService.bind(null, establishmentId, service.id, team)}>
+              <SubmitButton>Confirmar exclusão</SubmitButton>
+            </form>
+          </details>
         </li>)}
       </ul> : <p>Nenhum serviço cadastrado.</p>}
     </>}
