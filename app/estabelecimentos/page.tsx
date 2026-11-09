@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { httpsUrl } from "../../lib/business-profile";
 import { isSegment, segments } from "../../lib/establishments";
 import { supabaseServer } from "../../lib/supabase";
 
-type Listing = { slug: string; name: string; city: string; segment: string };
+type Listing = { slug: string; name: string; city: string; segment: string; logo: string | null; cover: string | null };
 
 export default async function Directory({ searchParams }: { searchParams: Promise<{ busca?: string; segmento?: string }> }) {
   const { busca, segmento } = await searchParams;
@@ -29,12 +30,26 @@ export default async function Directory({ searchParams }: { searchParams: Promis
     {result?.error || !result ? <p role="alert">Não foi possível carregar o catálogo.</p>
       : listings.length ? <>
         <p role="status">{listings.length} {listings.length === 1 ? "estabelecimento encontrado" : "estabelecimentos encontrados"}</p>
-        <ul className="cards">{listings.map((item) => <li key={item.slug} className="card directory-card">
-          <span className="directory-monogram" aria-hidden="true">{item.name.trim().slice(0, 2).toUpperCase()}</span>
-          <p className="eyebrow">{isSegment(item.segment) ? segments[item.segment] : item.segment}</p>
-          <h2>{item.name}</h2><p>{item.city}</p>
-          <Link className="secondary" href={`/estabelecimento/${item.slug}`}>Ver serviços <span aria-hidden="true">↗</span></Link>
-        </li>)}</ul>
+        <ul className="cards directory-results">{listings.map((item) => {
+          const logo = httpsUrl(item.logo ?? undefined);
+          const cover = httpsUrl(item.cover ?? undefined);
+          return <li key={item.slug} className={`card directory-card${cover ? " directory-card-with-cover" : ""}`}>
+            {cover && <img className="directory-banner" src={cover} alt="" loading="lazy" />}
+            <div className="directory-card-content">
+              <div className="directory-brand" aria-hidden="true">
+                <span>{item.name.trim().slice(0, 2).toUpperCase()}</span>
+                {logo && <img src={logo} alt="" loading="lazy" />}
+              </div>
+              <div className="directory-card-title">
+                <p className="eyebrow">{isSegment(item.segment) ? segments[item.segment] : item.segment}</p>
+                <h2>{item.name}</h2>
+                <p>{item.city}</p>
+              </div>
+              <Link className="primary directory-services" href={`/estabelecimento/${item.slug}`}
+                aria-label={`Ver serviços de ${item.name}`}>Ver serviços <span aria-hidden="true">↗</span></Link>
+            </div>
+          </li>;
+        })}</ul>
       </> : <p className="card">Nenhum estabelecimento encontrado. Tente outra cidade, nome ou segmento.</p>}
   </section>;
 }
