@@ -12,7 +12,7 @@ import { generatePurchasePix } from "./actions";
 import { PurchaseUpdates } from "./purchase-updates";
 import { orderProductPhotos } from "../../lib/order-photos";
 import { OrderCardHeading } from "./order-card-heading";
-import { formatShowcaseDate, showcaseStatus } from "../../lib/showcase";
+import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../lib/showcase";
 import { CopyPix } from "../painel/[establishmentId]/assinatura/copy-pix";
 
 type Purchase = Parameters<typeof showcasePix>[0] & {
@@ -90,7 +90,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
           <summary><OrderCardHeading order={order} label={order.shop_name} photo={photos.get(order.establishment_id + "/" + order.product_id)}
             status={expired || (pending && pixExpired) ? "Prazo do Pix encerrado" : showcaseStatus[order.status]} /></summary>
           <div className="order-card-body">
-        {order.status === "denied" && <p>O estabelecimento negou este pedido. Se você já enviou um Pix, fale com a loja e guarde o comprovante.</p>}
+        {order.status === "denied" && <p>Se você já enviou um Pix, fale com a loja e guarde o comprovante.</p>}
         {order.status === "ready" && <p data-feedback="success">Seu pedido está disponível para retirada. Apresente o número abaixo ao estabelecimento.</p>}
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)}</small></p>
@@ -112,6 +112,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         {pending && (expired || pixExpired) && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
           </div>
         </details>
+        {order.status === "denied" && <p className="order-card-body" role="alert" data-feedback="warning">Pedido {showcaseOrderNumber(order.order_number)} negado por {order.shop_name}.</p>}
       </li>;
     }))}</ul> : !result.error && !filterError && <p>Nenhuma compra encontrada com estes filtros. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
     {(page>0 || purchases.length>20) && <nav className="account-links" aria-label="Páginas de compras">{page>0 && <Link href={filters(page-1)}>Anterior</Link>}{purchases.length>20 && <Link href={filters(page+1)}>Próxima</Link>}</nav>}

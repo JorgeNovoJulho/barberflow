@@ -199,7 +199,10 @@ export default async function ClientPage({ searchParams }: {
       {purchaseNotices?.data?.length ? <section className="section">
         <h2>Compras</h2>
         <ul className="cards">{purchaseNotices.data.map((order) => <li className="card" key={order.id}>
-          <Link href={"/minhas-compras?pedido=" + order.id}>{order.status === "denied" ? "Pedido negado pelo estabelecimento" : order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</Link>
+          {order.status === "denied"
+            ? <p role="alert" data-feedback="warning">Pedido de {order.product_name} negado por {order.shop_name}.</p>
+            : <p>{order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</p>}
+          <Link href={"/minhas-compras?pedido=" + order.id}>Ver pedido</Link>
           <p>{order.product_name} · {order.shop_name}</p>
         </li>)}</ul>
       </section> : null}
