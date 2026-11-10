@@ -20,7 +20,11 @@ export const metadata: Metadata = {
 
 export default async function Layout({ children }: { children: ReactNode }) {
   const supabase = await supabaseServer();
-  const user = supabase ? (await supabase.auth.getClaims()).data?.claims.sub : undefined;
+  const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : undefined;
+  const user = claims?.sub;
+  const master = supabase && user && typeof claims.email === "string"
+    && claims.email.toLowerCase() === "jorgericardosalgado@gmail.com"
+    && (await supabase.rpc("barberflow_is_master")).data === true;
   const preference = supabase && user
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
@@ -33,6 +37,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/planos">Planos</Link>
     <Link href="/#duvidas">Dúvidas</Link>
     {user && <Link href="/painel">Meu painel</Link>}
+    {master && <Link className="header-action master-header-link" href="/gestao-master">Painel administrativo</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
     {user && <Link href="/minhas-compras">Minhas compras</Link>}
     {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}

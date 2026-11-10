@@ -98,3 +98,4 @@ Para recuperação de senha iniciada pelo painel master, configure o modelo
 **Reset password** do Supabase Auth com `supabase/templates/recovery.html`.
 O modelo usa o hash de uso único, permitindo ao titular abrir o link em
 outro navegador. A URL de retorno deve ser a mesma cadastrada no Auth.
+Após ativar o SMTP e salvar o modelo, defina `BARBERFLOW_MASTER_RECOVERY_EMAILS=true`.

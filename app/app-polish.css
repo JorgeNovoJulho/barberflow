@@ -191,3 +191,27 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .master-cards .card { margin: 0; }
 .master-cards dt { font-size: .88rem; }
 .master-cards dd { margin: .2rem 0 0; font-size: 1.6rem; font-weight: 800; }
+
+.discovery-steps { margin: .5rem 0 0; padding-inline-start: 1.2rem; }
+.public-profile .profile-tab { color: #fff; border-color: transparent; }
+.public-profile .profile-tab-servicos { background: #4d278b; }
+.public-profile .profile-tab-profissionais { background: #334a72; }
+.public-profile .profile-tab-fotos { background: #17637b; }
+.public-profile .profile-tab-vitrine { background: #87501c; }
+.public-profile .profile-tab-avaliacoes { background: #862b61; }
+.profile-location-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.profile-location-grid:has(> :nth-child(2)) { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.profile-location-grid .panel-form { margin: 0; }
+.profile-map { display: grid; gap: .65rem; grid-template-rows: auto 1fr auto; }
+.profile-map iframe { width: 100%; min-height: 17rem; height: 100%; border: 0; border-radius: .65rem; }
+.public-profile .public-service-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,17rem),1fr)); }
+.public-service-card { display: flex; flex-direction: column; gap: .5rem; }
+.public-service-card :is(h3,p,dl) { margin: 0; }
+.public-service-card .primary { margin-top: auto; align-self: start; }
+.service-facts { display: flex; flex-wrap: wrap; gap: .75rem; }
+.service-facts dd { margin: 0; font-weight: 700; }
+.showcase-buy { width: 100%; margin-top: .6rem; }
+.showcase-card:has(details[open]) .showcase-buy { display: none; }
+.showcase-close { margin-block: .5rem; }
+.showcase-pickup { background: #fff2dc; color: #4d2b12; border-radius: .6rem; padding: .6rem; }
+@media (max-width: 42rem) { .profile-location-grid:has(> :nth-child(2)) { grid-template-columns: 1fr; } }

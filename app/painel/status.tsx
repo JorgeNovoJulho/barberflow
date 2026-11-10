@@ -10,6 +10,7 @@ const messages: Record<string, string> = {
   "ordem-alterada": "Confira a ordem atual do catálogo antes de mover o serviço.",
   ativado: "Serviço reativado.",
   arquivado: "Serviço arquivado.",
+  "profissional-incluido": "Profissional incluído na equipe.",
   "profissional-salvo": "Profissional salvo.",
   "profissional-contatos": "Use um @usuário ou link de perfil do Instagram, WhatsApp com DDD e links HTTPS de Facebook, TikTok ou YouTube.",
   "profissional-permissao": "Sua conta não tem permissão para salvar este profissional.",

@@ -68,10 +68,11 @@ export default async function Home() {
     {settings.discovery && <section className="container editorial-search" aria-labelledby="editorial-search-title">
       <div className="editorial-search-heading">
         <span aria-hidden="true">⌖</span>
-        <div><h2 id="editorial-search-title">{settings.discoveryTitle || "Buscar estabelecimentos"}</h2><p>{settings.discoveryText}</p></div>
+        <div><h2 id="editorial-search-title">{settings.discoveryTitle || "Buscar estabelecimentos"}</h2><p>{settings.discoveryText}</p>
+          <ol className="discovery-steps"><li>Digite sua cidade.</li><li>Clique em Buscar estabelecimentos.</li><li>Abra o estabelecimento escolhido e clique em Agendar horário.</li></ol></div>
       </div>
       <form className="account-form editorial-search-form" action="/estabelecimentos">
-        <label>Cidade ou estabelecimento <input name="busca" maxLength={120} placeholder="Ex.: São Paulo" /></label>
+        <label>Informe sua cidade <input name="busca" maxLength={120} placeholder="Ex.: Votorantim" required /></label>
         <label>Segmento <select name="segmento"><option value="">Todos os segmentos</option>
           {Object.entries(catalogSegments).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select></label>

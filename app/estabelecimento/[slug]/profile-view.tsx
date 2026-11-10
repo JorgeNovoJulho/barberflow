@@ -33,6 +33,10 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
   const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
   const map = httpsUrl(details.map) ?? (details.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined);
+  const mapUrl = map ? new URL(map) : null;
+  const mapEmbed = mapUrl?.hostname === "www.google.com" && mapUrl.pathname === "/maps/embed"
+    ? mapUrl.href
+    : details.address ? "https://www.google.com/maps?" + new URLSearchParams({ q: address, output: "embed" }) : null;
   const whatsapp = whatsappUrl(details.whatsapp);
   const instagram = details.instagram && /^@?[\w.]{1,30}$/.test(details.instagram)
     ? `https://www.instagram.com/${details.instagram.replace(/^@/, "")}/` : undefined;
@@ -76,12 +80,13 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
       </div>
     </header>
     <nav className="account-links profile-sections" aria-label="Nesta página">
-      <Link className="secondary" href="#servicos">Serviços</Link>
-      {!!professionals.length && <Link className="secondary" href="#profissionais">Profissionais</Link>}
-      {!!gallery.length && <Link className="secondary" href="#fotos">Fotos</Link>}
-      <Link className="secondary" href="#vitrine">Vitrine</Link>
-      <Link className="secondary" href="#avaliacoes">Avaliações</Link>
+      <Link className="secondary profile-tab profile-tab-servicos" href="#servicos">Serviços</Link>
+      {!!professionals.length && <Link className="secondary profile-tab profile-tab-profissionais" href="#profissionais">Profissionais</Link>}
+      {!!gallery.length && <Link className="secondary profile-tab profile-tab-fotos" href="#fotos">Fotos</Link>}
+      <Link className="secondary profile-tab profile-tab-vitrine" href="#vitrine">Vitrine</Link>
+      <Link className="secondary profile-tab profile-tab-avaliacoes" href="#avaliacoes">Avaliações</Link>
     </nav>
+    <div className="profile-location-grid">
     {!!Object.keys(details.hours ?? {}).length && <section className="card panel-form">
       <h2>Horário de funcionamento</h2>
       <dl className="order-totals business-hours">
@@ -93,6 +98,12 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
         })}
       </dl>
     </section>}
+    {mapEmbed && <section className="card panel-form profile-map">
+      <h2>Localização</h2>
+      <iframe src={mapEmbed} title={`Mapa de ${profile.name}`} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+      {map && <a href={map} target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>}
+    </section>}
+    </div>
     {video && <section className="card panel-form">
       <h2>Vídeo do estabelecimento</h2>
       <video className="product-media-preview" src={video} controls playsInline preload="metadata" />
@@ -118,13 +129,18 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
     </section>}
     <section className="profile-section" id="servicos">
     <h2>Serviços</h2>
-    {profile.services.length ? <ul className="cards">{profile.services.map((service) => <li key={service.id} className="card">
-      <h3>{service.name}</h3>
+    {profile.services.length ? <ul className="cards public-service-grid">{profile.services.map((service) => <li key={service.id} className="card public-service-card">
       <ServiceMedia service={service} urls={mediaUrls} compact />
       {service.category && <p className="eyebrow">{service.category}</p>}
-      <p><strong className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</strong> · {service.duration_minutes} min</p>
-      {service.description && <p>{service.description}</p>}
-      {previewShop ? null : service.professionals.length ? <Link className="primary" href={`/estabelecimento/${slug}/agendar?servico=${service.id}`}>Ver horários</Link> : <p>Sem profissionais disponíveis para este serviço.</p>}
+      <h3>{service.name}</h3>
+      <p>{service.description || "Descrição não informada."}</p>
+      <dl className="service-facts">
+        <div><dt>Valor</dt><dd className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</dd></div>
+        <div><dt>Duração prevista</dt><dd>{service.duration_minutes} min</dd></div>
+      </dl>
+      <p><strong>Profissionais</strong> {service.professionals.length ? service.professionals.map(person => person.name).join(", ") : "Nenhum profissional vinculado."}</p>
+      {previewShop || !service.professionals.length ? <button type="button" className="primary" disabled>Agendar</button>
+        : <Link className="primary" href={bookingPath + "?servico=" + service.id}>Agendar</Link>}
     </li>)}</ul> : <p>Nenhum serviço publicado.</p>}
     </section>
     <Showcase slug={slug} previewShop={previewShop} status={vitrine} page={produtos} />

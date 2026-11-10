@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "../../lib/supabase";
@@ -31,10 +32,11 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     <p>Acompanhe o pagamento e aguarde o status de retirada antes de ir ao estabelecimento.</p>
     {result.error || focused?.error ? <p role="alert">Não foi possível carregar todas as suas compras.</p> : null}
     {selected && !focused?.data && !focused?.error && <p role="status">Pedido indisponível na sua conta.</p>}
-    {orders.length ? <ul className="cards">{orders.map((order) => {
+    {orders.length ? <ul className="cards">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
       const pix = pending && !expired && user.email_confirmed_at && !user.is_anonymous ? showcasePix(order) : null;
+      const qr = pix ? await QRCode.toDataURL(pix, { width: 240, margin: 4 }) : null;
       return <li className="card panel-form showcase-order" key={order.id} id={`pedido-${order.id}`}>
         <p className="eyebrow">{order.shop_name}</p>
         <h2>{order.product_name}</h2>
@@ -43,7 +45,8 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong></p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · {order.id.slice(0, 8).toUpperCase()}</small></p>
         {pix && <details open={selected === order.id}>
-          <summary>Pagar com Pix Copia e Cola</summary>
+          <summary>Pagar com Pix</summary>
+          {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} />}
           <p>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário e aguarde a conferência do estabelecimento.</p>
           <label className="showcase-pix-code">Código Pix
             <textarea readOnly value={pix} rows={4} spellCheck={false} />
@@ -52,6 +55,6 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         </details>}
         {expired && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
       </li>;
-    })}</ul> : !result.error && <p>Você ainda não tem compras. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
+    }))}</ul> : !result.error && <p>Você ainda não tem compras. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
   </section>;
 }

@@ -1,10 +1,11 @@
+import { ProfessionalSubmission } from "./professional-form";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { PanelStatus } from "../../status";
-import { moveProfessional, saveAssignments, saveProfessional, saveWorkingDay } from "./actions";
+import { moveProfessional, saveAssignments, saveWorkingDay } from "./actions";
 import { httpsUrl } from "../../../../lib/business-profile";
 import { productImageTypes } from "../../../../lib/product-media";
 import { TeamInvite } from "./team-invite";
@@ -17,7 +18,7 @@ type Professional = { id: string; name: string; description: string; active: boo
 type Hours = { professional_id: string; weekday: number; starts_at: string; ends_at: string; break_start: string | null; break_end: string | null };
 
 function ProfessionalForm({ shop, professional, delegated }: { shop: string; professional?: Professional; delegated: boolean }) {
-  return <form className="account-form" action={saveProfessional.bind(null, shop, professional?.id ?? null, delegated)}>
+  return <ProfessionalSubmission shop={shop} professional={professional?.id ?? null} delegated={delegated}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={professional?.name} /></label>
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={professional?.description} /></label>
     <fieldset>
@@ -26,7 +27,7 @@ function ProfessionalForm({ shop, professional, delegated }: { shop: string; pro
       <label>Enviar foto do dispositivo <input name="photo_file" type="file" accept={productImageTypes.join(",")} /></label>
       <small>JPG, PNG, WebP ou AVIF, até 5 MB. A foto é enviada ao salvar.</small>
       <details><summary>Usar link da foto</summary>
-        <label>URL da foto <input name="photo" type="url" maxLength={500} defaultValue={professional?.photo_url} /></label>
+        <label>URL da foto <input name="photo" inputMode="url" maxLength={500} defaultValue={professional?.photo_url} /></label>
       </details>
     </fieldset>
     <fieldset>
@@ -34,9 +35,9 @@ function ProfessionalForm({ shop, professional, delegated }: { shop: string; pro
       <div className="publication-columns">
         <label>Instagram <input name="instagram" maxLength={180} placeholder="@usuario ou link do perfil" defaultValue={professional?.instagram} /></label>
         <label>WhatsApp com DDD <input name="whatsapp" type="tel" maxLength={20} placeholder="(11) 99999-9999" defaultValue={professional?.whatsapp} /></label>
-        <label>Facebook <input name="facebook" type="url" maxLength={500} defaultValue={professional?.facebook} /></label>
-        <label>TikTok <input name="tiktok" type="url" maxLength={500} defaultValue={professional?.tiktok} /></label>
-        <label>YouTube <input name="youtube" type="url" maxLength={500} defaultValue={professional?.youtube} /></label>
+        <label>Facebook <input name="facebook" inputMode="url" maxLength={500} defaultValue={professional?.facebook} /></label>
+        <label>TikTok <input name="tiktok" inputMode="url" maxLength={500} defaultValue={professional?.tiktok} /></label>
+        <label>YouTube <input name="youtube" inputMode="url" maxLength={500} defaultValue={professional?.youtube} /></label>
       </div>
     </fieldset>
     <div className="form-columns">
@@ -45,8 +46,7 @@ function ProfessionalForm({ shop, professional, delegated }: { shop: string; pro
     </div>
     <label><input type="checkbox" name="inherit_business_hours" defaultChecked={professional?.inherit_business_hours} /> Usar o horário de funcionamento do estabelecimento</label>
     {professional && <label><input type="checkbox" name="active" defaultChecked={professional.active} /> Profissional ativo</label>}
-    <SubmitButton>Salvar profissional</SubmitButton>
-  </form>;
+  </ProfessionalSubmission>;
 }
 
 function DayForm({ shop, professional, day, hours, delegated }: { shop: string; professional: string; day: number; hours?: Hours; delegated: boolean }) {
@@ -112,10 +112,11 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     </nav>
     <p className="eyebrow">{businessName}</p>
     <h1>Profissionais</h1>
-    <PanelStatus status={estado} />
+    {estado !== "profissional-incluido" && estado !== "profissional-salvo" && <PanelStatus status={estado} />}
     {[professionals, services, assignments, hours].some((response) => response.error) ? <p role="alert">Não foi possível carregar a equipe.</p> : <>
       <div className="card panel-form"><h2>Novo profissional</h2><ProfessionalForm shop={shop} delegated={delegated} /></div>
-      <h2>Equipe</h2>
+      <h2 id="equipe-profissionais">Equipe</h2>
+      {(estado === "profissional-incluido" || estado === "profissional-salvo") && <PanelStatus status={estado} />}
       {!professionals.data?.length && <p>Nenhum profissional cadastrado.</p>}
       {(professionals.data ?? []).map((professional: Professional, index) => {
         const selected = new Set((assignments.data ?? []).filter((item) => item.professional_id === professional.id).map((item) => item.service_id));

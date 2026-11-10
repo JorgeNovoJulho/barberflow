@@ -31,37 +31,41 @@ async function context(shop: string, professional: string | undefined, delegated
   return { path, supabase };
 }
 
+function optionalHttps(value: string) {
+  return value && !/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? "https://" + value : value;
+}
+
 export async function saveProfessional(shop: string, professional: string | null, delegated: boolean, form: FormData) {
   const { path, supabase } = await context(shop, professional ?? undefined, delegated);
   const name = value(form, "name");
   const description = value(form, "description");
   const photo = form.get("photo_file");
   const upload = photo instanceof File && photo.size > 0 ? photo : null;
-  let photo_url = value(form, "photo");
+  let photo_url = optionalHttps(value(form, "photo"));
   const rawInstagram = value(form, "instagram");
-  const instagramUrl = socialUrl(rawInstagram, ["instagram.com"]);
+  const instagramUrl = socialUrl(optionalHttps(rawInstagram), ["instagram.com"]);
   const instagram = instagramUrl ? new URL(instagramUrl).pathname.replace(/^\/|\/$/g, "") : rawInstagram;
-  const facebook = value(form, "facebook");
-  const tiktok = value(form, "tiktok");
-  const youtube = value(form, "youtube");
+  const facebook = optionalHttps(value(form, "facebook"));
+  const tiktok = optionalHttps(value(form, "tiktok"));
+  const youtube = optionalHttps(value(form, "youtube"));
   const contact = value(form, "whatsapp");
   const whatsapp = contact.replace(/[+()\s-]/g, "");
   const commission_bps = commissionRate(value(form, "commission"));
   const product_commission_bps = commissionRate(value(form, "product_commission"));
   if ((!upload && photo_url && (photo_url.length > 500 || !httpsUrl(photo_url)))
-    || commission_bps === null || product_commission_bps === null) result(path, "invalido");
-  if (!name || name.length > 120 || description.length > 1000) result(path, "invalido");
+    || commission_bps === null || product_commission_bps === null) return "Confira o nome, a descrição, o link da foto e as comissões entre 0 e 100%.";
+  if (!name || name.length > 120 || description.length > 1000) return "Confira o nome, a descrição, o link da foto e as comissões entre 0 e 100%.";
   if ((instagram && !/^@?[A-Za-z0-9_.]{1,30}$/.test(instagram))
     || (facebook && (facebook.length > 500 || !socialUrl(facebook, ["facebook.com", "fb.com"])))
     || (tiktok && (tiktok.length > 500 || !socialUrl(tiktok, ["tiktok.com"])))
     || (youtube && (youtube.length > 500 || !socialUrl(youtube, ["youtube.com", "youtu.be"])))
-    || (contact && !/^(55)?\d{10,11}$/.test(whatsapp))) result(path, "profissional-contatos");
+    || (contact && !/^(55)?\d{10,11}$/.test(whatsapp))) return "Confira o Instagram, o WhatsApp com DDD e os endereços do Facebook, TikTok ou YouTube.";
   const bucket = supabase.storage.from("barberflow-profile-media");
   const object = upload ? `${shop}/professional-photo-${crypto.randomUUID()}` : null;
   if (upload && object) {
-    if (upload.size > productImageLimit || !productImageTypes.includes(upload.type)) result(path, "profissional-imagem");
+    if (upload.size > productImageLimit || !productImageTypes.includes(upload.type)) return "Selecione uma foto JPG, PNG, WebP ou AVIF de até 5 MB.";
     const { error } = await bucket.upload(object, upload, { contentType: upload.type });
-    if (error) result(path, "profissional-upload");
+    if (error) return "Não foi possível enviar a foto. Você pode tentar novamente ou salvar sem a foto.";
     photo_url = bucket.getPublicUrl(object).data.publicUrl;
   }
   const profile = { name, description, photo_url, instagram, facebook, tiktok, youtube, whatsapp, commission_bps, product_commission_bps,
@@ -73,9 +77,11 @@ export async function saveProfessional(shop: string, professional: string | null
   if ((error || !data) && object) await bucket.remove([object]);
   if (error) {
     console.error("Falha ao salvar profissional", { code: error.code });
-    result(path, error.code === "42501" ? "profissional-permissao" : "profissional-banco");
+    return error.code === "42501" ? "Sua conta não tem permissão para salvar este profissional." : "O banco recusou o cadastro. Confira os campos e tente novamente.";
   }
-  result(path, !data ? "profissional-permissao" : "profissional-salvo");
+  if (!data) return "Não foi possível encontrar o profissional para salvar.";
+  revalidatePath(path);
+  return { location: path + (professional ? "?estado=profissional-salvo" : "?estado=profissional-incluido") + "#equipe-profissionais" };
 }
 
 export async function saveAssignments(shop: string, professional: string, delegated: boolean, form: FormData) {

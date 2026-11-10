@@ -9,6 +9,7 @@ const path = "/gestao-master/usuarios";
 
 export async function requestUserRecovery(userId: string) {
   const supabase = await requireMaster(path);
+  if (process.env.BARBERFLOW_MASTER_RECOVERY_EMAILS !== "true") redirect(path + "?estado=smtp");
   if (!isUuid(userId)) redirect(path + "?estado=falha");
   const { data: email, error } = await supabase.rpc("barberflow_master_recovery_email", { target_user: userId });
   if (error || typeof email !== "string") redirect(path + "?estado=falha");
