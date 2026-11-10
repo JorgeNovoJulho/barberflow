@@ -90,7 +90,7 @@ export default async function Stock({ params, searchParams }: {
       }
     }
   }
-  const activeProducts = catalog.filter(({ active }) => active);
+  const activeProducts = catalog.filter(({ active, stock }) => active && stock > 0);
   const productNames = new Map(catalog.map(({ id, name }) => [id, name]));
   const warningsByProduct = new Map(flagged.map(({ product, warnings }) => [product.id, warnings]));
   return <section className="container section stock-workspace">
@@ -123,12 +123,12 @@ export default async function Stock({ params, searchParams }: {
       </form>
       {mediaUnavailable && <p role="status">Algumas mídias não puderam ser carregadas no catálogo.</p>}
       {searchResult?.error ? <p role="alert">Não foi possível buscar os produtos.</p> : visibleProducts.length ? <ul className="cards">{visibleProducts.map((product) => {
-        const canOffer = Boolean(product.active && product.expires_on && product.expires_on >= today && product.expires_on <= cutoff);
+        const canOffer = Boolean(product.active && product.stock > 0 && product.expires_on && product.expires_on >= today && product.expires_on <= cutoff);
         const activeOffer = canOffer && product.promo_until && product.promo_until >= today && product.promo_units && product.promo_cents != null
           && product.promo_cents < product.promo_units * product.price_cents;
         return <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
         <div className="stock-product-top">
-          <span className={`stock-label${product.active ? " stock-label-active" : ""}`}>{product.active ? "À venda" : "Congelado"}</span>
+          <span className={`stock-label${product.active && product.stock > 0 ? " stock-label-active" : ""}`}>{!product.active ? "Congelado manualmente" : product.stock > 0 ? "À venda" : "Congelado · aguardando reposição"}</span>
           {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
         </div>
         <h3>{product.name}</h3>

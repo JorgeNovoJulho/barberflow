@@ -25,8 +25,8 @@ export const showcaseStatus = {
   collected: "Retirado",
 };
 
-export function showcaseOrderNumber(id: string) {
-  return id.toUpperCase();
+export function showcaseOrderNumber(number: number) {
+  return "#" + String(number).padStart(5, "0");
 }
 
 export function formatShowcaseDate(value: string) {

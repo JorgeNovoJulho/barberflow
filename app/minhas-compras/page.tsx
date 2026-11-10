@@ -10,11 +10,13 @@ import { cardAdmin } from "../../lib/card-payments";
 import { SubmitButton } from "../auth/submit";
 import { generatePurchasePix } from "./actions";
 import { PurchaseUpdates } from "./purchase-updates";
-import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../lib/showcase";
+import { orderProductPhotos } from "../../lib/order-photos";
+import { OrderCardHeading } from "./order-card-heading";
+import { formatShowcaseDate, showcaseStatus } from "../../lib/showcase";
 import { CopyPix } from "../painel/[establishmentId]/assinatura/copy-pix";
 
 type Purchase = Parameters<typeof showcasePix>[0] & {
-  asaas_pix: boolean; shop_name: string; product_name: string; quantity: number; unit_price_cents: number;
+  order_number: number; product_id: string; establishment_id: string; product_sku: string; asaas_pix: boolean; shop_name: string; product_name: string; quantity: number; unit_price_cents: number;
   status: keyof typeof showcaseStatus; created_at: string; expires_at: string;
 };
 
@@ -38,7 +40,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     || (!!de && !from) || (!!ate && !to) || (!!from && !!to && from>to);
   const filters = (index:number) => "?" + new URLSearchParams({ pagina:String(index),loja:store,de:from,ate:to,minimo:minimo ?? "",maximo:maximo ?? "" });
   const selected = typeof pedido === "string" && isUuid(pedido) ? pedido : null;
-  const fields = "id,shop_name,product_name,quantity,unit_price_cents,total_cents,status,created_at,expires_at,pix_key,merchant,city,asaas_pix";
+  const fields = "id,order_number,product_id,establishment_id,product_sku,shop_name,product_name,quantity,unit_price_cents,total_cents,status,created_at,expires_at,pix_key,merchant,city,asaas_pix";
   let listing = supabase.from("barberflow_showcase_orders").select(fields).eq("buyer_id",user.id);
   if (store) listing = listing.ilike("shop_name","%"+store.replace(/[\\%_]/g,"\\$&")+"%");
   if (from) listing = listing.gte("created_at",from+"T00:00:00-03:00");
@@ -55,9 +57,13 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
   const purchases = (result.data ?? []) as Purchase[];
   const visible = purchases.slice(0,20);
   const orders = focused?.data ? [focused.data as Purchase, ...visible.filter(({ id }) => id !== selected)] : visible;
-  const integratedOrder = orders.find((order) => order.id === selected && order.asaas_pix && order.status === "pending");
-  const integratedPix = integratedOrder ? await cardAdmin()?.from("barberflow_showcase_asaas")
-    .select("payload").eq("order_id", integratedOrder.id).maybeSingle() : null;
+  const integratedOrders = orders.filter((order) => order.asaas_pix && order.status === "pending");
+  const [photos, integratedPix] = await Promise.all([
+    orderProductPhotos(supabase, orders),
+    integratedOrders.length ? cardAdmin()?.from("barberflow_showcase_asaas")
+      .select("order_id,payload").in("order_id", integratedOrders.map(({ id }) => id)) : null,
+  ]);
+  const pixByOrder = new Map((integratedPix?.data ?? []).map(({ order_id, payload }) => [order_id, payload as string | null]));
   return <section className="container section">
     <p className="eyebrow">Área do cliente</p>
     <h1>Minhas compras</h1>
@@ -71,30 +77,29 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     {filterError && <p role="alert">Confira os intervalos de datas e preços.</p>}
     {result.error || focused?.error ? <p role="alert">Não foi possível carregar todas as suas compras.</p> : null}
     {selected && !focused?.data && !focused?.error && <p role="status">Pedido indisponível na sua conta.</p>}
-    {orders.some(({ status }) => status === "pending" || status === "paid") && <PurchaseUpdates />}
-    {orders.length ? <ul className="cards">{await Promise.all(orders.map(async (order) => {
+    {orders.some(({ status }) => status !== "collected") && <PurchaseUpdates />}
+    {orders.length ? <ul className="cards order-card-grid">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
       const pixExpired = order.asaas_pix && Date.parse(order.expires_at) - 60_000 <= Date.now();
-      const paymentOpen = selected === order.id && pending && !expired && !pixExpired && user.email_confirmed_at && !user.is_anonymous;
-      const pix = paymentOpen ? order.asaas_pix ? integratedPix?.data?.payload ?? null : showcasePix(order) : null;
+      const paymentOpen = pending && !expired && !pixExpired && user.email_confirmed_at && !user.is_anonymous;
+      const pix = paymentOpen ? order.asaas_pix ? pixByOrder.get(order.id) ?? null : showcasePix(order) : null;
       const qr = pix ? await QRCode.toDataURL(pix, { width: 240, margin: 4 }) : null;
-      return <li className="card panel-form showcase-order" key={order.id} id={`pedido-${order.id}`}>
-        <p className="eyebrow">{order.shop_name}</p>
-        <h2>{order.product_name}</h2>
-        <p role="status" aria-atomic="true"><strong>{expired ? "Prazo da reserva encerrado" : showcaseStatus[order.status]}</strong></p>
+      return <li className="card showcase-order" data-order-status={expired || (pending && pixExpired) ? "expired" : order.status} key={order.id} id={`pedido-${order.id}`}>
+        <details open={selected === order.id}>
+          <summary><OrderCardHeading order={order} label={order.shop_name} photo={photos.get(order.establishment_id + "/" + order.product_id)}
+            status={expired || (pending && pixExpired) ? "Prazo do Pix encerrado" : showcaseStatus[order.status]} /></summary>
+          <div className="order-card-body">
         {order.status === "ready" && <p data-feedback="success">Seu pedido está disponível para retirada. Apresente o número abaixo ao estabelecimento.</p>}
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
-        <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong></p>
-        <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · Número do pedido <code className="showcase-order-number">{showcaseOrderNumber(order.id)}</code></small></p>
-        {pending && !expired && selected !== order.id && <Link href={filters(page)+"&pedido="+order.id+"#pedido-"+order.id}>Abrir pagamento Pix</Link>}
+        <p><small>Pedido feito em {formatShowcaseDate(order.created_at)}</small></p>
         {paymentOpen && order.asaas_pix && !pix && <form action={generatePurchasePix.bind(null, order.id)}>
           {pixFeedback === "aguarde" && <p role="alert">O código ainda não está disponível. Aguarde alguns segundos e tente novamente.</p>}
           <SubmitButton>Gerar QR Code Pix</SubmitButton>
         </form>}
-        {pix && <details open={selected === order.id}>
-          <summary>Pagar com Pix</summary>
-          {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} />}
+        {pix && <section aria-label="Pagamento Pix">
+          <h3>Pagar com Pix</h3>
+          {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} loading="lazy" />}
           <p>{order.asaas_pix
             ? "Confira o destinatário e pague assim que possível. A confirmação do Asaas será exibida nesta página."
             : <>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário. O estabelecimento confirma o crédito pelo extrato.</>}</p>
@@ -102,8 +107,10 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
             <textarea readOnly value={pix} rows={4} spellCheck={false} />
           </label>
           <CopyPix value={pix} code />
-        </details>}
+        </section>}
         {pending && (expired || pixExpired) && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
+          </div>
+        </details>
       </li>;
     }))}</ul> : !result.error && !filterError && <p>Nenhuma compra encontrada com estes filtros. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
     {(page>0 || purchases.length>20) && <nav className="account-links" aria-label="Páginas de compras">{page>0 && <Link href={filters(page-1)}>Anterior</Link>}{purchases.length>20 && <Link href={filters(page+1)}>Próxima</Link>}</nav>}

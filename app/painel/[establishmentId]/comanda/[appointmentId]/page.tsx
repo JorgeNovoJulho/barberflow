@@ -52,9 +52,9 @@ export default async function Order({ params, searchParams }: {
     periodo: orderPeriod(periodo), pagina: String(orderPage(pagina)) });
   const items = lines.data ?? [];
   const productDetails = new Map((products.data ?? []).map((product) => [product.id, product]));
-  const productOptions = (products.data ?? []).filter((product) => product.active && !items.some((line) => line.product_id === product.id));
+  const productOptions = (products.data ?? []).filter((product) => product.active && product.stock > 0 && !items.some((line) => line.product_id === product.id));
   const draft = !receipt.data && ["scheduled", "completed"].includes(appointment.state);
-  const activeProducts = new Set((products.data ?? []).filter(({ active }) => active).map(({ id }) => id));
+  const activeProducts = new Set((products.data ?? []).filter(({ active, stock }) => active && stock > 0).map(({ id }) => id));
   const hasUnavailable = draft && items.some(({ product_id }) => !activeProducts.has(product_id));
   const serviceTotal = receipt.data?.service_cents ?? appointment.price_cents ?? 0;
   const productTotal = receipt.data?.products_cents ?? items.reduce((sum, item) => sum + item.line_total_cents, 0);

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { pixTransactionId } from "../../../../lib/pix";
-import { bookingCurrency } from "../../../../lib/public-booking";
-import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../../../lib/showcase";
+import { orderProductPhotos } from "../../../../lib/order-photos";
+import { PurchaseUpdates } from "../../../minhas-compras/purchase-updates";
+import { OrderCardHeading } from "../../../minhas-compras/order-card-heading";
+import { formatShowcaseDate, showcaseStatus } from "../../../../lib/showcase";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { updateShowcaseOrder } from "./actions";
@@ -18,7 +20,7 @@ const feedback: Record<string, string> = {
   falha: "Não foi possível salvar a alteração.",
 };
 
-type Order = { id: string; buyer_name: string; product_name: string; quantity: number; total_cents: number;
+type Order = { id: string; order_number: number; product_id: string; establishment_id: string; product_sku: string; buyer_name: string; product_name: string; quantity: number; total_cents: number;
   asaas_pix: boolean; status: keyof typeof showcaseStatus; created_at: string; expires_at: string; bank_reference: string | null; read_at: string | null };
 
 export default async function ShowcaseOrders({ params, searchParams }: {
@@ -34,20 +36,20 @@ export default async function ShowcaseOrders({ params, searchParams }: {
   if (business.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business.data) notFound();
   const orders = await supabase.from("barberflow_showcase_orders")
-      .select("id,buyer_name,product_name,quantity,total_cents,status,created_at,expires_at,bank_reference,read_at,asaas_pix")
+      .select("id,order_number,product_id,establishment_id,product_sku,buyer_name,product_name,quantity,total_cents,status,created_at,expires_at,bank_reference,read_at,asaas_pix")
       .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(100);
   const { estado } = await searchParams;
   const purchases = (orders.data ?? []) as Order[];
+  const photos = await orderProductPhotos(supabase, purchases);
   const needsSeparation = purchases.filter((order) => order.status === "paid");
   const remaining = purchases.filter((order) => order.status !== "paid");
   function card(order: Order) {
     const expired = order.status === "pending" && Date.parse(order.expires_at) <= Date.now();
-    return <li className="card panel-form showcase-order" key={order.id}>
-      <h3>{order.product_name}</h3>
-      <p>{order.buyer_name} · {order.quantity} un. · <strong>{bookingCurrency.format(order.total_cents / 100)}</strong></p>
-      <p><strong>{expired ? "Reserva encerrada · conferir se houve crédito" : showcaseStatus[order.status]}</strong></p>
+    return <li className="card showcase-order" data-order-status={expired ? "expired" : order.status} key={order.id}>
+      <OrderCardHeading order={order} label={order.buyer_name + " · " + order.quantity + " un."}
+        photo={photos.get(shop + "/" + order.product_id)} status={expired ? "Reserva encerrada" : showcaseStatus[order.status]} />
+      <div className="order-card-body">
       {order.status === "paid" && !order.read_at && <p role="status">Novo pagamento confirmado. Separe o produto.</p>}
-      <p>Número do pedido <code className="showcase-order-number">{showcaseOrderNumber(order.id)}</code></p>
       <p><small>{formatShowcaseDate(order.created_at)} · {order.asaas_pix ? "Pix Asaas" : "Identificador Pix " + pixTransactionId(order.id)}</small></p>
       {order.bank_reference && <p>Referência bancária {order.bank_reference}</p>}
       {order.status === "pending" && <details>
@@ -68,9 +70,11 @@ export default async function ShowcaseOrders({ params, searchParams }: {
       {order.status === "ready" && <form action={updateShowcaseOrder.bind(null, shop, order.id, "collected")}>
         <SubmitButton>Registrar retirada</SubmitButton>
       </form>}
+      </div>
     </li>;
   }
   return <section className="section">
+    <PurchaseUpdates />
     <header className="operational-heading">
       <p className="eyebrow">{business.data.name}</p>
       <h1>Pedidos da vitrine</h1>
@@ -87,8 +91,8 @@ export default async function ShowcaseOrders({ params, searchParams }: {
     </section>
     <h2>Pagos para separar</h2>
     {orders.error ? <p role="alert">Não foi possível carregar os pedidos.</p>
-      : needsSeparation.length ? <ul className="cards">{needsSeparation.map(card)}</ul> : <p>Nenhum pedido para separar.</p>}
+      : needsSeparation.length ? <ul className="cards order-card-grid">{needsSeparation.map(card)}</ul> : <p>Nenhum pedido para separar.</p>}
     <h2>Outros pedidos</h2>
-    {remaining.length ? <ul className="cards">{remaining.map(card)}</ul> : !orders.error && <p>Nenhum outro pedido.</p>}
+    {remaining.length ? <ul className="cards order-card-grid">{remaining.map(card)}</ul> : !orders.error && <p>Nenhum outro pedido.</p>}
   </section>;
 }

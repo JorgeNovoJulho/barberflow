@@ -1,5 +1,6 @@
 import type { Closing, OpenSales } from "../caixa/model";
 import Link from "next/link";
+import { PurchaseUpdates } from "../../../minhas-compras/purchase-updates";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
@@ -15,7 +16,7 @@ type BookingNotifications = { unread: number; as_of: string; items: {
 
 type Dashboard = {
   first_day: string; today: string; appointments: number; completed: number; cancelled: number; no_show: number;
-  pending: number; online: number; scheduled_cents: number; closed_orders: number; closed_cents: number; active_clients: number;
+  pending: number; online: number; scheduled_cents: number; confirmed_cents: number; active_clients: number;
   previous_appointments: number; upcoming_count: number; free_slots: number | null; slot_service: string | null;
   marked_today: number; completed_today: number; in_progress: number; pending_today: number; received_today: number | null;
   upcoming: { id: string; starts_at: string; client_name: string; service_name: string; professional_name: string; state: string }[];
@@ -104,11 +105,12 @@ export default async function DashboardPage({ params, searchParams }: {
     { label: "Não compareceram", value: data.no_show, note: percentage(data.no_show, data.appointments) },
     { label: "Aguardando aprovação", value: data.pending },
     { label: "Receita prevista", value: money(data.scheduled_cents), note: "Serviços de atendimentos agendados ou pendentes" },
-    { label: "Faturamento registrado", value: money(data.closed_cents), note: `${data.closed_orders} comandas fechadas no período` },
+    { label: "Faturamento registrado", value: money(data.confirmed_cents), note: "Pagamentos confirmados no período, incluindo a vitrine" },
     { label: "Clientes ativos", value: data.active_clients, note: "Total no cadastro do estabelecimento" },
   ] : [];
 
   return <section className="container section">
+    <PurchaseUpdates interval={10_000} />
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link>
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>
@@ -127,7 +129,7 @@ export default async function DashboardPage({ params, searchParams }: {
         <span>{openSales ? `${openSales.count} · ${money(openSales.total)}` : "Consultar comandas"}</span>
       </Link>
       <Link className="card checkout-shortcut checkout-shortcut-card" href={checkout+"?aba=fechamento#pagamentos-cartao"}>
-        <strong>Pagamentos em cartão <span aria-hidden="true">→</span></strong>
+        <strong>Pagamentos em cartão hoje <span aria-hidden="true">→</span></strong>
         <span>{cardSales ? `Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}` : "Consultar pagamentos"}</span>
       </Link>
     </div>
@@ -160,6 +162,7 @@ export default async function DashboardPage({ params, searchParams }: {
           <dd>{value}</dd>{note && <p>{note}</p>}
           {label === "Faturamento registrado" && <p className="account-links">
             <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
+            <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos</Link>
           </p>}
         </div>)}
       </dl>
@@ -178,7 +181,7 @@ export default async function DashboardPage({ params, searchParams }: {
           ["Atendimentos marcados", data.marked_today], ["Concluídos", data.completed_today],
           ["Em atendimento agora", data.in_progress], ["Aguardando confirmação", data.pending_today],
         ].map(([label, value]) => <div key={label} className="card dashboard-metric"><dt>{label}</dt><dd>{value}</dd></div>)}
-        <div className="card dashboard-metric"><dt>Recebido hoje em comandas</dt>
+        <div className="card dashboard-metric"><dt>Pagamentos confirmados hoje</dt>
           <dd>{data.received_today === null ? <Link href={`/painel/${shop}/financeiro`}>Desbloquear financeiro</Link> : money(data.received_today)}</dd>
         </div>
       </dl>

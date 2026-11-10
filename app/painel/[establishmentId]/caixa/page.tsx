@@ -65,8 +65,11 @@ export default async function Checkout({params,searchParams}:{
   const closeSaved = sale?.state === "open" && (args.modo === "fechar" || args.estado === "pix_ready");
   const archive = archiveResult?.data as Sale[] | null;
   const canEdit = (sale?.state==="open" && !closeSaved) || creating || !!(id && !sale && args.estado && args.estado!=="ok" && !current?.error);
-  const catalog = (table:"barberflow_services"|"barberflow_products")=>supabase.from(table).select("id,name,price_cents")
-    .eq("establishment_id",shop).eq("active",true).is("deleted_at",null).order("name").order("id");
+  const catalog = (table:"barberflow_services"|"barberflow_products") => {
+    const query = supabase.from(table).select("id,name,price_cents")
+      .eq("establishment_id",shop).eq("active",true).is("deleted_at",null).order("name").order("id");
+    return table === "barberflow_products" ? query.gt("stock",0) : query;
+  };
   const [services,products] = canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
   const chargeFeedback = args.estado === "pix_missing"
     ? "A comanda foi mantida aberta. Cadastre a chave Pix do estabelecimento para gerar a cobrança, ou escolha Débito ou Crédito."
