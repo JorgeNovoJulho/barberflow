@@ -15,12 +15,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <Link className="primary" aria-current={kind === "barbearia" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "barbearia", next } }}>Sou profissional</Link>
   </nav>;
   if (!kind) return <section className="container section"><div className="card account-card"><h1>Crie sua conta</h1><p>Escolha como você quer usar o BARBERFLOW.</p>{choices}<Link href="/login">Já tenho conta</Link></div></section>;
-  const google = <form className="account-form" action={signUpGoogle.bind(null, kind)}>
-    <input name="next" type="hidden" value={next} />
-    {policies && <label className="accept"><input name="terms" type="checkbox" required /> <span>Aceito os <a href={policies.terms}>Termos de Uso</a> e a <a href={policies.privacy}>Política de Privacidade</a>.</span></label>}
-    <button className="secondary" disabled={!policies && !testSignup}>Criar conta com Google</button>
-  </form>;
-  return <AccountForm before={choices} title="Crie sua conta" description="Escolha como você quer usar o BARBERFLOW." status={params.estado ?? params.erro} action={signUp} submit="Criar conta" next={next} disabled={!policies && !testSignup} links={<>{google}<Link href={{ pathname: "/login", query: { next } }}>Já tenho conta</Link></>}>
+  return <AccountForm before={choices} title="Crie sua conta" description="Escolha como você quer usar o BARBERFLOW." status={params.estado ?? params.erro} action={signUp} submit="Criar conta" alternateSubmit={<button type="submit" className="secondary" formAction={signUpGoogle.bind(null, kind)} formNoValidate disabled={!policies && !testSignup}>Criar conta com Google</button>} next={next} disabled={!policies && !testSignup} links={<Link href={{ pathname: "/login", query: { next } }}>Já tenho conta</Link>}>
       <input type="hidden" name="account" value={kind} />
       <label>Nome completo <input name="name" autoComplete="name" required maxLength={120} /></label>
       <Email /><Password isNew />

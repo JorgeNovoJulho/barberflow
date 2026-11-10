@@ -9,6 +9,7 @@ const messages: Record<string, string> = {
   reenviado: "Se houver uma confirmação pendente, você receberá um novo link por e-mail.",
   reenvio_falhou: "Não foi possível reenviar a confirmação agora. Tente novamente mais tarde.",
   limite: "Limite de tentativas atingido. Aguarde alguns minutos antes de tentar novamente.",
+  termos: "Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para continuar.",
   campos: "Preencha os campos obrigatórios para continuar.",
   senhas: "As duas senhas precisam ser iguais.",
   indisponivel: "A autenticação ainda não está configurada neste ambiente.",
@@ -20,7 +21,7 @@ const messages: Record<string, string> = {
   link: "O link expirou ou não pôde ser validado.",
 };
 
-export function AccountForm({ title, description, status, action, submit, next, children, links, disabled, notice, before }: {
+export function AccountForm({ title, description, status, action, submit, next, children, links, disabled, notice, before, alternateSubmit }: {
   title: string;
   description: string;
   status: string | undefined;
@@ -32,6 +33,7 @@ export function AccountForm({ title, description, status, action, submit, next, 
   disabled?: boolean;
   notice?: ReactNode;
   before?: ReactNode;
+  alternateSubmit?: ReactNode;
 }) {
   return <section className="container section">
     <div className="card account-card">
@@ -42,6 +44,7 @@ export function AccountForm({ title, description, status, action, submit, next, 
         <input type="hidden" name="next" value={next} />
         {children}
         <SubmitButton disabled={disabled}>{submit}</SubmitButton>
+        {alternateSubmit}
       </form>
       <div className="account-links">{links}</div>
     </div>

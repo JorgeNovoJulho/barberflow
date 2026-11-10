@@ -74,7 +74,10 @@ export async function signUpGoogle(chosen: string, form: FormData) {
   const next = localPath(form.get("next"));
   const kind = accountKind(chosen);
   const back = "/cadastro?" + new URLSearchParams({ next, tipo: kind ?? "" });
-  if (!kind || (policyLinks() ? form.get("terms") !== "on" : !localTestSignup())) redirect(back + "&estado=campos");
+  const policies = policyLinks();
+  if (!kind) redirect(back + "&estado=campos");
+  if (!policies && !localTestSignup()) redirect(back + "&estado=indisponivel");
+  if (policies && form.get("terms") !== "on") redirect(back + "&estado=termos");
   const supabase = await supabaseServer();
   if (!supabase) redirect(back + "&estado=indisponivel");
   const config = supabaseConfig();
