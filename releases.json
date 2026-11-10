@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.11",
+    "date": "2026-11-10",
+    "title": "Capa e pedidos da vitrine",
+    "changes": [
+      "Capa criada no editor integrada ao cabeçalho da página pública.",
+      "Número do pedido compartilhado entre comprador e estabelecimento, com avisos de pagamento e retirada.",
+      "Confirmação automática do Pix para estabelecimentos com Asaas configurado."
+    ]
+  },
+  {
     "version": "0.2.10",
     "date": "2026-11-10",
     "title": "Distâncias, prévias e avisos",
