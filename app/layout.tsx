@@ -37,6 +37,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/#funcionalidades">Funcionalidades</Link>
     <Link href="/planos">Planos</Link>
     <Link href="/#duvidas">Dúvidas</Link>
+    <Link href="/sobre">Sobre</Link>
     {user && <Link href={role === "cliente" ? "/cliente" : "/painel"}>Meu painel</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
     {user && <Link href="/minhas-compras">Minhas compras</Link>}

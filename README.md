@@ -99,3 +99,16 @@ Para recuperação de senha iniciada pelo painel master, configure o modelo
 O modelo usa o hash de uso único, permitindo ao titular abrir o link em
 outro navegador. A URL de retorno deve ser a mesma cadastrada no Auth.
 Após ativar o SMTP e salvar o modelo, defina `BARBERFLOW_MASTER_RECOVERY_EMAILS=true`.
+
+## Histórico e versões publicadas
+
+A guia Sobre usa a primeira entrada de releases.json como versão do código
+compilado. A cada nova versão, acrescente uma entrada no início do arquivo e
+atualize a versão de package.json e package-lock.json. Registre as mudanças em
+linguagem voltada ao usuário. Envie a alteração ao GitHub na branch main.
+
+A guia consulta a branch main e exibe a revisão ou versão mais recente. O
+botão Atualizar recarrega a página para obter a versão que a hospedagem já
+publicou. A publicação automática, quando habilitada na Hostinger, usa a
+branch main do repositório oficial. As variáveis de ambiente continuam
+configuradas no hPanel.

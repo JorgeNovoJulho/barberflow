@@ -49,7 +49,7 @@ export default async function Home() {
     <header className="editorial-top">
       <div className="container editorial-nav">
         <Link href="/" className="editorial-brand">{brand}</Link>
-        <nav aria-label="Seções da página">{navigation.map(([url, title, count]) => !!count && title && <a key={url} href={url}>{title}</a>)}</nav>
+        <nav aria-label="Seções da página">{navigation.map(([url, title, count]) => !!count && title && <a key={url} href={url}>{title}</a>)}<Link href="/sobre">Sobre</Link></nav>
         {master && <Link href={masterPath} className="secondary master-header-link">Administrador</Link>}
         {signedIn ? <><Link href={role === "cliente" ? "/cliente" : "/painel"} className="secondary">Meu painel</Link><form action={signOut}><button className="secondary">Sair do sistema</button></form></>
           : settings.headerUrl && settings.headerText && <Link href={settings.headerUrl} className="secondary">{settings.headerText}</Link>}

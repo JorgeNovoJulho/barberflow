@@ -1,0 +1,22 @@
+[
+  {
+    "version": "0.2.0",
+    "date": "2026-11-10",
+    "title": "Versão e histórico de atualizações",
+    "changes": [
+      "A guia Sobre mostra a versão em uso, os dados do desenvolvedor e o histórico de mudanças.",
+      "Quando o GitHub tem uma versão mais recente, a guia mostra a nova versão e permite recarregar o site para acessar a publicação assim que estiver disponível."
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-11-10",
+    "title": "Cadastro, área do cliente e comandas",
+    "changes": [
+      "Cadastro por e-mail ou Google com uma única caixa de aceite dos termos.",
+      "Área do cliente com perfil, feed, favoritos, avaliações, notificações e compras.",
+      "Comandas avulsas com estoque, Pix, registro de recebimentos e fechamento por período.",
+      "Ao manter uma comanda aberta, o sistema salva e volta para a Visão geral com o card Comandas abertas expandido."
+    ]
+  }
+]
