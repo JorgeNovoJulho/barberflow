@@ -44,15 +44,33 @@ function financeRecoveryPath(path: string, status: string, sale: string) {
   return path + "?" + query;
 }
 
-export async function resetFinanceWithEmail(shop: string, form: FormData) {
+export async function resetFinanceWithEmail(shop: string, _previous: string | null, form: FormData): Promise<string | null> {
   const { supabase, path } = await context(shop);
   const sale = String(form.get("comanda") ?? "");
-  const finish = (status: string) => redirect(financeRecoveryPath(path, status, sale));
   const secret = String(form.get("new_secret") ?? "");
-  if (secret.length < 8 || Buffer.byteLength(secret) > 72 || secret !== form.get("confirmation")) return finish("recuperacao-email-invalid");
+  if (secret.length < 8) return "Use pelo menos 8 caracteres na nova senha financeira.";
+  if (Buffer.byteLength(secret) > 72) return "A nova senha ficou longa demais. Use menos caracteres.";
+  if (secret !== form.get("confirmation")) return "A confirmação deve ser igual à nova senha financeira.";
+
   const { data, error } = await supabase.rpc("barberflow_reset_finance_email", { shop, new_secret: secret });
-  if (error || typeof data !== "string") return finish("recuperacao-email-falha");
-  return finish(data === "reset" ? "senha-email-alterada" : "recuperacao-email-" + data);
+  if (!error) {
+    switch (data) {
+      case "reset":
+        revalidatePath(path);
+        redirect(financeRecoveryPath(path, "senha-email-alterada", sale));
+      case "expired":
+        redirect(financeRecoveryPath(path, "recuperacao-email-expired", sale));
+      case "reused":
+        return "A nova senha financeira precisa ser diferente da senha de login do BARBERFLOW.";
+      case "mfa":
+        return "Conclua a verificação em duas etapas da conta antes de alterar a senha financeira.";
+      case "denied":
+        return "Somente o proprietário, com a conta confirmada, pode recuperar esta senha.";
+      case "invalid":
+        return "Escolha uma senha válida com pelo menos 8 caracteres.";
+    }
+  }
+  return "Não foi possível salvar a senha financeira. Tente novamente.";
 }
 
 export async function unlockFinance(shop: string, setup: boolean, form: FormData) {

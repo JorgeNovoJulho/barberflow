@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.4",
+    "date": "2026-11-10",
+    "title": "Validação da nova senha financeira",
+    "changes": [
+      "A recuperação mostra junto ao botão o motivo quando a nova senha não pode ser salva."
+    ]
+  },
+  {
     "version": "0.2.3",
     "date": "2026-11-10",
     "title": "Recuperação da senha financeira",

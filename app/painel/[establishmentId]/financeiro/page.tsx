@@ -4,8 +4,9 @@ import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { lockFinance, recordPayment, requestFinanceEmail, resetFinancePassword, resetFinanceWithEmail, reversePayment, unlockFinance } from "./actions";
+import { lockFinance, recordPayment, requestFinanceEmail, resetFinancePassword, reversePayment, unlockFinance } from "./actions";
 import { PasswordField } from "./password-field";
+import { FinanceEmailResetForm } from "./email-reset-form";
 import { FinanceEntriesPanel, type FinanceEntries } from "./lancamentos";
 import { saoPauloToday } from "../../../../lib/agenda";
 import { financeGuide } from "./guias";
@@ -107,13 +108,7 @@ export default async function Finance({ params, searchParams }: {
         </form>}
         {!setup && <details className="finance-password-recovery" open={emailReset || (typeof estado === "string" && estado.startsWith("recuperacao-"))}>
           <summary>Esqueci a senha financeira</summary>
-          {emailReset ? <form className="account-form" action={resetFinanceWithEmail.bind(null, shop)}>
-            {sale && <input type="hidden" name="comanda" value={sale} />}
-            <h3>Crie uma nova senha financeira</h3>
-            <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
-            <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
-            <SubmitButton>Salvar senha e entrar no Financeiro</SubmitButton>
-          </form> : <form className="account-form" action={requestFinanceEmail.bind(null, shop)}>
+          {emailReset ? <FinanceEmailResetForm shop={shop} sale={sale} /> : <form className="account-form" action={requestFinanceEmail.bind(null, shop)}>
             {sale && <input type="hidden" name="comanda" value={sale} />}
             <p>Receba um link no e-mail confirmado da sua conta para criar outra senha financeira.</p>
             <SubmitButton>Enviar link por e-mail</SubmitButton>
