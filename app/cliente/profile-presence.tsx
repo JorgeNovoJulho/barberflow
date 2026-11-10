@@ -37,6 +37,6 @@ export function ProfilePresence({ initial, profile, shop }: { initial: Presence;
   }, [value?.lastSeen]);
 
   if (!value) return null;
-  return <p className="profile-presence">{value.online ? "Online" : "Offline"}{!value.online && localTime &&
+  return <p className="profile-presence"><span className={value.online ? "presence-dot online" : "presence-dot offline"} aria-hidden="true" />{value.online ? "Online" : "Offline"}{!value.online && localTime &&
     <> · Último acesso <time dateTime={value.lastSeen ?? undefined}>{localTime}</time></>}</p>;
 }

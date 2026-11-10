@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.8",
+    "date": "2026-11-10",
+    "title": "Perfil, publicações e agendamentos",
+    "changes": [
+      "Perfil com presença colorida, data de entrada, ícones sociais e contagem de conexões.",
+      "Feed com texto e fotos de até 5 MB, galeria ampliável, comentários e lista de curtidas.",
+      "A vitrine mostra a opção Comprar e os agendamentos exibem as imagens e o link do estabelecimento."
+    ]
+  },
+  {
     "version": "0.2.7",
     "date": "2026-11-10",
     "title": "Envio de fotos e banners maiores",

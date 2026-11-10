@@ -47,7 +47,7 @@ export function ShowcaseCard({ product, media, login, canBuy, preview, buyAction
         <p className="stock-label stock-label-active">{product.bundle_units} un. por {currency.format(product.bundle_cents / 100)}</p>}
       <p className="showcase-pickup"><strong>Retirada no estabelecimento.</strong> Combine a retirada com o vendedor. O valor pago cobre o produto. Frete e entrega são cobrados à parte se combinados.</p>
       {preview ? <p>Prévia do produto.</p>
-        : !product.pix_enabled ? <p>Pagamento online indisponível.</p>
+        : !product.pix_enabled ? <p role="status">Este estabelecimento ainda não configurou o Pix para compras online.</p>
         : !canBuy ? <Link className="primary" href={login}>Entrar para comprar</Link>
         : <form className="account-form" action={checkout}>
           <label>Quantidade <input name="units" type="number" min={1} max={max} defaultValue={1} required
@@ -57,11 +57,11 @@ export function ShowcaseCard({ product, media, login, canBuy, preview, buyAction
           <SubmitButton disabled={units < 1 || units > max || total > 99999999}>Comprar com Pix</SubmitButton>
         </form>}
     </details>
-    {product.pix_enabled && !preview && <button ref={buy} className="primary showcase-buy" type="button" onClick={() => {
+    {!preview && <button ref={buy} className="primary showcase-buy" type="button" onClick={() => {
       if (details.current) {
         details.current.open = true;
         details.current.querySelector<HTMLElement>(".showcase-close")?.focus();
       }
-    }}>Comprar com Pix</button>}
+    }}>Comprar</button>}
   </li>;
 }

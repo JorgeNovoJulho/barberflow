@@ -108,6 +108,20 @@ begin
   assert public.barberflow_profile_presence(auth.uid(),null)->>'lastSeen' is not null;
 end $$;
 
+do $$
+declare owner uuid:='10000000-0000-4000-8000-000000000001';
+begin
+  insert into public.barberflow_social_photos(object_path,caption,audience) values('','Texto público','public');
+  insert into public.barberflow_social_photos(object_path,caption,audience) values('','Texto privado','private');
+  insert into public.barberflow_social_photos(object_path,extra_photos,caption)
+  values(auth.uid()::text||'/50000000-0000-4000-8000-000000000003',
+    array[auth.uid()::text||'/50000000-0000-4000-8000-000000000004'],'Duas fotos');
+  assert public.barberflow_profile_summary(auth.uid())->>'joined' is not null;
+  perform set_config('request.jwt.claim.sub',owner::text,true);
+  assert exists(select 1 from public.barberflow_social_feed(0) where caption='Texto público');
+  assert exists(select 1 from public.barberflow_social_feed(0) where caption='Duas fotos' and cardinality(extra_photos)=1);
+  assert not exists(select 1 from public.barberflow_social_feed(0) where caption='Texto privado');
+end $$;
 reset role;
 delete from public.barberflow_showcase_pix where establishment_id='20000000-0000-4000-8000-000000000001';
 set local role authenticated;

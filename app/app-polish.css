@@ -259,3 +259,34 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .social-workspace .cards > li { min-width: 0; overflow-wrap: anywhere; }
 .social-workspace button, .directory-results button { min-height: 44px; }
 .profile-presence { font-size: .9rem; }
+.profile-feature { padding: 0; overflow: hidden; background: linear-gradient(145deg,#fff,#eee8ff); }
+.profile-feature .social-banner { width: 100%; margin: 0; border-radius: 0; }
+.profile-feature > .social-avatar { margin: -1.5rem 1.2rem 0; position: relative; border: 3px solid #fff; box-shadow: 0 .25rem .9rem #32225733; }
+.profile-feature:not(:has(.social-banner)) > .social-avatar { margin-top: 1rem; }
+.profile-feature-body { display: grid; gap: .75rem; padding: .8rem 1.2rem 1.25rem; }
+.profile-feature-body :is(h2,p) { margin: 0; }
+.profile-member { color: #45405e; font-size: .9rem; }
+.profile-stats,.profile-networks { display: flex; flex-wrap: wrap; gap: .6rem; }
+.profile-stats a,.profile-networks a { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: .45rem .8rem; border-radius: .7rem; color: #3e2778; background: #fff; border: 1px solid #d9cdf3; text-decoration: none; }
+.profile-stats strong { font-size: 1.1rem; }
+.profile-presence { display: flex; align-items: center; gap: .45rem; }
+.presence-dot { width: .65rem; height: .65rem; border-radius: 50%; flex: none; }
+.presence-dot.online { background: #137b4e; }
+.presence-dot.offline { background: #ba3541; }
+.social-post-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,15rem),1fr)); align-items: stretch; }
+.social-post-grid > li { display: grid; align-content: start; grid-template-rows: auto auto 1fr auto; }
+.social-post-grid .social-post-cover { display: block; aspect-ratio: 1; overflow: hidden; border-radius: .7rem; }
+.social-post-grid .social-post-cover img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 1; }
+.social-post-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.social-post-grid .social-post-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.social-post-detail { list-style: none; padding: 0; }
+.booking-card-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,19rem),1fr)); align-items: start; }
+.booking-history-cover { width: 100%; aspect-ratio: 3 / 1; object-fit: cover; border-radius: .75rem; }
+.booking-history-brand { display: flex; align-items: center; gap: .6rem; font-weight: 750; margin: .5rem 0; }
+.booking-history-brand img { width: 48px; height: 48px; object-fit: cover; border-radius: .65rem; }
+.social-post-cover .product-gallery-stage,.social-post-cover .product-gallery-photo { width: 100%; height: 100%; aspect-ratio: 1; }
+.social-post-cover .product-gallery-stage { min-height: 0; }
+.social-post-cover .product-gallery-photo > img { object-fit: cover; }
+.social-fullscreen { width: 100%; height: 100%; max-width: none; max-height: none; }
+.social-fullscreen .product-gallery-dialog-content { height: 100%; }
+.social-fullscreen .product-gallery-dialog-content img { max-height: 78dvh; object-fit: contain; }

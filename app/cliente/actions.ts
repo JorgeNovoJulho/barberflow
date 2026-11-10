@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
 import { socialUrl } from "../../lib/business-profile";
 import { localPath } from "../../lib/auth-path";
-import { productImageTypes } from "../../lib/product-media";
 import { socialBucket, socialSession, socials } from "./social";
 
 type Session = Awaited<ReturnType<typeof socialSession>>;
@@ -16,15 +15,6 @@ function finish(path: string, ok: boolean): never {
   const url = new URL(localPath(path, "/cliente"), "https://barberflow.invalid");
   url.searchParams.set("estado", ok ? "salvo" : "falha");
   redirect(url.pathname + url.search + url.hash);
-}
-
-async function upload(session: Session, file: FormDataEntryValue | null) {
-  if (!(file instanceof File) || !file.size) return "";
-  if (file.size > 2097152 || !productImageTypes.includes(file.type)) throw new Error("Formato ou tamanho inválido.");
-  const path = session.user.id + "/" + crypto.randomUUID();
-  const { error } = await session.supabase.storage.from(socialBucket).upload(path, file, { contentType: file.type });
-  if (error) throw new Error("Falha no envio.");
-  return path;
 }
 
 async function usernameAvailability(supabase: Session["supabase"], candidate: string) {
@@ -149,28 +139,49 @@ export async function saveSocialPhoto(path: string, shop: string | null, photo: 
   const caption = String(form.get("caption") ?? "").trim();
   const audience = String(form.get("audience") ?? "");
   if ((shop && !isUuid(shop)) || (photo && !isUuid(photo)) || caption.length > 500 || !["public","followers","private"].includes(audience)) finish(path, false);
+  const files = form.getAll("photo").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  if (files.length > 3 || files.some(file => file.size > 5 * 1024 * 1024)) finish(path,false);
   const table = supabase.from("barberflow_social_photos");
-  const current = photo ? await table.select("object_path").eq("id",photo).eq("author",user.id).maybeSingle() : null;
+  const current = photo ? await table.select("object_path,extra_photos,caption,audience").eq("id",photo).eq("author",user.id).maybeSingle() : null;
   if (photo && !current?.data) finish(path,false);
-  let object: string;
-  try { object = await upload(session,form.get("photo")); } catch { finish(path,false); }
+  if (!files.length && !caption && !current?.data?.object_path) finish(path,false);
+
+  const bucket = supabase.storage.from(socialBucket);
+  const uploaded: string[] = [];
+  try {
+    for (const file of files) {
+      const pixels = await optimizeProfileImage(Buffer.from(await file.arrayBuffer()), "banner");
+      const object = user.id + "/" + crypto.randomUUID();
+      const { error } = await bucket.upload(object, pixels, { contentType: "image/webp" });
+      if (error) throw error;
+      uploaded.push(object);
+    }
+  } catch {
+    if (uploaded.length) await bucket.remove(uploaded);
+    finish(path,false);
+  }
+  const images = { object_path: uploaded[0] ?? "", extra_photos: uploaded.slice(1) };
   if (photo && current?.data) {
-    const { error,data } = await table.update({ caption,audience,...(object ? { object_path:object } : {}) })
-      .eq("id",photo).eq("author",user.id).eq("object_path",current.data.object_path).select("id").maybeSingle();
-    if (object) await supabase.storage.from(socialBucket).remove([error || !data ? object : current.data.object_path]);
+    const { error,data } = await table.update({ caption,audience,...(uploaded.length ? images : {}) })
+      .eq("id",photo).eq("author",user.id).eq("object_path",current.data.object_path)
+      .eq("caption",current.data.caption).eq("audience",current.data.audience).select("id").maybeSingle();
+    if (uploaded.length && (!error || /^[0-9A-Z]{5}$/.test(error.code ?? ""))) {
+      const discard = error || !data ? uploaded : [current.data.object_path,...current.data.extra_photos].filter(Boolean);
+      if (discard.length) await bucket.remove(discard);
+    }
     finish(path,!error && !!data);
   }
-  if (!object) finish(path,false);
-  const { error } = await supabase.from("barberflow_social_photos").insert({ shop,object_path:object,caption,audience,promotion:!!shop && form.get("promotion")==="on" });
-  if (error) await supabase.storage.from(socialBucket).remove([object]);
+  const { error } = await table.insert({ shop,...images,caption,audience,promotion:!!shop && form.get("promotion")==="on" });
+  if (error && /^[0-9A-Z]{5}$/.test(error.code ?? "") && uploaded.length) await bucket.remove(uploaded);
   finish(path,!error);
 }
 
 export async function deleteSocialPhoto(path: string, photo: string, form: FormData) {
   const { supabase,user } = await socialSession();
   if (!isUuid(photo) || form.get("confirm") !== "on") finish(path,false);
-  const { data,error } = await supabase.from("barberflow_social_photos").delete().eq("id",photo).eq("author",user.id).select("object_path").maybeSingle();
-  if (data) await supabase.storage.from(socialBucket).remove([data.object_path]);
+  const { data,error } = await supabase.from("barberflow_social_photos").delete().eq("id",photo).eq("author",user.id).select("object_path,extra_photos").maybeSingle();
+  const objects = data ? [data.object_path,...data.extra_photos].filter(Boolean) : [];
+  if (objects.length) await supabase.storage.from(socialBucket).remove(objects);
   finish(path,!error && !!data);
 }
 

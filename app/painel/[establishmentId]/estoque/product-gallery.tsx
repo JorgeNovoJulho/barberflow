@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 
 export type ProductMedia = { slot: string; kind: "photo" | "video"; url: string };
 
-export function ProductGallery({ name, items }: { name: string; items: ProductMedia[] }) {
+export function ProductGallery({ name, items, compact = false }: { name: string; items: ProductMedia[]; compact?: boolean }) {
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const inlineVideo = useRef<HTMLVideoElement>(null);
@@ -23,7 +23,7 @@ export function ProductGallery({ name, items }: { name: string; items: ProductMe
     setExpanded(true);
   };
 
-  return <div className="product-gallery" aria-label={`Galeria de ${name}`}>
+  return <div className={compact ? "product-gallery social-post-cover" : "product-gallery"} aria-label={`Galeria de ${name}`}>
     <div className="product-gallery-stage">
       {selected.kind === "photo" ? <button className="product-gallery-photo" type="button" onClick={open}
         aria-label={`Ampliar ${label(selected).toLowerCase()} de ${name}`}>
@@ -34,7 +34,7 @@ export function ProductGallery({ name, items }: { name: string; items: ProductMe
         <button type="button" className="secondary product-gallery-video-expand" onClick={open}>Ampliar vídeo</button>
       </>}
     </div>
-    {items.length > 1 && <div className="product-gallery-carousel">
+    {!compact && items.length > 1 && <div className="product-gallery-carousel">
       <button type="button" className="secondary" aria-label="Rolar miniaturas para a esquerda" onClick={() => thumbnails.current?.scrollBy({ left: -126 })}>‹</button>
       <div ref={thumbnails} className="product-gallery-thumbnails" role="group" aria-label="Miniaturas">
         {items.map((item) => <button key={item.slot} type="button" aria-label={`Destacar ${label(item).toLowerCase()}`}
@@ -44,7 +44,7 @@ export function ProductGallery({ name, items }: { name: string; items: ProductMe
       </div>
       <button type="button" className="secondary" aria-label="Rolar miniaturas para a direita" onClick={() => thumbnails.current?.scrollBy({ left: 126 })}>›</button>
     </div>}
-    <dialog ref={dialog} className="product-gallery-dialog" aria-labelledby={titleId} onClose={() => setExpanded(false)}
+    <dialog ref={dialog} className={compact ? "product-gallery-dialog social-fullscreen" : "product-gallery-dialog"} aria-labelledby={titleId} onClose={() => setExpanded(false)}
       onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}
       onKeyDown={(event) => {
         if (items.length < 2 || event.target instanceof HTMLVideoElement) return;

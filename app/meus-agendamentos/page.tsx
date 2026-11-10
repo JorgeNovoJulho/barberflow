@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { httpsUrl } from "../../lib/business-profile";
 import { bookingCurrency } from "../../lib/public-booking";
 import { supabaseServer } from "../../lib/supabase";
 import { saoPauloToday, validDay } from "../../lib/agenda";
@@ -25,7 +26,12 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fmeus-agendamentos");
-  const { data, error } = await supabase.rpc("barberflow_my_bookings");
+  const [{ data, error }, media] = await Promise.all([
+    supabase.rpc("barberflow_my_bookings"),
+    supabase.rpc("barberflow_booking_shop_media"),
+  ]);
+  const images = new Map<string,{slug:string|null;logo:string|null;cover:string|null}>((media.data ?? []).map(
+    (item:{id:string;slug:string|null;logo:string|null;cover:string|null})=>[item.id,item]));
   const { estado, remarca, dia } = await searchParams;
   const bookings = (data ?? []) as Booking[];
   const today = saoPauloToday();
@@ -40,9 +46,17 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
     <h1>Meus agendamentos</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     {error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
-      : bookings.length ? <ul className="cards">{bookings.map((booking) => <li key={booking.id} className="card">
+      : bookings.length ? <ul className="cards booking-card-grid">{bookings.map((booking) => {
+        const shop = images.get(booking.id);
+        const cover = httpsUrl(shop?.cover ?? undefined);
+        const logo = httpsUrl(shop?.logo ?? undefined);
+        return <li key={booking.id} className="card booking-history-card">
+        {cover && <img className="booking-history-cover" src={cover} alt="" loading="lazy" />}
+        <div className="booking-history-brand">
+          {logo && <img src={logo} alt="" width={48} height={48} loading="lazy" />}
+          {shop?.slug ? <Link href={"/estabelecimento/"+shop.slug}>{booking.shop_name} ↗</Link> : <span>{booking.shop_name}</span>}
+        </div>
         <h2>{booking.service_name}</h2>
-        <p>{booking.shop_name}</p>
         <p>{booking.starts_at.slice(0, 10).split("-").reverse().join("/")} às {booking.starts_at.slice(11, 16)} · {states[booking.state]}</p>
         <p>{bookingCurrency.format(booking.price_cents / 100)}</p>
         {booking.state === "completed" && <details>
@@ -77,6 +91,6 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
             <SubmitButton>Confirmar cancelamento</SubmitButton>
           </form>
         </details>}
-      </li>)}</ul> : <p>Você ainda não fez reservas online.</p>}
+      </li>; })}</ul> : <p>Você ainda não fez reservas online.</p>}
   </section>;
 }
