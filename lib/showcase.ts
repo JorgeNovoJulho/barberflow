@@ -23,6 +23,7 @@ export const showcaseStatus = {
   paid: "Pago · em separação",
   ready: "Pronto para retirada",
   collected: "Retirado",
+  denied: "Pedido negado",
 };
 
 export function showcaseOrderNumber(number: number) {

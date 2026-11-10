@@ -28,3 +28,29 @@ export async function updateShowcaseOrder(shop: string, order: string, operation
   finish(error?.code === "23505" ? "duplicado" : error?.code === "22023" ? "estoque" : error ? "falha"
     : !data ? "conferir" : operation === "confirm" ? "pago" : "atualizado");
 }
+
+export async function manageShowcaseOrder(shop: string, order: string, operation: "deny" | "link", filters: string, form: FormData) {
+  const { supabase } = await showcaseContext(shop);
+  const query = new URLSearchParams(filters);
+  let state = "invalido";
+  if (isUuid(order)) {
+    if (operation === "deny" && form.get("confirm") === "on") {
+      const { data, error } = await supabase.rpc("barberflow_deny_showcase_order", { shop, order_id: order });
+      state = error ? "falha" : data ? "negado" : "nega_bloqueada";
+    }
+    if (operation === "link") {
+      const counter = String(form.get("counter") ?? "").trim();
+      if (!counter || /^\d{3}\.\d{3}\.\d{4}$/.test(counter)) {
+        const { data, error } = await supabase.rpc("barberflow_link_showcase_counter", {
+          shop_id: shop, order_id: order, counter: counter || null,
+        });
+        state = error ? "falha" : data ? "comanda_vinculada" : "comanda_invalida";
+      }
+    }
+  }
+  revalidatePath(`/painel/${shop}`, "layout");
+  revalidatePath("/minhas-compras");
+  revalidatePath("/cliente");
+  query.set("estado", state);
+  redirect(`/painel/${shop}/vitrine?${query}`);
+}

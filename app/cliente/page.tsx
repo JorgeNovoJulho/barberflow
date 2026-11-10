@@ -68,7 +68,7 @@ export default async function ClientPage({ searchParams }: {
     shop ? supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user.id).eq("shop",shop).maybeSingle() : null,
     view === "notificacoes" && page === 0 ? supabase.from("barberflow_showcase_orders")
       .select("id,shop_name,product_name,status").eq("buyer_id",user.id)
-      .in("status",["paid","ready"]).order("paid_at",{ascending:false}).limit(20) : null,
+      .in("status",["paid","ready","denied"]).order("notice_at",{ascending:false}).limit(20) : null,
   ]);
   const profile = profileResult.data;
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
@@ -199,7 +199,7 @@ export default async function ClientPage({ searchParams }: {
       {purchaseNotices?.data?.length ? <section className="section">
         <h2>Compras</h2>
         <ul className="cards">{purchaseNotices.data.map((order) => <li className="card" key={order.id}>
-          <Link href={"/minhas-compras?pedido=" + order.id}>{order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</Link>
+          <Link href={"/minhas-compras?pedido=" + order.id}>{order.status === "denied" ? "Pedido negado pelo estabelecimento" : order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</Link>
           <p>{order.product_name} · {order.shop_name}</p>
         </li>)}</ul>
       </section> : null}

@@ -356,3 +356,4 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
   body:has(.commission-receipt) :is(.site-header,.footer,.workspace-rail) { display: none; }
   body:has(.commission-receipt) .workspace { display: block; }
 }
+.showcase-order[data-order-status="denied"] { --order-tone: #9c3848; --order-tint: #fce9ed; }

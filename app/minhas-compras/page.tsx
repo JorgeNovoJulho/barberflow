@@ -77,7 +77,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     {filterError && <p role="alert">Confira os intervalos de datas e preços.</p>}
     {result.error || focused?.error ? <p role="alert">Não foi possível carregar todas as suas compras.</p> : null}
     {selected && !focused?.data && !focused?.error && <p role="status">Pedido indisponível na sua conta.</p>}
-    {orders.some(({ status }) => status !== "collected") && <PurchaseUpdates />}
+    {orders.some(({ status }) => status !== "collected" && status !== "denied") && <PurchaseUpdates />}
     {orders.length ? <ul className="cards order-card-grid">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
@@ -90,6 +90,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
           <summary><OrderCardHeading order={order} label={order.shop_name} photo={photos.get(order.establishment_id + "/" + order.product_id)}
             status={expired || (pending && pixExpired) ? "Prazo do Pix encerrado" : showcaseStatus[order.status]} /></summary>
           <div className="order-card-body">
+        {order.status === "denied" && <p>O estabelecimento negou este pedido. Se você já enviou um Pix, fale com a loja e guarde o comprovante.</p>}
         {order.status === "ready" && <p data-feedback="success">Seu pedido está disponível para retirada. Apresente o número abaixo ao estabelecimento.</p>}
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)}</small></p>
