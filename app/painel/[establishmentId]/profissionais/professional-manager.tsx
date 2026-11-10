@@ -114,7 +114,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     <h1>Profissionais</h1>
     {estado !== "profissional-incluido" && estado !== "profissional-salvo" && <PanelStatus status={estado} />}
     {[professionals, services, assignments, hours].some((response) => response.error) ? <p role="alert">Não foi possível carregar a equipe.</p> : <>
-      <div className="card panel-form"><h2>Novo profissional</h2><ProfessionalForm shop={shop} delegated={delegated} /></div>
+      <div className="card panel-form"><h2>Novo profissional</h2><p>Este cadastro vale apenas para <strong>{businessName}</strong>. Para a mesma pessoa atender em outra loja, abra a outra loja e crie um cadastro separado.</p><ProfessionalForm shop={shop} delegated={delegated} /></div>
       <h2 id="equipe-profissionais">Equipe</h2>
       {(estado === "profissional-incluido" || estado === "profissional-salvo") && <PanelStatus status={estado} />}
       {!professionals.data?.length && <p>Nenhum profissional cadastrado.</p>}

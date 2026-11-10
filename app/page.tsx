@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { segments as catalogSegments } from "../lib/establishments";
 import { parseLandingSettings, validImageUrl, type LandingBlock, type Section } from "../lib/landing";
+import { hasMasterSession, masterPath } from "../lib/master";
 import { supabaseServer } from "../lib/supabase";
 
 function BlockImage({ block, hero = false }: { block: LandingBlock; hero?: boolean }) {
@@ -12,12 +13,13 @@ function BlockImage({ block, hero = false }: { block: LandingBlock; hero?: boole
 
 export default async function Home() {
   const supabase = await supabaseServer();
-  const [result, settingsResult, session] = supabase ? await Promise.all([
+  const [result, settingsResult, session, master] = supabase ? await Promise.all([
     supabase.from("barberflow_landing_blocks")
       .select("id,section,title,body,image_url,image_alt,position,published")
       .eq("published", true).order("position").order("id"),
     supabase.from("barberflow_landing_settings").select("appearance").maybeSingle(),
     supabase.auth.getClaims(),
+    hasMasterSession(),
   ]) : [];
   const settings = parseLandingSettings(settingsResult?.data?.appearance);
   const signedIn = !!session?.data?.claims.sub;
@@ -46,6 +48,7 @@ export default async function Home() {
       <div className="container editorial-nav">
         <Link href="/" className="editorial-brand">{brand}</Link>
         <nav aria-label="Seções da página">{navigation.map(([url, title, count]) => !!count && title && <a key={url} href={url}>{title}</a>)}</nav>
+        {master && <Link href={masterPath} className="secondary master-header-link">Administrador</Link>}
         {signedIn ? <Link href="/painel" className="secondary">Meu painel</Link>
           : settings.headerUrl && settings.headerText && <Link href={settings.headerUrl} className="secondary">{settings.headerText}</Link>}
       </div>

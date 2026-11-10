@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { authOrigin, localPath, localTestSignup, policyLinks } from "../../lib/auth-path";
+import { isMasterAccount, masterPath } from "../../lib/master";
 import { supabaseServer } from "../../lib/supabase";
 
 function value(data: FormData, name: string) {
@@ -22,14 +23,14 @@ export async function signIn(data: FormData) {
   const next = localPath(data.get("next"));
   const supabase = await supabaseServer();
   if (!supabase) login(next, "indisponivel");
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: result, error } = await supabase.auth.signInWithPassword({
     email: value(data, "email").trim(),
     password: value(data, "password"),
   });
   if (error?.code === "email_not_confirmed") login(next, "email_pendente");
   if (error?.status === 429) login(next, "limite");
   if (error) login(next, "credenciais");
-  redirect(next);
+  redirect(await isMasterAccount(supabase, result.user?.email) ? masterPath : next);
 }
 
 export async function signUp(data: FormData) {
@@ -57,7 +58,7 @@ export async function signUp(data: FormData) {
   if (error?.code === "weak_password") return back("invalido");
   if (error?.code === "user_already_exists") login(next, "confirmar");
   if (error) return back("falha");
-  if (result.session) redirect(next);
+  if (result.session) redirect(await isMasterAccount(supabase, result.user?.email) ? masterPath : next);
   login(next, "confirmar");
 }
 
@@ -91,9 +92,9 @@ export async function updatePassword(data: FormData) {
   if (!validPassword(password) || password !== value(data, "confirmation")) redirect("/nova-senha?estado=invalido");
   const supabase = await supabaseServer();
   if (!supabase) redirect("/nova-senha?estado=indisponivel");
-  const { error } = await supabase.auth.updateUser({ password });
+  const { data: result, error } = await supabase.auth.updateUser({ password });
   if (error) redirect("/nova-senha?estado=falha");
-  redirect("/configuracoes");
+  redirect(await isMasterAccount(supabase, result.user?.email) ? masterPath : "/configuracoes");
 }
 
 export async function signOut() {

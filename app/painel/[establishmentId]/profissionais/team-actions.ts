@@ -23,6 +23,7 @@ export async function createTeamInvite(shop: string, _previous: InviteResult, fo
     return { error: "Informe um e-mail e vincule uma agenda ou selecione uma permissão." };
   }
   const { data, error } = await supabase.rpc("barberflow_invite_team", { shop, invite_email: email, professional: professional || null, see_agendas, manage_agendas, edit_clients, edit_services, edit_professionals, view_finance });
+  if (error?.code === "23505") return { error: "Use um e-mail diferente para o cadastro profissional de cada loja. Se o convite anterior não será usado, revogue-o na loja onde foi criado." };
   if (error || typeof data !== "string") return { error: "Não foi possível gerar o convite. Confira se já existe um acesso ativo para este e-mail." };
   revalidatePath(`/painel/${shop}/profissionais`);
   return { link: new URL(`/convite-equipe/${data}`, authOrigin()).href };

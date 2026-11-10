@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { hasMasterSession, masterPath } from "../lib/master";
 import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
@@ -22,9 +23,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const supabase = await supabaseServer();
   const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : undefined;
   const user = claims?.sub;
-  const master = supabase && user && typeof claims.email === "string"
-    && claims.email.toLowerCase() === "jorgericardosalgado@gmail.com"
-    && (await supabase.rpc("barberflow_is_master")).data === true;
+  const master = user && await hasMasterSession();
   const preference = supabase && user
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
@@ -37,7 +36,6 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/planos">Planos</Link>
     <Link href="/#duvidas">Dúvidas</Link>
     {user && <Link href="/painel">Meu painel</Link>}
-    {master && <Link className="header-action master-header-link" href="/gestao-master">Painel administrativo</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
     {user && <Link href="/minhas-compras">Minhas compras</Link>}
     {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}
@@ -57,6 +55,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
               <span className="brand-name">BARBER<span>FLOW</span></span>
             </Link>
             <nav className="desktop-nav" aria-label="Principal">{navigation}</nav>
+            {master && <Link className="header-action master-header-link" href={masterPath}>Administrador</Link>}
             <MobileNav>{navigation}</MobileNav>
           </div>
         </header>
