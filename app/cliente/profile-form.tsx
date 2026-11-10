@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { profileImageAccept, profileImageHelp } from "../../lib/profile-image-limits";
 import { checkSocialUsername, saveSocialProfile } from "./actions";
 
 const themes = { claro: "Claro", rosa: "Rosa", verde: "Verde", azul: "Azul" };
@@ -18,7 +19,7 @@ function ImageField({ name, label, saved }: { name: string; label: string; saved
     return () => URL.revokeObjectURL(url);
   }, [file]);
   return <div className="profile-image-field">
-    <label>{label} <input type="file" name={name} accept="image/jpeg,image/png,image/webp,image/avif"
+    <label>{label} <input type="file" name={name} accept={profileImageAccept}
       onChange={event => {
         setPreview(undefined);
         setFile(event.currentTarget.files?.[0]);
@@ -100,7 +101,7 @@ export function SocialProfileForm({ profile, avatar, banner, setup }: {
       </div> : null}
       <ImageField name="avatar" label="Foto de perfil" saved={avatar} />
       <ImageField name="banner" label="Banner (opcional)" saved={banner} />
-      <small>JPG, PNG, WebP ou AVIF, até 2 MB e 4096 pixels por lado.</small>
+      <small>{profileImageHelp}</small>
       {networks.map(network => <label key={network}>{network} <input type="url" name={network} maxLength={300} defaultValue={profile?.links?.[network]} /></label>)}
       <label>Tema <select name="theme" defaultValue={profile?.theme ?? "claro"}>{Object.entries(themes).map(([id,label]) => <option key={id} value={id}>{label}</option>)}</select></label>
       <button className="primary" disabled={feedback.stale}>{saving ? "Enviando imagens e salvando…" : "Salvar perfil"}</button>

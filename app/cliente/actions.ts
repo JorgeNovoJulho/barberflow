@@ -1,6 +1,7 @@
 "use server";
 
-import sharp from "sharp";
+import { optimizeProfileImage } from "../../lib/profile-image";
+import { profileImageLimit } from "../../lib/profile-image-limits";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
@@ -69,23 +70,26 @@ export async function saveSocialProfile(form: FormData) {
     const file = form.get(key);
     if (key === "banner" && form.get("remove_banner") === "on") media.banner = "";
     if (!(file instanceof File) || !file.size) continue;
+    const label = key === "avatar" ? "a foto" : "o banner";
+    if (file.size > profileImageLimit) {
+      if (uploaded.length) await bucket.remove(uploaded);
+      return { error: `Não foi possível enviar ${label}: o arquivo ultrapassa 10 MB.` };
+    }
+    let pixels: Buffer;
     try {
-      if (file.size > 2097152 || !productImageTypes.includes(file.type)) throw new Error();
-      const image = sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 16_777_216 });
-      const { format, width, height, pages } = await image.metadata();
-      if (!format || !["jpeg","png","webp","heif"].includes(format) || !width || !height
-        || width > 4096 || height > 4096 || (pages ?? 1)>1) throw new Error();
-      const pixels = await image.rotate().resize(key === "avatar" ? 384 : 1440, key === "avatar" ? 384 : 720,
-        { fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
-      const object = user.id + "/" + crypto.randomUUID();
-      const { error } = await bucket.upload(object, pixels, { contentType: "image/webp" });
-      if (error) throw new Error();
-      uploaded.push(object);
-      media[key] = object;
+      pixels = await optimizeProfileImage(Buffer.from(await file.arrayBuffer()), key);
     } catch {
       if (uploaded.length) await bucket.remove(uploaded);
-      return { error: `Não foi possível enviar ${key === "avatar" ? "a foto" : "o banner"}. Use JPG, PNG, WebP ou AVIF estático, com até 2 MB e 4096 pixels por lado.` };
+      return { error: `Não foi possível ler ${label}. Use JPG, PNG, WebP, AVIF, GIF ou BMP de 24 ou 32 bits sem compressão. Limite de 8192 pixels por lado e 40 megapixels.` };
     }
+    const object = user.id + "/" + crypto.randomUUID();
+    const { error } = await bucket.upload(object, pixels, { contentType: "image/webp" });
+    if (error) {
+      if (uploaded.length) await bucket.remove(uploaded);
+      return { error: `O armazenamento não recebeu ${label}. Tente novamente. Sua imagem salva foi preservada.` };
+    }
+    uploaded.push(object);
+    media[key] = object;
   }
   if (!(media.avatar || current.data?.avatar)) {
     if (uploaded.length) await bucket.remove(uploaded);

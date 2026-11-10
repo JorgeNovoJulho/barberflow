@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.7",
+    "date": "2026-11-10",
+    "title": "Envio de fotos e banners maiores",
+    "changes": [
+      "O perfil aceita fotos e banners de até 10 MB, incluindo GIF e BMP, e otimiza as imagens antes de armazenar."
+    ]
+  },
+  {
     "version": "0.2.6",
     "date": "2026-11-10",
     "title": "Primeiros passos e perfis no Meu Feed",
