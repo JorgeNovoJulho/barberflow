@@ -1,5 +1,7 @@
 "use server";
 
+import sharp from "sharp";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
 import { socialUrl } from "../../lib/business-profile";
@@ -24,46 +26,104 @@ async function upload(session: Session, file: FormDataEntryValue | null) {
   return path;
 }
 
+async function usernameAvailability(supabase: Session["supabase"], candidate: string) {
+  const username = candidate.trim();
+  if (!/^[A-Za-z0-9_.-]{3,40}$/.test(username)) return { error: "Use de 3 a 40 caracteres: letras sem acento, números, ponto, hífen ou sublinhado." };
+  const { data, error } = await supabase.rpc("barberflow_username_availability", { candidate: username });
+  if (error || !data) return { error: "Não foi possível verificar o nome agora." };
+  return { available: data.available === true, suggestions: data.suggestions as string[] };
+}
+
+export async function checkSocialUsername(candidate: string) {
+  const { supabase } = await socialSession();
+  return usernameAvailability(supabase, candidate);
+}
+
 export async function saveSocialProfile(form: FormData) {
-  const session = await socialSession();
-  const { supabase, user } = session;
-  const path = "/cliente?aba=perfil";
+  const { supabase, user } = await socialSession();
   const username = String(form.get("username") ?? "").trim();
   const theme = String(form.get("theme") ?? "");
-  if (!/^[A-Za-z0-9_.-]{3,40}$/.test(username) || !["claro","rosa","verde","azul"].includes(theme)) finish(path, false);
+  const expected = String(form.get("revision") ?? "");
+  if (!/^[A-Za-z0-9_.-]{3,40}$/.test(username) || !["claro","rosa","verde","azul"].includes(theme)) {
+    return { error: "Confira o nome de usuário e o tema." };
+  }
   const links: Record<string,string> = {};
   for (const [network, hosts] of Object.entries(socials)) {
     const value = String(form.get(network) ?? "").trim();
     if (!value) continue;
     const url = value.length <= 300 && socialUrl(value, hosts);
-    if (!url) finish(path, false);
+    if (!url) return { error: "Confira o endereço de " + network + "." };
     links[network] = url;
   }
-  const current = await supabase.from("barberflow_social_profiles").select("avatar,banner").eq("user_id", user.id).maybeSingle();
-  if (current.error) finish(path, false);
+  const current = await supabase.from("barberflow_social_profiles").select("avatar,banner,revision").eq("user_id", user.id).maybeSingle();
+  if (current.error) return { error: "Não foi possível carregar a versão atual do perfil." };
+  const stale = { error: "O perfil mudou em outra sessão. Reabra o formulário para editar a versão mais recente.", stale: true };
+  if (expected !== String(current.data?.revision ?? "new")) return stale;
+  const availability = await usernameAvailability(supabase, username);
+  if (availability.error) return { error: availability.error };
+  if (!availability.available) return { error: "Este nome de usuário já está em uso.", suggestions: availability.suggestions };
   const uploaded: string[] = [];
-  const replaced: string[] = [];
   const media: { avatar?: string; banner?: string } = {};
-  try {
-    for (const key of ["avatar","banner"] as const) {
-      const object = await upload(session, form.get(key));
-      if (object) uploaded.push(object);
-      if (object || form.get("remove_" + key) === "on") {
-        media[key] = object;
-        if (current.data?.[key]) replaced.push(current.data[key]);
-      }
+  const bucket = supabase.storage.from(socialBucket);
+  for (const key of ["avatar","banner"] as const) {
+    const file = form.get(key);
+    if (key === "banner" && form.get("remove_banner") === "on") media.banner = "";
+    if (!(file instanceof File) || !file.size) continue;
+    try {
+      if (file.size > 2097152 || !productImageTypes.includes(file.type)) throw new Error();
+      const image = sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 16_777_216 });
+      const { format, width, height, pages } = await image.metadata();
+      if (!format || !["jpeg","png","webp","heif"].includes(format) || !width || !height
+        || width > 4096 || height > 4096 || (pages ?? 1)>1) throw new Error();
+      const pixels = await image.rotate().resize(key === "avatar" ? 384 : 1440, key === "avatar" ? 384 : 720,
+        { fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
+      const object = user.id + "/" + crypto.randomUUID();
+      const { error } = await bucket.upload(object, pixels, { contentType: "image/webp" });
+      if (error) throw new Error();
+      uploaded.push(object);
+      media[key] = object;
+    } catch {
+      if (uploaded.length) await bucket.remove(uploaded);
+      return { error: `Não foi possível enviar ${key === "avatar" ? "a foto" : "o banner"}. Use JPG, PNG, WebP ou AVIF estático, com até 2 MB e 4096 pixels por lado.` };
     }
-  } catch {
-    if (uploaded.length) await supabase.storage.from(socialBucket).remove(uploaded);
-    finish(path, false);
+  }
+  if (!(media.avatar || current.data?.avatar)) {
+    if (uploaded.length) await bucket.remove(uploaded);
+    return { error: "Selecione uma foto de perfil." };
   }
   const fields = { username, theme, links, ...media };
-  const query = current.data ? supabase.from("barberflow_social_profiles").update(fields).eq("user_id", user.id)
-    : supabase.from("barberflow_social_profiles").insert(fields);
+  const table = supabase.from("barberflow_social_profiles");
+  const query = current.data ? table.update(fields).eq("user_id", user.id).eq("revision", current.data.revision) : table.insert(fields);
   const { error, data } = await query.select("user_id").maybeSingle();
-  const clean = error || !data ? uploaded : replaced;
-  if (clean.length) await supabase.storage.from(socialBucket).remove(clean);
-  finish(path, !error && !!data);
+  if (error || !data) {
+    // Only discard new objects if the database definitively rejected the write.
+    if (uploaded.length && (!error || /^[0-9A-Z]{5}$/.test(error.code ?? ""))) await bucket.remove(uploaded);
+    if (error?.code === "23505") {
+      const result = await usernameAvailability(supabase, username);
+      return result.available ? stale : { error: "Este nome de usuário já está em uso.", suggestions: result.suggestions };
+    }
+    return !error ? stale : { error: "Não foi possível salvar o perfil. Tente novamente." };
+  }
+  const replaced = (["avatar","banner"] as const).flatMap(key =>
+    media[key] !== undefined && current.data?.[key] ? [current.data[key]] : []);
+  if (replaced.length) await bucket.remove(replaced);
+  revalidatePath("/cliente");
+  return { saved: true } as const;
+}
+
+export async function changeFavorite(path: string, shop: string, favorite: boolean) {
+  const { supabase, user } = await socialSession();
+  if (!isUuid(shop)) finish(path, false);
+  const table = supabase.from("barberflow_social_favorite_shops");
+  const { error } = await (favorite ? table.delete().eq("follower", user.id).eq("shop", shop) : table.insert({ shop }));
+  finish(path, !error || error.code === "23505");
+}
+
+export async function blockSocialProfile(subject: string, blocked: boolean) {
+  const { supabase } = await socialSession();
+  if (!isUuid(subject)) finish("/cliente", false);
+  const { data, error } = await supabase.rpc("barberflow_block_profile", { subject, blocked });
+  finish("/cliente?aba=bloqueados", !error && data === true);
 }
 
 export async function freezeSocial(frozen: boolean) {

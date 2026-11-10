@@ -1,4 +1,4 @@
-import { changeFollow } from "../cliente/actions";
+import { changeFavorite, changeFollow } from "../cliente/actions";
 import { pageIndex } from "../cliente/social";
 import Link from "next/link";
 import { httpsUrl } from "../../lib/business-profile";
@@ -7,13 +7,13 @@ import { supabaseServer } from "../../lib/supabase";
 
 type Listing = { id: string; slug: string; name: string; city: string; segment: string; logo: string | null; cover: string | null };
 
-export default async function Directory({ searchParams }: { searchParams: Promise<{ busca?: string; segmento?: string; pagina?: string; estado?: string }> }) {
-  const { busca, segmento, pagina, estado } = await searchParams;
+export default async function Directory({ searchParams }: { searchParams: Promise<{ busca?: string; segmento?: string; pagina?: string; estado?: string; origem?: string }> }) {
+  const { busca, segmento, pagina, estado, origem } = await searchParams;
   const query = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const segment = typeof segmento === "string" && isSegment(segmento) ? segmento : "";
   const supabase = await supabaseServer();
   const page = pageIndex(pagina);
-  const path = (index: number) => "/estabelecimentos?" + new URLSearchParams({ busca:query, segmento:segment, pagina:String(index) });
+  const path = (index: number) => "/estabelecimentos?" + new URLSearchParams({ busca:query, segmento:segment, pagina:String(index), ...(origem === "feed" ? { origem } : {}) });
   const [result, identity] = supabase ? await Promise.all([
     supabase.rpc("barberflow_search_directory",{ search_text:query,selected_segment:segment,page_number:page }),
     supabase.auth.getClaims(),
@@ -21,16 +21,21 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const user = identity?.data?.claims.sub;
   const listings = (result?.data ?? []) as Listing[];
   const shown = listings.slice(0,24);
-  const follows = supabase && user && shown.length
-    ? await supabase.from("barberflow_social_follow_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)) : null;
+  const [follows, favorites] = supabase && user && shown.length ? await Promise.all([
+    supabase.from("barberflow_social_follow_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)),
+    supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)),
+  ]) : [null,null];
   const followed = new Set((follows?.data ?? []).map(item=>item.shop));
+  const favorited = new Set((favorites?.data ?? []).map(item=>item.shop));
   return <section className="container section public-directory">
     <header className="public-intro">
       <p className="eyebrow">Catálogo de beleza e bem-estar</p>
       <h1>Encontre profissionais e estabelecimentos</h1>
       <p>Busque na sua cidade e veja os serviços disponíveis para agendar.</p>
     </header>
+    {origem === "feed" && <Link href="/cliente">Voltar aos primeiros passos</Link>}
     <form className="account-form card panel-form directory-search" action="/estabelecimentos">
+      {origem === "feed" && <input type="hidden" name="origem" value="feed" />}
       <label>Buscar por nome, cidade ou serviço <input name="busca" maxLength={120} defaultValue={query} /></label>
       <label>Segmento <select name="segmento" defaultValue={segment}>
         <option value="">Todos os segmentos</option>
@@ -38,7 +43,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       </select></label>
       <button className="primary" type="submit">Buscar</button>
     </form>
-    {estado && <p role="status">{estado==="salvo" ? "Favoritos atualizados." : "Crie ou reative seu perfil para favoritar um estabelecimento."}</p>}
+    {estado && <p role="status">{estado==="salvo" ? "Lista atualizada." : "Complete ou reative seu perfil para seguir ou favoritar um estabelecimento."}</p>}
     {result?.error || !result ? <p role="alert">Não foi possível carregar o catálogo.</p>
       : listings.length ? <>
         <p role="status">{shown.length} {shown.length === 1 ? "estabelecimento nesta página" : "estabelecimentos nesta página"}</p>
@@ -61,7 +66,8 @@ export default async function Directory({ searchParams }: { searchParams: Promis
                 aria-label={`Ver serviços de ${item.name}`}>Ver serviços <span aria-hidden="true">↗</span></Link>
               <div className="account-links">
                 <Link href={`/estabelecimento/${item.slug}/agendar`}>Agendar</Link>
-                {user && <><Link href={`/cliente?loja=${item.id}`}>Publicações</Link><form action={changeFollow.bind(null,path(page),item.id,true,followed.has(item.id))}><button className="secondary">{followed.has(item.id) ? "Remover favorito" : "Favoritar"}</button></form></>}
+                {user && <><Link href={`/cliente?loja=${item.id}`}>Publicações</Link><form action={changeFollow.bind(null,path(page),item.id,true,followed.has(item.id))}><button className="secondary" aria-pressed={followed.has(item.id)}>{followed.has(item.id) ? "Deixar de seguir" : "Seguir"}</button></form>
+                  <form action={changeFavorite.bind(null,path(page),item.id,favorited.has(item.id))}><button className="secondary" aria-pressed={favorited.has(item.id)}>{favorited.has(item.id) ? "Remover favorito" : "Favoritar"}</button></form></>}
               </div>
             </div>
           </li>;

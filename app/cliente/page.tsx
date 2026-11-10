@@ -1,15 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
-import { socialUrl } from "../../lib/business-profile";
+import { httpsUrl, socialUrl } from "../../lib/business-profile";
 import { signOut } from "../auth/actions";
-import { changeFollow, changeLike, commentPhoto, deleteSocialPhoto, freezeSocial, requestDeletion, reviewSocialShop, saveSocialProfile } from "./actions";
+import { blockSocialProfile, changeFavorite, changeFollow, changeLike, commentPhoto, deleteSocialPhoto, freezeSocial, requestDeletion, reviewSocialShop } from "./actions";
+import { SocialProfileForm } from "./profile-form";
+import { ProfilePresence } from "./profile-presence";
 import { PhotoForm } from "./photo-form";
 import { mediaLinks, pageIndex, socialSession, socials } from "./social";
 
 type Photo = { id:string; author:string; shop:string|null; object_path:string; caption:string; audience:string; promotion:boolean };
-const images = "image/jpeg,image/png,image/webp,image/avif";
-const themes = { claro:"Claro", rosa:"Rosa", verde:"Verde", azul:"Azul" };
+type Person = { user_id: string; username: string; avatar: string };
+type Shop = { id: string; slug: string; name: string; city: string; logo: string | null };
+const collectionLabels = {
+  seguindo: "Seguindo", seguidores: "Seguidores", "lojas-seguidas": "Estabelecimentos seguidos",
+  favoritos: "Estabelecimentos favoritos", bloqueados: "Usuários bloqueados",
+};
+
 
 export default async function ClientPage({ searchParams }: {
   searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string }>;
@@ -20,7 +27,8 @@ export default async function ClientPage({ searchParams }: {
   const target = params.perfil && isUuid(params.perfil) ? params.perfil : null;
   const shop = params.loja && isUuid(params.loja) ? params.loja : null;
   const photo = params.foto && isUuid(params.foto) ? params.foto : null;
-  const view = photo ? "foto" : shop ? "loja" : target ? "perfil-publico" : ["perfil","notificacoes","pessoas"].includes(params.aba ?? "") ? params.aba! : "feed";
+  const collection = params.aba && Object.hasOwn(collectionLabels, params.aba) ? params.aba as keyof typeof collectionLabels : null;
+  const view = collection ?? (photo ? "foto" : shop ? "loja" : target ? "perfil-publico" : ["perfil","notificacoes","pessoas"].includes(params.aba ?? "") ? params.aba! : "feed");
   const query = new URLSearchParams();
   if (params.aba) query.set("aba",params.aba);
   if (target) query.set("perfil",target);
@@ -32,13 +40,13 @@ export default async function ClientPage({ searchParams }: {
   const profileTable = supabase.from("barberflow_social_profiles");
   const photos = supabase.from("barberflow_social_photos");
   const followTable = supabase.from(shop ? "barberflow_social_follow_shops" : "barberflow_social_follow_users");
-  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult] = await Promise.all([
-    profileTable.select("username,avatar,banner,links,theme,frozen").eq("user_id",profileId).maybeSingle(),
+  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult, roleResult, connections, savedShops, presenceResult, blockedProfiles] = await Promise.all([
+    profileTable.select("username,avatar,banner,links,theme,frozen,revision").eq("user_id",profileId).maybeSingle(),
     view === "feed" ? supabase.rpc("barberflow_social_feed",{ page_number:page })
       : view === "foto" ? photos.select("*").eq("id",photo!)
       : ["loja","perfil","perfil-publico"].includes(view) ? (shop ? photos.select("*").eq("shop",shop) : photos.select("*").eq("author",profileId).is("shop",null))
         .order("created_at",{ ascending:false }).order("id").range(page*12,page*12+12) : null,
-    ["loja","perfil","perfil-publico"].includes(view) ? supabase.rpc("barberflow_social_counts",{ profile:shop ? null : profileId,shop_id:shop }) : null,
+    view === "loja" ? supabase.rpc("barberflow_social_counts",{ profile:shop ? null : profileId,shop_id:shop }) : null,
     shop || (target && target!==user.id) ? followTable.select(shop ? "shop" : "target").eq("follower",user.id).eq(shop ? "shop" : "target",shop ?? target!).maybeSingle() : null,
     shop ? supabase.rpc("barberflow_social_shop_info",{ shop_id:shop }) : null,
     view === "perfil" ? supabase.rpc("barberflow_my_service_counts") : null,
@@ -46,12 +54,23 @@ export default async function ClientPage({ searchParams }: {
     view === "notificacoes" ? supabase.rpc("barberflow_social_notices",{ page_number:page }) : null,
     view === "perfil" ? supabase.from("barberflow_account_deletion_requests").select("requested_at").eq("user_id",user.id).maybeSingle() : null,
     view === "feed" && page===0 ? supabase.from("barberflow_social_news").select("id,title,body").order("created_at",{ascending:false}).limit(5) : null,
+    view === "feed" ? supabase.rpc("barberflow_account_kind") : null,
+    collection === "seguindo" || collection === "seguidores"
+      ? supabase.rpc("barberflow_social_connections", { profile: profileId, direction: collection === "seguindo" ? "following" : "followers", page_number: page }) : null,
+    collection === "lojas-seguidas" || collection === "favoritos"
+      ? supabase.rpc("barberflow_saved_shops", { collection: collection === "favoritos" ? "favorites" : "following", page_number: page }) : null,
+    shop || view === "perfil" || view === "perfil-publico"
+      ? supabase.rpc("barberflow_profile_presence", { profile: shop ? null : profileId, shop_id: shop }) : null,
+    collection === "bloqueados" ? supabase.rpc("barberflow_blocked_profiles", { page_number: page }) : null,
   ]);
   const profile = profileResult.data;
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
   if ((target && !profile && !profileResult.error) || (shop && !shopInfo && !shopResult?.error) || (photo && !postsResult?.data?.length && !postsResult?.error)) notFound();
   const posts = (postsResult?.data ?? []) as Photo[];
-  const people = directoryResult?.data ?? [];
+  const setup = view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
+  const people: Person[] = connections?.data?.rows ?? directoryResult?.data ?? [];
+  const shops: Shop[] = savedShops?.data ?? [];
+  const blocked = (blockedProfiles?.data ?? []) as Pick<Person,"user_id"|"username">[];
   const notices = (noticesResult?.data ?? []) as { kind:string; photo:string; occurred:string; description:string }[];
   const [links, likes, comments, authors] = await Promise.all([
     mediaLinks(supabase,[profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).map((p)=>p.object_path),...people.slice(0,12).map((p)=>p.avatar)]),
@@ -61,20 +80,32 @@ export default async function ClientPage({ searchParams }: {
   ]);
   const liked = photo ? await supabase.from("barberflow_social_likes").select("photo").eq("photo",photo).eq("actor",user.id).maybeSingle() : null;
   const names = new Map((authors?.data ?? []).map((a)=>[a.user_id,a.username]));
-  const more = Math.max(posts.length,people.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25;
-  const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,comments,generalResult].some(result=>result?.error);
-  const title = shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
+  const more = Math.max(posts.length,people.length,shops.length,blocked.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25;
+  const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles].some(result=>result?.error);
+  const title = setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
   return <div className="container workspace social-workspace">
     <aside className="workspace-rail"><nav className="workspace-modules" aria-label="Área do cliente">
       <Link href="/cliente">Feed</Link><Link href="/cliente?aba=perfil">Meu perfil</Link><Link href="/cliente?aba=pessoas">Encontrar pessoas</Link>
-      <Link href="/estabelecimentos">Encontrar estabelecimentos</Link><Link href="/meus-agendamentos">Minhas reservas</Link>
+      <Link href="/estabelecimentos">Encontrar estabelecimentos</Link><Link href="/cliente?aba=lojas-seguidas">Estabelecimentos seguidos</Link><Link href="/cliente?aba=favoritos">Estabelecimentos favoritos</Link><Link href="/meus-agendamentos">Minhas reservas</Link>
       <Link href="/minhas-compras">Minhas compras</Link><Link href="/cliente?aba=notificacoes">Notificações</Link>
     </nav><form action={signOut}><button className="workspace-notices">Sair do sistema</button></form></aside>
     <section className="workspace-content section" data-social-theme={profile?.theme}>
       <h1>{title}</h1>
       {params.estado && <p role="status">{params.estado==="salvo" ? "Alteração registrada." : "Não foi possível concluir. Confira os dados, a visibilidade e as permissões do perfil."}</p>}
       {failed && <p role="alert">Parte do conteúdo não pôde ser carregada.</p>}
-      {view==="feed" && <>
+      {setup && <>
+        <p>Salve um nome de usuário e uma foto para concluir. O banner e as redes sociais são opcionais.</p>
+        <SocialProfileForm key={profile?.revision ?? "new"} profile={profile ?? undefined}
+          avatar={links.get(profile?.avatar ?? "")} banner={links.get(profile?.banner ?? "")} setup />
+        <section className="card panel-form"><h2>Descubra estabelecimentos (opcional)</h2>
+          <form className="account-form" action="/estabelecimentos">
+            <input type="hidden" name="origem" value="feed" />
+            <label>Busque por nome, cidade ou serviço <input name="busca" maxLength={120} /></label>
+            <button className="secondary">Buscar estabelecimentos</button>
+          </form>
+        </section>
+      </>}
+      {view==="feed" && !setup && <>
         {!profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para seguir e interagir com outras pessoas.</Link></p>}
         <form className="account-form card panel-form" action="/estabelecimentos"><label>Busque estabelecimentos por nome, cidade ou serviço <input name="busca" maxLength={120} required /></label><button className="primary">Buscar</button></form>
         {generalResult?.data?.length ? <section><h2>Novidades do BARBERFLOW</h2>{generalResult.data.map((item)=><article key={item.id} className="card"><h3>{item.title}</h3><p>{item.body}</p></article>)}</section> : null}
@@ -84,27 +115,23 @@ export default async function ClientPage({ searchParams }: {
         {profile && <div className="card social-profile">
           {links.get(profile.banner) && <img className="social-banner" src={links.get(profile.banner)} alt="Banner do perfil" />}
           {links.get(profile.avatar) && <img className="social-avatar" src={links.get(profile.avatar)} alt="" />}
-          <h2>{profile.username}</h2><p>{countsResult?.data?.followers ?? 0} seguidores · {countsResult?.data?.following ?? 0} seguindo</p>
+          <h2>{profile.username}</h2>
+          {presenceResult?.data && <ProfilePresence key={profileId} initial={presenceResult.data} profile={profileId} shop={null} />}
+          <div className="account-links">
+            <Link href={`/cliente?aba=seguidores&perfil=${profileId}`}>Seguidores</Link>
+            <Link href={`/cliente?aba=seguindo&perfil=${profileId}`}>Seguindo</Link>
+          </div>
           {Object.entries(socials).map(([label,hosts])=> {
             const link = socialUrl(profile.links?.[label],hosts);
             return link && <Link key={label} href={link} rel="noreferrer">{label} </Link>;
           })}
-          {target && target!==user.id && <form action={changeFollow.bind(null,path,target,false,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir perfil"}</button></form>}
+          {target && target!==user.id && <form action={changeFollow.bind(null,path,target,false,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir"}</button></form>}
+          {target && target!==user.id && <form action={blockSocialProfile.bind(null,target,true)}><button className="secondary">Bloquear usuário</button></form>}
         </div>}
         {view==="perfil" && <>
-          <form className="account-form card panel-form" action={saveSocialProfile}>
-            <h2>Configurações do perfil</h2>
-            <label>Nome de usuário <input name="username" required minLength={3} maxLength={40} pattern="[A-Za-z0-9_.\x2D]{3,40}" defaultValue={profile?.username} /></label>
-            <small>Use letras sem acento, números, ponto, hífen ou sublinhado.</small>
-            <label>Foto de perfil <input type="file" name="avatar" accept={images} /></label>
-            {profile?.avatar && <label><input type="checkbox" name="remove_avatar" /> Remover foto</label>}
-            <label>Banner <input type="file" name="banner" accept={images} /></label>
-            {profile?.banner && <label><input type="checkbox" name="remove_banner" /> Remover banner</label>}
-            <small>Até 2 MB por imagem.</small>
-            {Object.keys(socials).map(network=><label key={network}>{network} <input type="url" name={network} maxLength={300} defaultValue={profile?.links?.[network]} /></label>)}
-            <label>Tema <select name="theme" defaultValue={profile?.theme ?? "claro"}>{Object.entries(themes).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
-            <button className="primary">Salvar perfil</button>
-          </form>
+          <SocialProfileForm key={profile?.revision ?? "new"} profile={profile ?? undefined}
+            avatar={links.get(profile?.avatar ?? "")} banner={links.get(profile?.banner ?? "")} setup={false} />
+          <p><Link href="/cliente?aba=bloqueados">Gerenciar usuários bloqueados</Link></p>
           {profile && <form action={freezeSocial.bind(null,!profile.frozen)}><button className="secondary">{profile.frozen ? "Reativar perfil" : "Congelar perfil"}</button></form>}
           <details className="card panel-form"><summary>Solicitar exclusão da conta</summary>
             {deletionResult?.data ? <p>Sua solicitação foi registrada para análise.</p> : <form className="account-form" action={requestDeletion}>
@@ -121,6 +148,7 @@ export default async function ClientPage({ searchParams }: {
         <h2>Galeria</h2>
       </>}
       {shop && shopInfo && <div className="card panel-form">
+        {presenceResult?.data && <ProfilePresence key={shop} initial={presenceResult.data} profile={null} shop={shop} />}
         <p>{countsResult?.data?.followers ?? 0} seguidores</p>
         <div className="account-links"><Link href={"/estabelecimento/"+shopInfo.slug}>Visitar estabelecimento</Link><Link href={"/estabelecimento/"+shopInfo.slug+"/agendar"}>Agendar</Link></div>
         <form action={changeFollow.bind(null,path,shop,true,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir estabelecimento"}</button></form>
@@ -129,12 +157,27 @@ export default async function ClientPage({ searchParams }: {
           <label>Comentário <textarea name="message" maxLength={500} /></label><button className="secondary">Enviar avaliação</button>
         </form>}
       </div>}
-      {view==="pessoas" && (people.length ? <ul className="cards">{people.slice(0,12).map(person=><li className="card" key={person.user_id}>
-        {links.get(person.avatar) && <img className="social-avatar" src={links.get(person.avatar)} alt="" loading="lazy" />}
-        <Link href={"/cliente?perfil="+person.user_id}>{person.username}</Link></li>)}</ul> : <p>Nenhum perfil disponível.</p>)}
+      {connections?.data && <p>{connections.data.count} {collection === "seguidores" ? "seguidores" : "perfis seguidos"}</p>}
+      {(view==="pessoas" || connections?.data) && (people.length ? <ul className="cards">{people.slice(0,12).map(person=><li className="card" key={person.user_id}>
+        {links.get(person.avatar) && <img className="social-avatar social-avatar-small" width={56} height={56} src={links.get(person.avatar)} alt="" loading="lazy" />}
+        <Link href={"/cliente?perfil="+person.user_id}>{person.username}</Link>
+        {collection === "seguindo" && profileId === user.id && <form action={changeFollow.bind(null,path,person.user_id,false,true)}>
+          <button className="secondary">Deixar de seguir</button>
+        </form>}
+      </li>)}</ul> : <p>Nenhum perfil disponível.</p>)}
+      {(collection === "lojas-seguidas" || collection === "favoritos") && (shops.length ? <ul className="cards">{shops.slice(0,12).map(item=><li className="card" key={item.id}>
+        {httpsUrl(item.logo ?? undefined) && <img className="social-avatar social-avatar-small" src={item.logo!} alt="" loading="lazy" width={56} height={56} />}
+        <Link href={"/cliente?loja="+item.id}>{item.name}</Link><p>{item.city}</p>
+        <form action={collection === "favoritos" ? changeFavorite.bind(null,path,item.id,true) : changeFollow.bind(null,path,item.id,true,true)}>
+          <button className="secondary">{collection === "favoritos" ? "Remover favorito" : "Deixar de seguir"}</button>
+        </form>
+      </li>)}</ul> : <p>Nenhum estabelecimento nesta lista.</p>)}
+      {collection === "bloqueados" && (blocked.length ? <ul className="cards">{blocked.slice(0,12).map(person=><li className="card" key={person.user_id}>
+        <p>{person.username}</p><form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
+      </li>)}</ul> : <p>Nenhum usuário bloqueado.</p>)}
       {view==="notificacoes" && (notices.length ? <ul className="cards">{notices.slice(0,25).map((item,index)=><li className="card" key={item.photo+item.occurred+index}>
         <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação.</p>)}
-      {posts.length>0 && <ul className="cards social-gallery">{posts.slice(0,12).map(post=><li className="card" key={post.id}>
+      {!setup && posts.length>0 && <ul className="cards social-gallery">{posts.slice(0,12).map(post=><li className="card" key={post.id}>
         {links.get(post.object_path) && <Link href={"/cliente?foto="+post.id}><img src={links.get(post.object_path)} alt={post.caption || "Foto da publicação"} loading="lazy" /></Link>}
         {post.shop ? <Link href={"/cliente?loja="+post.shop}>{post.promotion ? "Promoção do estabelecimento" : "Ver estabelecimento"}</Link> :
           names.has(post.author) && <Link href={"/cliente?perfil="+post.author}>{names.get(post.author)}</Link>}
@@ -155,7 +198,7 @@ export default async function ClientPage({ searchParams }: {
           {!comment.parent && <details><summary>Responder</summary><CommentForm path={path} photo={photo} parent={comment.id} /></details>}
         </article>)}
       </>}
-      {(more || page>0) && <nav className="account-links" aria-label="Paginação">{page>0 && <Link href={url(page-1)}>Anterior</Link>}{more && <Link href={url(page+1)}>Próxima</Link>}</nav>}
+      {!setup && (more || page>0) && <nav className="account-links" aria-label="Paginação">{page>0 && <Link href={url(page-1)}>Anterior</Link>}{more && <Link href={url(page+1)}>Próxima</Link>}</nav>}
     </section>
   </div>;
 }

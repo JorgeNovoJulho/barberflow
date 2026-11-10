@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.6",
+    "date": "2026-11-10",
+    "title": "Primeiros passos e perfis no Meu Feed",
+    "changes": [
+      "Complete o perfil com nome de usuário e foto, consulte nomes disponíveis e veja a prévia das imagens.",
+      "Siga pessoas, organize estabelecimentos seguidos e favoritos e gerencie bloqueios.",
+      "Consulte a presença e o último acesso em perfis visíveis."
+    ]
+  },
+  {
     "version": "0.2.5",
     "date": "2026-11-10",
     "title": "Atalhos, comandas e fotos da equipe",

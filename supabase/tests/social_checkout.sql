@@ -24,7 +24,21 @@ begin
     raise exception 'Cliente conseguiu criar loja';
   exception when insufficient_privilege then null;
   end;
+  insert into public.barberflow_social_favorite_shops(shop) values(shop);
+  assert (select count(*) from public.barberflow_saved_shops('favorites',0))=1;
+  assert (select count(*) from public.barberflow_saved_shops('following',0))=0;
+  insert into public.barberflow_social_follow_shops(shop) values(shop);
+  delete from public.barberflow_social_favorite_shops f where f.shop='20000000-0000-4000-8000-000000000001';
+  assert (select count(*) from public.barberflow_saved_shops('favorites',0))=0;
+  assert (select count(*) from public.barberflow_saved_shops('following',0))=1;
   insert into public.barberflow_social_profiles(username) values('cliente_teste');
+  assert (public.barberflow_username_availability('CLIENTE_TESTE')->>'available')::boolean;
+  update public.barberflow_social_profiles set theme='rosa' where user_id=auth.uid() and revision=0;
+  assert found;
+  update public.barberflow_social_profiles set theme='azul' where user_id=auth.uid() and revision=0;
+  assert not found;
+  assert (select theme='rosa' from public.barberflow_social_profiles where user_id=auth.uid());
+  perform public.barberflow_touch_activity();
   insert into public.barberflow_social_photos(object_path,caption,audience)
     values(auth.uid()::text||'/50000000-0000-4000-8000-000000000001','Privada','followers');
   begin
@@ -45,7 +59,15 @@ begin
   assert public.barberflow_account_kind() is null;
   assert public.barberflow_initialize_google_account('cliente')='cliente';
   assert public.barberflow_initialize_google_account('barbearia')='cliente';
+  assert not (public.barberflow_username_availability(' CLIENTE_TESTE ')->>'available')::boolean;
+  assert jsonb_array_length(public.barberflow_username_availability('CLIENTE_TESTE')->'suggestions')=3;
+  begin
+    insert into public.barberflow_social_profiles(username) values('CLIENTE_TESTE');
+    raise exception 'Nome duplicado aceito';
+  exception when unique_violation then null;
+  end;
   insert into public.barberflow_social_profiles(username) values('outro_teste');
+  assert (public.barberflow_profile_presence('10000000-0000-4000-8000-000000000002',null)->>'online')::boolean;
   assert not exists(select 1 from public.barberflow_social_photos);
   insert into public.barberflow_social_follow_users(target) values('10000000-0000-4000-8000-000000000002');
   select id into strict photo_id from public.barberflow_social_feed(0);
@@ -56,10 +78,35 @@ end $$;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
 do $$ begin
   assert (select count(*) from public.barberflow_social_notices(0))=2;
-  update public.barberflow_social_profiles set frozen=true where user_id=auth.uid();
+  assert public.barberflow_social_connections(auth.uid(),'followers',0)->>'count'='1';
+  insert into public.barberflow_social_follow_users(target) values('10000000-0000-4000-8000-000000000003');
+  assert public.barberflow_block_profile('10000000-0000-4000-8000-000000000003',true);
+  assert public.barberflow_social_connections(auth.uid(),'followers',0)->>'count'='0';
+  assert public.barberflow_social_connections(auth.uid(),'following',0)->>'count'='0';
 end $$;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
-do $$ begin assert not exists(select 1 from public.barberflow_social_feed(0)); end $$;
+do $$
+declare target_id uuid:='10000000-0000-4000-8000-000000000002';
+begin
+  assert not exists(select 1 from public.barberflow_social_feed(0));
+  assert public.barberflow_profile_presence(target_id,null) is null;
+  begin
+    insert into public.barberflow_social_follow_users(target) values(target_id);
+    raise exception 'Seguir após bloqueio';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+update barberflow_private.account_activity set seen_at=now()-interval '3 minutes'
+where user_id='10000000-0000-4000-8000-000000000002';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
+do $$
+begin
+  assert public.barberflow_block_profile('10000000-0000-4000-8000-000000000003',false);
+  assert not (public.barberflow_profile_presence(auth.uid(),null)->>'online')::boolean;
+  assert public.barberflow_profile_presence(auth.uid(),null)->>'lastSeen' is not null;
+end $$;
 
 reset role;
 delete from public.barberflow_showcase_pix where establishment_id='20000000-0000-4000-8000-000000000001';
