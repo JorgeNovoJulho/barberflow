@@ -5,6 +5,8 @@ import { accountKind, afterLogin } from "../../../lib/account-role";
 import { supabaseServer } from "../../../lib/supabase";
 
 export async function GET(request: NextRequest) {
+  const next = localPath(request.nextUrl.searchParams.get("next"));
+  const financeRecovery = /^\/painel\/[0-9a-f-]{36}\/financeiro\?estado=email-verificado(?:&comanda=[0-9a-f-]{36})?$/i.test(next);
   const code = request.nextUrl.searchParams.get("code");
   const supabase = await supabaseServer();
   const jar = await cookies();
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
   if (code && supabase) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const next = localPath(request.nextUrl.searchParams.get("next"));
+      if (financeRecovery) return NextResponse.redirect(new URL(next, authOrigin()));
       if (next === "/nova-senha") return NextResponse.redirect(new URL(next, authOrigin()));
       if (chosen) {
         jar.delete("bf_google_signup");
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (financeRecovery) return NextResponse.redirect(new URL(next.replace("email-verificado", "recuperacao-email-expired"), authOrigin()));
   if (chosen) {
     jar.delete("bf_google_signup");
     return googleError();

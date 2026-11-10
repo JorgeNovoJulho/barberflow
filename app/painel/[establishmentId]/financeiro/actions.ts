@@ -22,27 +22,37 @@ async function context(shop: string) {
   } };
 }
 
-export async function requestFinanceEmail(shop: string) {
-  const { supabase, user, path, finish } = await context(shop);
+export async function requestFinanceEmail(shop: string, form: FormData) {
+  const { supabase, user, path } = await context(shop);
+  const sale = String(form.get("comanda") ?? "");
+  const finish = (status: string) => redirect(financeRecoveryPath(path, status, sale));
   if (!user.email || !user.email_confirmed_at) return finish("recuperacao-email-denied");
   const request = await supabase.rpc("barberflow_request_finance_email", { shop });
   if (request.error) return finish("recuperacao-email-falha");
   if (request.data !== "requested") return finish("recuperacao-email-" + request.data);
   const callback = new URL("/auth/callback", authOrigin());
-  callback.searchParams.set("next", path + "?estado=email-verificado");
+  callback.searchParams.set("next", financeRecoveryPath(path, "email-verificado", sale));
   const { error } = await supabase.auth.signInWithOtp({
     email: user.email, options: { shouldCreateUser: false, emailRedirectTo: callback.href },
   });
   return finish(error?.status === 429 ? "recuperacao-email-limit" : error ? "recuperacao-email-falha" : "recuperacao-email-enviado");
 }
 
+function financeRecoveryPath(path: string, status: string, sale: string) {
+  const query = new URLSearchParams({ estado: status });
+  if (isUuid(sale)) query.set("comanda", sale);
+  return path + "?" + query;
+}
+
 export async function resetFinanceWithEmail(shop: string, form: FormData) {
-  const { supabase, finish } = await context(shop);
+  const { supabase, path } = await context(shop);
+  const sale = String(form.get("comanda") ?? "");
+  const finish = (status: string) => redirect(financeRecoveryPath(path, status, sale));
   const secret = String(form.get("new_secret") ?? "");
   if (secret.length < 8 || Buffer.byteLength(secret) > 72 || secret !== form.get("confirmation")) return finish("recuperacao-email-invalid");
   const { data, error } = await supabase.rpc("barberflow_reset_finance_email", { shop, new_secret: secret });
   if (error || typeof data !== "string") return finish("recuperacao-email-falha");
-  return finish(data === "reset" ? "senha-alterada" : "recuperacao-email-" + data);
+  return finish(data === "reset" ? "senha-email-alterada" : "recuperacao-email-" + data);
 }
 
 export async function unlockFinance(shop: string, setup: boolean, form: FormData) {
@@ -57,9 +67,9 @@ export async function unlockFinance(shop: string, setup: boolean, form: FormData
     return finish(status);
   };
   const secret = String(form.get("secret") ?? "");
-  if (secret.length < 8 || Buffer.byteLength(secret) > 72 || (setup && form.get("confirmation") !== secret)) return respond("senha-invalida");
+  if (setup && (secret.length < 8 || Buffer.byteLength(secret) > 72 || form.get("confirmation") !== secret)) return respond("senha-invalida");
   const { data, error } = await supabase.rpc("barberflow_finance_unlock", { shop, secret, setup });
-  return respond(error ? "falha" : data === "unlocked" ? "desbloqueado" : data === "blocked" ? "bloqueado" : "senha-invalida");
+  return respond(error ? "falha" : data === "unlocked" ? "desbloqueado" : data === "blocked" ? "bloqueado" : data === "incorrect_blocked" ? "senha-bloqueada" : data === "incorrect_2" ? "senha-errada-2" : data === "incorrect_1" ? "senha-errada-1" : "senha-invalida");
 }
 
 export async function lockFinance(shop: string) {

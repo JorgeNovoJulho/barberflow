@@ -14,7 +14,11 @@ const methods = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Tran
 const feedback: Record<string, string> = {
   desbloqueado: "Área financeira desbloqueada por 15 minutos.",
   fechado: "Área financeira bloqueada.",
-  bloqueado: "Muitas tentativas. Aguarde até 15 minutos para tentar de novo.",
+  bloqueado: "Tentativas bloqueadas por 15 minutos. Você ainda pode usar Esqueci a senha financeira.",
+  "senha-bloqueada": "Senha financeira incorreta. Após três erros, novas tentativas ficam bloqueadas por 15 minutos. Você pode recuperar a senha agora.",
+  "senha-errada-2": "Senha financeira incorreta. Restam 2 tentativas.",
+  "senha-errada-1": "Senha financeira incorreta. Resta 1 tentativa.",
+  "senha-email-alterada": "Senha financeira alterada. O Financeiro está desbloqueado.",
   "senha-invalida": "Confira a senha financeira e a confirmação, quando solicitada.",
   "senha-alterada": "Senha financeira alterada. Desbloqueie o Financeiro com a nova senha.",
   "recuperacao-dados": "Confira a senha da conta, a nova senha financeira e a confirmação.",
@@ -73,6 +77,7 @@ export default async function Finance({ params, searchParams }: {
   const emailReset = ["email-verificado", "recuperacao-email-invalid", "recuperacao-email-reused", "recuperacao-email-mfa"].includes(estado ?? "");
   const guide = financeGuide(guia);
   const setup = access.data === "setup";
+  const blocked = access.data === "blocked";
   const [result, entriesResult, controls] = access.data === "unlocked" ? await Promise.all([
     supabase.rpc("barberflow_receivables", { shop }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
     supabase.rpc("barberflow_card_controls", { shop }),
@@ -89,23 +94,27 @@ export default async function Finance({ params, searchParams }: {
     </nav>
     <p className="eyebrow">{business.data.name}</p><h1>Financeiro</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
+    {blocked && estado !== "bloqueado" && estado !== "senha-bloqueada" && <p role="status">{feedback.bloqueado}</p>}
     {result?.error || entriesResult?.error ? <p role="alert">Não foi possível carregar os lançamentos financeiros.</p>
       : !ledger ? <div className="card panel-form">
         <h2>{setup ? "Criar senha financeira" : "Desbloquear financeiro"}</h2>
         <p>Use uma senha exclusiva do BARBERFLOW, com pelo menos oito caracteres.</p>
-        <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
+        {!blocked && !emailReset && <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
           {sale && <input type="hidden" name="comanda" value={sale} />}
-          <PasswordField label="Senha financeira" name="secret" autoComplete={setup ? "new-password" : "current-password"} />
+          <PasswordField label="Senha financeira" name="secret" minLength={setup ? 8 : 1} autoComplete={setup ? "new-password" : "current-password"} />
           {setup && <PasswordField label="Confirmar senha financeira" name="confirmation" autoComplete="new-password" />}
           <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>
-        </form>
+        </form>}
         {!setup && <details className="finance-password-recovery" open={emailReset || (typeof estado === "string" && estado.startsWith("recuperacao-"))}>
           <summary>Esqueci a senha financeira</summary>
           {emailReset ? <form className="account-form" action={resetFinanceWithEmail.bind(null, shop)}>
+            {sale && <input type="hidden" name="comanda" value={sale} />}
+            <h3>Crie uma nova senha financeira</h3>
             <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
             <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
-            <SubmitButton>Salvar nova senha financeira</SubmitButton>
+            <SubmitButton>Salvar senha e entrar no Financeiro</SubmitButton>
           </form> : <form className="account-form" action={requestFinanceEmail.bind(null, shop)}>
+            {sale && <input type="hidden" name="comanda" value={sale} />}
             <p>Receba um link no e-mail confirmado da sua conta para criar outra senha financeira.</p>
             <SubmitButton>Enviar link por e-mail</SubmitButton>
           </form>}

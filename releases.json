@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.3",
+    "date": "2026-11-10",
+    "title": "Recuperação da senha financeira",
+    "changes": [
+      "O Financeiro informa as tentativas restantes e bloqueia por 15 minutos após três erros.",
+      "O link de recuperação abre a criação de senha e libera o Financeiro após salvar."
+    ]
+  },
+  {
     "version": "0.2.2",
     "date": "2026-11-10",
     "title": "Pix nas comandas",
