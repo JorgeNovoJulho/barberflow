@@ -15,6 +15,8 @@ import { PrintClosing } from "./print";
 
 const status:Record<string,string> = {
   ok:"Comanda atualizada.",
+  recebido:"Recebimento registrado no Financeiro.",
+  pix_ready:"Conta Pix configurada. Clique em Gerar cobrança Pix para ver o QR Code e o Pix Copia e Cola.",
   timezone_saved:"Fuso horário atualizado.",
   changed:"A comanda mudou. Confira o estado atual antes de tentar de novo.",
   invalid:"Confira os itens, quantidades, telefone e dados do pagamento.",
@@ -62,7 +64,7 @@ export default async function Checkout({params,searchParams}:{
     .eq("establishment_id",shop).eq("active",true).is("deleted_at",null).order("name").order("id");
   const [services,products] = canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
   const chargeFeedback = args.estado === "pix_missing"
-    ? "A cobrança Pix não foi criada porque este estabelecimento ainda não tem uma chave Pix cadastrada. Configure a chave ou escolha Débito ou Crédito."
+    ? "A comanda foi mantida aberta. Cadastre a chave Pix do estabelecimento para gerar a cobrança, ou escolha Débito ou Crédito."
     : args.estado === "method"
       ? "Escolha uma forma de pagamento para fechar e cobrar."
       : args.estado && Object.hasOwn(status,args.estado) ? status[args.estado] : undefined;
@@ -74,13 +76,14 @@ export default async function Checkout({params,searchParams}:{
     <h1>{closing ? "Fechamento" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
     {!canEdit && chargeFeedback && <p role="status">{chargeFeedback}</p>}
     {[current,openResult,reportResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
-    {canEdit && services?.data && products?.data && <SaleEditor key={sale?.revision ?? id ?? "nova"} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} />}
+    {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
     {id && !sale && !canEdit && !current?.error && <p>Comanda indisponível neste estabelecimento.</p>}
     {sale && sale.state!=="open" && <div className="card panel-form" id="cobranca">
-      {args.estado === "cobranca_preparada" && sale.state === "pending" && <p role="status">Cobrança preparada. Confira o pagamento antes de registrar o recebimento.</p>}
+      {args.estado === "cobranca_preparada" && sale.state === "pending" && <p role="status">Cobrança gerada. Após o pagamento, confira o recebimento antes de registrá-lo.</p>}
       <h2>{sale.number} · {{pending:"Aguardando pagamento",paid:"Recebimento registrado",cancelled:"Cancelada"}[sale.state]}</h2>
       <SaleDetails sale={sale} />
       {sale.method && <p>Pagamento por {methods[sale.method]}</p>}
+      {sale.state === "pending" && sale.method === "pix" && !pix && <p role="alert">Não foi possível mostrar o Pix desta comanda. Confira os dados antes de registrar qualquer recebimento.</p>}
       {pix && <div className="panel-form">
         <img src={await QRCode.toDataURL(pix,{width:240,margin:4})} width={240} height={240} alt="QR Code Pix da comanda" />
         <label>Pix Copia e Cola <textarea value={pix} rows={4} readOnly /></label>
@@ -89,11 +92,12 @@ export default async function Checkout({params,searchParams}:{
       {sale.state==="pending" && <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision)}>
         <p>Confira o recebimento no banco ou na maquininha antes de registrar. Informe o identificador da transação.</p>
         <input type="hidden" name="operation" value="confirm" />
-        <label>Valor recebido (R$) <input name="received" inputMode="decimal" required maxLength={9} /></label>
+        <label>Valor recebido (R$) <input name="received" inputMode="decimal" required maxLength={9} defaultValue={((sale.service_cents+sale.product_cents)/100).toFixed(2).replace(".",",")} /></label>
         <label>Identificador do pagamento <input name="reference" required minLength={6} maxLength={100} /></label>
         <label><input type="checkbox" name="acknowledged" required /> Conferi o pagamento e o valor recebido.</label>
         <button className="primary">Confirmar recebimento</button>
       </form>}
+      {sale.state === "paid" && <Link className="secondary" href={`/painel/${shop}/resumo`}>Voltar à Visão geral</Link>}
     </div>}
     {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary>Cancelar comanda</summary>
       <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision)}>

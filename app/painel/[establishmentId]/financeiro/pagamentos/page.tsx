@@ -11,14 +11,17 @@ import { paymentFeedback } from "./feedback";
 
 export default async function PaymentSettings({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ pagamento?: string }>;
+  searchParams: Promise<{ pagamento?: string; comanda?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
   const path = `/painel/${shop}/financeiro`;
+  const { pagamento, comanda } = await searchParams;
+  const sale = comanda && isUuid(comanda) ? comanda : null;
+  const query = sale ? "?comanda=" + sale : "";
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) {
-    redirect("/login?" + new URLSearchParams({ next: path + "/pagamentos" }));
+    redirect("/login?" + new URLSearchParams({ next: path + "/pagamentos" + query }));
   }
   const [business, access] = await Promise.all([
     supabase.from("barberflow_establishments").select("name,city").eq("id", shop).maybeSingle(),
@@ -26,12 +29,11 @@ export default async function PaymentSettings({ params, searchParams }: {
   ]);
   if (business.error || access.error) throw new Error("Não foi possível consultar a configuração de pagamentos.");
   if (!business.data || access.data === "denied") notFound();
-  if (access.data !== "unlocked") redirect(path);
+  if (access.data !== "unlocked") redirect(path + query);
   const [pix, cards] = await Promise.all([
     supabase.rpc("barberflow_business_pix", { shop }),
     supabase.rpc("barberflow_card_status", { shop }),
   ]);
-  const { pagamento } = await searchParams;
   const cardAvailable = !!cardAdmin();
   const account = cards.data?.account as { provider: CardProvider; sandbox: boolean } | null | undefined;
   return <section className="container section" id="recebimento">
@@ -39,11 +41,13 @@ export default async function PaymentSettings({ params, searchParams }: {
     <p className="eyebrow">{business.data.name}</p>
     <h1>Configuração de recebimentos</h1>
     {pagamento && Object.hasOwn(paymentFeedback, pagamento) && <p role="status">{paymentFeedback[pagamento]}</p>}
-    <section className="card panel-form">
+    <section className="card panel-form" id="conta-pix">
       <h2>Conta Pix do estabelecimento</h2>
       <p>A mesma chave recebe pagamentos das comandas e da vitrine. Cadastre uma chave já registrada no banco.</p>
       {pix.error ? <p role="alert">Não foi possível carregar a conta Pix.</p> : <>
+        {sale && <p>Ao salvar a conta Pix, você volta à comanda para gerar a cobrança.</p>}
         <form className="account-form" action={saveBusinessPix.bind(null, shop, false)}>
+          {sale && <input type="hidden" name="comanda" value={sale} />}
           <label>Chave Pix <input name="key" maxLength={77} required defaultValue={pix.data?.pix_key} /></label>
           <label>Nome do recebedor <input name="merchant" maxLength={25} required
             defaultValue={pix.data?.merchant ?? pixLabel(business.data.name, 25)} /></label>

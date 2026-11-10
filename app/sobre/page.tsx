@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { legalIdentity } from "../../lib/auth-path";
-import { compareVersions, currentRelease, getReleaseInformation, repository } from "../../lib/releases";
+import { compareVersions, currentRelease, getReleaseInformation } from "../../lib/releases";
 
 export const metadata: Metadata = { title: "Sobre" };
 
@@ -25,19 +25,17 @@ export default async function AboutPage() {
         <h2 id="developer-title">Desenvolvimento</h2>
         <p>{developer}</p>
         {contact && <p><a href={`mailto:${contact}`}>{contact}</a></p>}
-        <p><a href={repository}>Código do BARBERFLOW no GitHub</a></p>
       </section>
       <section className="card panel-form" aria-labelledby="version-title">
         <h2 id="version-title">Versão atual</h2>
         <p><strong>v{currentRelease.version}</strong>{release.deployedRevision && <> · revisão <code>{release.deployedRevision.slice(0, 7)}</code></>}</p>
         {pending ? <>
-          <p role="status"><strong>Atualização no GitHub</strong> · v{release.latest.version} · revisão <code>{release.head.sha.slice(0, 7)}</code></p>
-          {release.latest.version === currentRelease.version && <p>{release.head.commit?.message?.split("\n")[0]}</p>}
+          <p role="status"><strong>Nova atualização</strong> · v{release.latest.version} · revisão <code>{release.head.sha.slice(0, 7)}</code></p>
           <p>A nova publicação fica disponível assim que a hospedagem conclui a implantação. Use Atualizar para recarregar o site e conferir.</p>
           <a className="primary" href="/sobre?verificar=1">Atualizar</a>
           <a className="secondary" href={`#versao-${release.latest.version}`}>O que mudou</a>
         </> : <>
-          <p role="status">{release.available ? "Você está na versão mais recente publicada no GitHub." : "Não foi possível consultar o GitHub agora."}</p>
+          <p role="status">{release.available ? "Você está na versão mais recente." : "Não foi possível verificar atualizações agora."}</p>
           <a className="secondary" href="/sobre?verificar=1">Verificar atualizações</a>
         </>}
       </section>
@@ -48,7 +46,7 @@ export default async function AboutPage() {
       {release.history.map((entry, index) => {
         const unreleased = compareVersions(entry.version, currentRelease.version) > 0;
         return <details className="card panel-form" id={`versao-${entry.version}`} key={entry.version} open={index === 0}>
-          <summary>v{entry.version} · {entry.title}{unreleased ? " · No GitHub" : ""}</summary>
+          <summary>v{entry.version} · {entry.title}{unreleased ? " · Em publicação" : ""}</summary>
           <p><time dateTime={entry.date}>{entry.date.split("-").reverse().join("/")}</time></p>
           <ul>{entry.changes.map((change) => <li key={change}>{change}</li>)}</ul>
         </details>;

@@ -13,7 +13,7 @@ function options(catalog:CatalogItem[],saved:Item[]) {
   return prices;
 }
 
-export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing}:{shop:string;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean}) {
+export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,pixReady}:{shop:string;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean}) {
   const savedServices = sale?.items.filter(item=>item.kind==="service") ?? [];
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
@@ -41,14 +41,14 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing}:
     <div aria-live="polite"><p>Serviços {money(serviceTotal)} · Produtos {money(productTotal)}</p><p><strong>Total {money(serviceTotal+productTotal)}</strong></p></div>
     <div id="cobranca">
       {feedback && <p role="status">{feedback}</p>}
-      {pixMissing && <Link href={`/painel/${shop}/financeiro/pagamentos`}>Configurar chave Pix</Link>}
-      <label>Forma de pagamento ao cobrar <select name="method" defaultValue="">
+      {pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
+      <label>Forma de pagamento ao cobrar <select name="method" defaultValue={pixReady || pixMissing ? "pix" : ""}>
         <option value="">Selecione a forma de pagamento</option>
         <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
       </select></label>
     </div>
     <div className="account-links">
-      <SubmitButton name="operation" value="charge">Fechar e cobrar</SubmitButton>
+      <SubmitButton name="operation" value="charge">{pixReady ? "Gerar cobrança Pix" : "Fechar e cobrar"}</SubmitButton>
       <SubmitButton name="operation" value="save">Manter aberta</SubmitButton>
       {!sale && <a className="secondary" href={`/painel/${shop}/resumo`}>Cancelar</a>}
     </div>

@@ -61,6 +61,25 @@ end $$;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
 do $$ begin assert not exists(select 1 from public.barberflow_social_feed(0)); end $$;
 
+reset role;
+delete from public.barberflow_showcase_pix where establishment_id='20000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+do $$
+declare
+  shop uuid:='20000000-0000-4000-8000-000000000001';
+  sale uuid:='40000000-0000-4000-8000-000000000001';
+  selections jsonb:='[{"kind":"service","id":"30000000-0000-4000-8000-000000000001","units":1},{"kind":"product","id":"30000000-0000-4000-8000-000000000002","units":2}]';
+begin
+  assert public.barberflow_save_counter_sale(shop,sale,0,'Cliente','',selections,'charge','pix',null)='pix_missing';
+  assert public.barberflow_counter_sale(shop,sale) is null;
+  assert public.barberflow_save_counter_sale(shop,sale,0,'Cliente','',selections,'save',null,null)='ok';
+  assert public.barberflow_counter_sale(shop,sale)->>'state'='open';
+  assert (select stock from public.barberflow_products where id='30000000-0000-4000-8000-000000000002')=5;
+end $$;
+reset role;
+insert into public.barberflow_showcase_pix values('20000000-0000-4000-8000-000000000001','owner@example.test','LOJA','RIO');
+set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 do $$
 declare
@@ -71,11 +90,12 @@ declare
   selections jsonb:='[{"kind":"service","id":"30000000-0000-4000-8000-000000000001","units":1},{"kind":"product","id":"30000000-0000-4000-8000-000000000002","units":2}]';
   summary jsonb;
 begin
-  assert public.barberflow_save_counter_sale(shop,sale,0,'','',selections,'save',null,null)='ok';
   assert public.barberflow_counter_sale(shop,sale)->>'number' like '000.001.%';
   update public.barberflow_products set price_cents=9000 where id='30000000-0000-4000-8000-000000000002';
   assert public.barberflow_save_counter_sale(shop,sale,2,'Cliente','',selections,'charge','pix',null)='ok';
   assert public.barberflow_counter_sale(shop,sale)->>'product_cents'='4000';
+  assert public.barberflow_counter_sale(shop,sale)->>'state'='pending';
+  assert public.barberflow_counter_sale(shop,sale)->'pix'->>'pix_key'='owner@example.test';
   assert public.barberflow_counter_report(shop,'dia','ambos',0)->>'pix'='0';
   assert public.barberflow_save_counter_sale(shop,sale,3,'','',null,'confirm',null,'PIX-123456',8999)='amount';
   assert public.barberflow_save_counter_sale(shop,sale,3,'','',null,'confirm',null,'PIX-123456',9000)='ok';

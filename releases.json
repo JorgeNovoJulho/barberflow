@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.2",
+    "date": "2026-11-10",
+    "title": "Pix nas comandas",
+    "changes": [
+      "Configure o Pix pelo caixa e volte à mesma comanda para gerar a cobrança.",
+      "Confira o QR Code e o código Copia e Cola antes de registrar o recebimento."
+    ]
+  },
+  {
     "version": "0.2.1",
     "date": "2026-11-10",
     "title": "Cobrança de comandas abertas",
@@ -15,7 +24,7 @@
     "title": "Versão e histórico de atualizações",
     "changes": [
       "A guia Sobre mostra a versão em uso, os dados do desenvolvedor e o histórico de mudanças.",
-      "Quando o GitHub tem uma versão mais recente, a guia mostra a nova versão e permite recarregar o site para acessar a publicação assim que estiver disponível."
+      "Quando há uma versão mais recente, a guia mostra a nova versão e permite recarregar o site para acessar a publicação assim que estiver disponível."
     ]
   },
   {

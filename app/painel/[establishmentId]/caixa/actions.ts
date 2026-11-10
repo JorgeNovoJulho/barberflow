@@ -25,20 +25,31 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
     if (service) selections.push({ kind:"service",id:service,units:1 });
     if (product) selections.push({ kind:"product",id:product,units:/^\d{1,5}$/.test(units) ? Number(units) : 0 });
   }
-  const { data,error } = await supabase.rpc("barberflow_save_counter_sale",{
+  const input = {
     shop_id:shop,sale_id:id,expected_revision:revision,customer:value("customer"),contact:value("phone"),
     selections,operation,payment_method:method || null,payment_reference:value("reference") || null,received_cents:parsePrice(value("received")),
-  });
+  };
+  const { data,error } = await supabase.rpc("barberflow_save_counter_sale",input);
   const overview = `/painel/${shop}/resumo`;
   revalidatePath(overview);
   if (!error && data === "ok" && operation === "save") {
     redirect(overview + "?comanda=salva#comandas-abertas");
   }
+  if (!error && data === "pix_missing" && operation === "charge") {
+    // Preserve the draft before leaving to configure the establishment's receiving account.
+    const draft = await supabase.rpc("barberflow_save_counter_sale",{
+      ...input,operation:"save",payment_method:null,
+    });
+    if (draft.error || draft.data !== "ok") {
+      redirect(path + "&estado=" + encodeURIComponent(draft.error ? "falha" : String(draft.data ?? "falha")) + "#cobranca");
+    }
+    revalidatePath(overview);
+  }
   const status = error ? "falha" : String(data ?? "falha");
   if (operation === "charge") {
     redirect(path + "&estado=" + encodeURIComponent(status === "ok" ? "cobranca_preparada" : status) + "#cobranca");
   }
-  redirect(path + "&estado=" + encodeURIComponent(status));
+  redirect(path + "&estado=" + encodeURIComponent(operation === "confirm" && status === "ok" ? "recebido" : status) + "#cobranca");
 }
 export async function saveCheckoutTimezone(shop:string,form:FormData) {
   if (!isUuid(shop)) redirect("/painel");

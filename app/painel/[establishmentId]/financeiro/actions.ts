@@ -46,11 +46,20 @@ export async function resetFinanceWithEmail(shop: string, form: FormData) {
 }
 
 export async function unlockFinance(shop: string, setup: boolean, form: FormData) {
-  const { supabase, finish } = await context(shop);
+  const { supabase, finish, path } = await context(shop);
+  const sale = String(form.get("comanda") ?? "");
+  const returnToPayments = isUuid(sale);
+  const respond = (status: string) => {
+    if (returnToPayments) {
+      if (status === "desbloqueado") redirect(path + "/pagamentos?comanda=" + sale + "#conta-pix");
+      redirect(path + "?" + new URLSearchParams({estado:status,comanda:sale}));
+    }
+    return finish(status);
+  };
   const secret = String(form.get("secret") ?? "");
-  if (secret.length < 8 || Buffer.byteLength(secret) > 72 || (setup && form.get("confirmation") !== secret)) return finish("senha-invalida");
+  if (secret.length < 8 || Buffer.byteLength(secret) > 72 || (setup && form.get("confirmation") !== secret)) return respond("senha-invalida");
   const { data, error } = await supabase.rpc("barberflow_finance_unlock", { shop, secret, setup });
-  return finish(error ? "falha" : data === "unlocked" ? "desbloqueado" : data === "blocked" ? "bloqueado" : "senha-invalida");
+  return respond(error ? "falha" : data === "unlocked" ? "desbloqueado" : data === "blocked" ? "bloqueado" : "senha-invalida");
 }
 
 export async function lockFinance(shop: string) {

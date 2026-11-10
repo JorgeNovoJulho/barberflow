@@ -29,10 +29,19 @@ export async function saveBusinessPix(shop: string, remove: boolean, form: FormD
   const key = normalizePixKey(String(form.get("key") ?? ""));
   const merchant = pixLabel(String(form.get("merchant") ?? ""), 25);
   const city = pixLabel(String(form.get("city") ?? ""), 15);
-  if (!remove && (!key || !merchant || !city)) return finish("dados");
+  if (!remove && (!key || !merchant || !city)) {
+    const sale = String(form.get("comanda") ?? "");
+    if (isUuid(sale)) redirect(`/painel/${shop}/financeiro/pagamentos?comanda=${sale}&pagamento=dados#conta-pix`);
+    return finish("dados");
+  }
   const { data, error } = await supabase.rpc("barberflow_save_business_pix", {
     shop, key_value: remove ? null : key, merchant_name: merchant, merchant_city: city,
   });
+  const sale = String(form.get("comanda") ?? "");
+  if (!remove && isUuid(sale)) {
+    if (!error && data) redirect(`/painel/${shop}/caixa?comanda=${sale}&estado=pix_ready#cobranca`);
+    redirect(`/painel/${shop}/financeiro/pagamentos?comanda=${sale}&pagamento=falha#conta-pix`);
+  }
   finish(error || !data ? "falha" : remove ? "pix-removido" : "pix-salvo");
 }
 

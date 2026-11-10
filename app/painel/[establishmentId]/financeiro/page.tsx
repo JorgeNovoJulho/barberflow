@@ -54,10 +54,12 @@ const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZo
 
 export default async function Finance({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; guia?: string }>;
+  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
+  const { estado, guia, comanda } = await searchParams;
+  const sale = comanda && isUuid(comanda) ? comanda : null;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/financeiro` }));
   const [business, access] = await Promise.all([
@@ -67,7 +69,7 @@ export default async function Finance({ params, searchParams }: {
   if (business.error || access.error) throw new Error("Não foi possível carregar o financeiro.");
   if (!business.data || access.data === "denied") notFound();
 
-  const { estado, guia } = await searchParams;
+  if (sale && access.data === "unlocked") redirect(`/painel/${shop}/financeiro/pagamentos?comanda=${sale}#conta-pix`);
   const emailReset = ["email-verificado", "recuperacao-email-invalid", "recuperacao-email-reused", "recuperacao-email-mfa"].includes(estado ?? "");
   const guide = financeGuide(guia);
   const setup = access.data === "setup";
@@ -92,6 +94,7 @@ export default async function Finance({ params, searchParams }: {
         <h2>{setup ? "Criar senha financeira" : "Desbloquear financeiro"}</h2>
         <p>Use uma senha exclusiva do BARBERFLOW, com pelo menos oito caracteres.</p>
         <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
+          {sale && <input type="hidden" name="comanda" value={sale} />}
           <PasswordField label="Senha financeira" name="secret" autoComplete={setup ? "new-password" : "current-password"} />
           {setup && <PasswordField label="Confirmar senha financeira" name="confirmation" autoComplete="new-password" />}
           <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>
