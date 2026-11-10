@@ -1,4 +1,3 @@
-import { isStudioCover } from "../../../lib/cover-studio";
 import type { CSSProperties } from "react";
 import { serviceMediaUrls } from "../../../lib/service-media";
 import { ServiceMedia } from "../../service-media";
@@ -29,7 +28,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
   const details = readBusinessProfile(profile.details);
   const color = publicProfileColor(details.color);
   const cover = httpsUrl(details.cover);
-  const studioCover = isStudioCover(cover);
+  const rating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
   const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
   const map = httpsUrl(details.map) ?? (details.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined);
@@ -60,13 +59,18 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
       <Link href={'/painel/' + previewShop + '/publicacao'}>Voltar à Página pública</Link>
       <p>Prévia da última versão salva. Agendamentos e compras ficam desativados aqui.</p>
     </div> : <Link href="/estabelecimentos">Ver estabelecimentos</Link>}
-    <header className={`public-business-profile${studioCover ? " has-studio-cover" : cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
-      {cover && <img className={studioCover ? "business-studio-cover" : "business-cover"} src={cover} alt="" decoding="async" />}
+    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
+      {cover && <img className="business-cover" src={cover} alt="" decoding="async" />}
       <div className="business-heading">
       {logo && <img className="business-logo" src={logo} alt={`Logotipo de ${profile.name}`} />}
       <p className="eyebrow">{profile.city}</p>
       <h1>{profile.name}</h1>
-      {!!Object.keys(details.hours ?? {}).length && <p><strong className={`business-status${open ? " is-open" : ""}`}>{open ? "Aberto agora" : "Fechado agora"}</strong></p>}
+      <div className="business-heading-badges">
+        {!!Object.keys(details.hours ?? {}).length && <strong className={`business-status${open ? " is-open" : ""}`}>{open ? "Aberto agora" : "Fechado agora"}</strong>}
+        {!previewShop && reviewResult?.data && <Link className="business-rating" href="#avaliacoes">
+          <span aria-hidden="true">★</span> {rating === null ? "Sem avaliações" : `${rating.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} de 5 · ${reviews.length} ${reviews.length === 1 ? "avaliação recente" : "avaliações recentes"}`}
+        </Link>}
+      </div>
       {profile.description && <p className="intro">{profile.description}</p>}
       {details.address && <p>{address}</p>}
       <div className="account-links">

@@ -135,9 +135,9 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .cover-layer { margin-top: .6rem; }
 .cover-studio input[type="color"] { width: 100%; min-height: 2.5rem; padding: .2rem; }
 .cover-preview-note { font-size: .875rem; }
-.public-profile .public-business-profile.has-studio-cover { padding: 0; }
-.business-studio-cover { display: block; width: 100%; height: auto; aspect-ratio: 8 / 3; object-fit: contain; }
-.has-studio-cover .business-heading { padding: clamp(1.2rem, 4vw, 3rem); }
+.business-heading-badges { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-block: .5rem; }
+.business-rating { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border: 1px solid #d7aa6b; border-radius: 999px; background: #2d2320; color: #fff4db; font-size: .85rem; }
+.business-rating span { color: #ffcf80; }
 .agenda-toolbar [data-agenda-tone="violet"] { color: #532098; background: #f0e7ff; border-color: #c8afea; }
 .agenda-toolbar [data-agenda-tone="green"], .agenda-forms [data-agenda-tone="green"] { color: #08583f; background: #dff8ed; }
 .agenda-toolbar [data-agenda-tone="blue"] { color: #fff; background: #1f52ad; border-color: #1f52ad; }
@@ -317,3 +317,5 @@ main [data-feedback=success], .action-feedback-toast[data-feedback=success] { bo
 .action-feedback-toast { position: fixed; z-index: 100; bottom: 1rem; right: 1rem; width: min(26rem,calc(100vw - 2rem)); display: flex; align-items: center; justify-content: space-between; gap: .6rem; box-shadow: 0 .3rem 1.2rem #18233e33; }
 .action-feedback-toast button { color: inherit; background: transparent; border: 0; cursor: pointer; font-size: 1.4rem; }
 main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-color: #9abbe3; color: #244671; background: #edf5ff; }
+
+.showcase-order-number { overflow-wrap: anywhere; }

@@ -6,7 +6,8 @@ import { pageIndex } from "../cliente/social";
 import { isUuid, parsePrice } from "../../lib/establishments";
 import { bookingCurrency } from "../../lib/public-booking";
 import { showcasePix } from "../../lib/pix";
-import { formatShowcaseDate, showcaseStatus } from "../../lib/showcase";
+import { PurchaseUpdates } from "./purchase-updates";
+import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../lib/showcase";
 import { CopyPix } from "../painel/[establishmentId]/assinatura/copy-pix";
 
 type Purchase = Parameters<typeof showcasePix>[0] & {
@@ -64,6 +65,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     {filterError && <p role="alert">Confira os intervalos de datas e preços.</p>}
     {result.error || focused?.error ? <p role="alert">Não foi possível carregar todas as suas compras.</p> : null}
     {selected && !focused?.data && !focused?.error && <p role="status">Pedido indisponível na sua conta.</p>}
+    {orders.some(({ status }) => status === "pending" || status === "paid") && <PurchaseUpdates />}
     {orders.length ? <ul className="cards">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
@@ -72,15 +74,16 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
       return <li className="card panel-form showcase-order" key={order.id} id={`pedido-${order.id}`}>
         <p className="eyebrow">{order.shop_name}</p>
         <h2>{order.product_name}</h2>
-        <p><strong>{expired ? "Prazo da reserva encerrado" : showcaseStatus[order.status]}</strong></p>
+        <p role="status" aria-atomic="true"><strong>{expired ? "Prazo da reserva encerrado" : showcaseStatus[order.status]}</strong></p>
+        {order.status === "ready" && <p data-feedback="success">Seu pedido está disponível para retirada. Apresente o número abaixo ao estabelecimento.</p>}
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong></p>
-        <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · {order.id.slice(0, 8).toUpperCase()}</small></p>
+        <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · Número do pedido <code className="showcase-order-number">{showcaseOrderNumber(order.id)}</code></small></p>
         {pending && !expired && !pix && <Link href={filters(page)+"&pedido="+order.id+"#pedido-"+order.id}>Abrir pagamento Pix</Link>}
         {pix && <details open={selected === order.id}>
           <summary>Pagar com Pix</summary>
           {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} />}
-          <p>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário e aguarde a conferência do estabelecimento.</p>
+          <p>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário. O estabelecimento confirma o crédito pelo extrato e o status aparece aqui assim que for atualizado.</p>
           <label className="showcase-pix-code">Código Pix
             <textarea readOnly value={pix} rows={4} spellCheck={false} />
           </label>

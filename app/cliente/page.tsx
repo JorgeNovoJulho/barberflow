@@ -42,7 +42,7 @@ export default async function ClientPage({ searchParams }: {
   const profileTable = supabase.from("barberflow_social_profiles");
   const photos = supabase.from("barberflow_social_photos");
   const followTable = supabase.from(shop ? "barberflow_social_follow_shops" : "barberflow_social_follow_users");
-  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult, roleResult, connections, savedShops, presenceResult, blockedProfiles, summaryResult, shopFavorite] = await Promise.all([
+  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult, roleResult, connections, savedShops, presenceResult, blockedProfiles, summaryResult, shopFavorite, purchaseNotices] = await Promise.all([
     profileTable.select("username,avatar,banner,links,theme,frozen,revision").eq("user_id",profileId).maybeSingle(),
     view === "feed" ? supabase.rpc("barberflow_social_feed",{ page_number:page })
       : view === "foto" ? photos.select("*").eq("id",photo!)
@@ -66,6 +66,9 @@ export default async function ClientPage({ searchParams }: {
     collection === "bloqueados" ? supabase.rpc("barberflow_blocked_profiles", { page_number: page }) : null,
     view === "perfil" || view === "perfil-publico" ? supabase.rpc("barberflow_profile_summary",{ subject:profileId }) : null,
     shop ? supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user.id).eq("shop",shop).maybeSingle() : null,
+    view === "notificacoes" && page === 0 ? supabase.from("barberflow_showcase_orders")
+      .select("id,shop_name,product_name,status").eq("buyer_id",user.id)
+      .in("status",["paid","ready"]).order("paid_at",{ascending:false}).limit(20) : null,
   ]);
   const profile = profileResult.data;
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
@@ -92,7 +95,7 @@ export default async function ClientPage({ searchParams }: {
   const liked = photo ? await supabase.from("barberflow_social_likes").select("photo").eq("photo",photo).eq("actor",user.id).maybeSingle() : null;
   const names = new Map((authors?.data ?? []).map((a)=>[a.user_id,a.username]));
   const more = Math.max(posts.length,people.length,shops.length,blocked.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25 || (likerRows?.data?.length ?? 0)>25;
-  const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles,summaryResult,likerRows,likerProfiles].some(result=>result?.error);
+  const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,purchaseNotices,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles,summaryResult,likerRows,likerProfiles].some(result=>result?.error);
   const title = setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
   return <div className="container workspace social-workspace">
     <aside className="workspace-rail"><nav className="workspace-modules" aria-label="Área do cliente">
@@ -193,8 +196,15 @@ export default async function ClientPage({ searchParams }: {
       {collection === "bloqueados" && (blocked.length ? <ul className="cards">{blocked.slice(0,12).map(person=><li className="card" key={person.user_id}>
         <p>{person.username}</p><form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
       </li>)}</ul> : <p>Nenhum usuário bloqueado.</p>)}
+      {purchaseNotices?.data?.length ? <section className="section">
+        <h2>Compras</h2>
+        <ul className="cards">{purchaseNotices.data.map((order) => <li className="card" key={order.id}>
+          <Link href={"/minhas-compras?pedido=" + order.id}>{order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</Link>
+          <p>{order.product_name} · {order.shop_name}</p>
+        </li>)}</ul>
+      </section> : null}
       {view==="notificacoes" && (notices.length ? <ul className="cards">{notices.slice(0,25).map((item,index)=><li className="card" key={item.photo+item.occurred+index}>
-        <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação.</p>)}
+        <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : !purchaseNotices?.data?.length && !purchaseNotices?.error && <p>Nenhuma notificação.</p>)}
       {["perfil","perfil-publico"].includes(view) && <h2>Galeria</h2>}
       {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" key={post.id}>
         <ProductGallery name="Fotos da publicação" compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {

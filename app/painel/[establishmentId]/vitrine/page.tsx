@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { pixTransactionId } from "../../../../lib/pix";
 import { bookingCurrency } from "../../../../lib/public-booking";
-import { formatShowcaseDate, showcaseStatus } from "../../../../lib/showcase";
+import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../../../lib/showcase";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { updateShowcaseOrder } from "./actions";
@@ -47,6 +47,7 @@ export default async function ShowcaseOrders({ params, searchParams }: {
       <p>{order.buyer_name} · {order.quantity} un. · <strong>{bookingCurrency.format(order.total_cents / 100)}</strong></p>
       <p><strong>{expired ? "Reserva encerrada · conferir se houve crédito" : showcaseStatus[order.status]}</strong></p>
       {order.status === "paid" && !order.read_at && <p role="status">Novo pagamento confirmado. Separe o produto.</p>}
+      <p>Número do pedido <code className="showcase-order-number">{showcaseOrderNumber(order.id)}</code></p>
       <p><small>{formatShowcaseDate(order.created_at)} · Identificador Pix {pixTransactionId(order.id)}</small></p>
       {order.bank_reference && <p>Referência bancária {order.bank_reference}</p>}
       {order.status === "pending" && <details>

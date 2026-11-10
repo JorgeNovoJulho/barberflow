@@ -134,7 +134,7 @@ export default async function Publication({ params, searchParams }: {
     <section className="panel-form"><h2>Publicações para o feed</h2>
       <p>Publique uma foto ou promoção para quem acompanha o estabelecimento.</p>
       {data.published && <Link href={"/cliente?loja="+shop}>Ver publicações e responder comentários</Link>}
-      <PhotoForm path={`/painel/${shop}/publicacao`} shop={shop} />
+      <div id="publicar-no-feed"><PhotoForm path={`/painel/${shop}/publicacao`} shop={shop} /></div>
     </section>
   </section>;
 }

@@ -25,6 +25,10 @@ export const showcaseStatus = {
   collected: "Retirado",
 };
 
+export function showcaseOrderNumber(id: string) {
+  return id.toUpperCase();
+}
+
 export function formatShowcaseDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })
     .format(new Date(value));

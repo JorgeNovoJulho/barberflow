@@ -44,6 +44,7 @@ export function WorkspaceNav({ shop, name, image, unread, paidOrders }: { shop: 
         {label}
       </Link>)}
     </nav>
+    {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/publicacao#publicar-no-feed"}>Publicar no feed</Link>}
     {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
       Pedidos da vitrine{paidOrders > 0 && <span aria-label={paidOrders + " novos pagamentos"}>{paidOrders}</span>}
     </Link>}
