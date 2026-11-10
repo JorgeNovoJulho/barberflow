@@ -58,7 +58,6 @@ export async function resetFinanceWithEmail(shop: string, _previous: FinanceRese
   if (!error) {
     switch (data) {
       case "reset":
-        revalidatePath(path);
         return { next: financeRecoveryPath(path, "senha-email-alterada", sale) };
       case "expired":
         redirect(financeRecoveryPath(path, "recuperacao-email-expired", sale));
