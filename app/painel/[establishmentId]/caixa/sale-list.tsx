@@ -12,8 +12,17 @@ export function SaleDetails({sale}:{sale:Sale}) {
 }
 export function SaleList({sales,path}:{sales:Sale[];path:string}) {
   return sales.length ? <ul className="checkout-list">{sales.map(sale=><li key={sale.id}>
-    <details className="card"><summary>{sale.number} · {sale.client_name || "Cliente não informado"} · {sale.phone || "Sem telefone"} · {money(sale.amount ?? sale.service_cents+sale.product_cents)}</summary>
-      <SaleDetails sale={sale} />
-      <Link className="finance-print-hide" href={path+"?comanda="+sale.id}>{sale.state==="open" ? "Editar comanda" : "Abrir comanda"}</Link>
-    </details></li>)}</ul> : <p>Nenhuma comanda nesta página.</p>;
+    <article className="card panel-form">
+      <h3>{sale.number} · {sale.client_name || "Cliente não informado"}</h3>
+      <p>{sale.phone || "Sem telefone"} · {money(sale.amount ?? sale.service_cents+sale.product_cents)}</p>
+      <div className="account-links finance-print-hide">
+        {sale.state === "open" ? <>
+          <Link className="secondary" href={path+"?comanda="+sale.id}>Editar comanda</Link>
+          <Link className="primary" href={path+"?comanda="+sale.id+"&modo=fechar#cobranca"}>Fechar comanda</Link>
+        </> : <Link className="secondary" href={path+"?comanda="+sale.id+"#cobranca"}>
+          {sale.state === "pending" ? "Ver cobrança e confirmar pagamento" : "Ver comanda fechada"}
+        </Link>}
+      </div>
+      {sale.state === "paid" && <SaleDetails sale={sale} />}
+    </article></li>)}</ul> : <p>Nenhuma comanda nesta página.</p>;
 }

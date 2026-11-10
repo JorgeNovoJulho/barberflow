@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { httpsUrl } from "../../../lib/business-profile";
+import { mediaLinks } from "../../cliente/social";
 import { isUuid } from "../../../lib/establishments";
 import { supabaseServer } from "../../../lib/supabase";
 import { WorkspaceNav } from "./workspace-nav";
@@ -10,7 +12,7 @@ export default async function EstablishmentLayout({ children, params }: {
 }) {
   const { establishmentId: shop } = await params;
   const supabase = isUuid(shop) ? await supabaseServer() : null;
-  const business = await supabase?.from("barberflow_establishments").select("name,owner_id").eq("id", shop).maybeSingle();
+  const business = await supabase?.from("barberflow_establishments").select("name,owner_id,profile_details").eq("id", shop).maybeSingle();
   if (!supabase || !business?.data) return children;
   const access = await supabase.rpc("barberflow_shop_access_state", { shop });
   if (access.data === "blocked") return <section className="container section">
@@ -27,8 +29,14 @@ export default async function EstablishmentLayout({ children, params }: {
         .eq("establishment_id", shop).eq("status", "paid").is("read_at", null)
       : null,
   ]);
+  const logo = httpsUrl(business.data.profile_details?.logo);
+  let image = logo || undefined;
+  if (!image && user) {
+    const { data: profile } = await supabase.from("barberflow_social_profiles").select("avatar").eq("user_id", user.id).maybeSingle();
+    if (profile?.avatar) image = (await mediaLinks(supabase, [profile.avatar])).get(profile.avatar);
+  }
   return <div className="container workspace">
-    <WorkspaceNav shop={shop} name={business.data.name} unread={bookings.count ?? 0} paidOrders={orders ? orders.count ?? 0 : undefined} />
+    <WorkspaceNav shop={shop} name={business.data.name} image={image} unread={bookings.count ?? 0} paidOrders={orders ? orders.count ?? 0 : undefined} />
     <div className="workspace-content">{children}</div>
   </div>;
 }

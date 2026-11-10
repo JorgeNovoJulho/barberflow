@@ -1,4 +1,3 @@
-import { SaleList } from "../caixa/sale-list";
 import type { Closing, OpenSales } from "../caixa/model";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -117,24 +116,20 @@ export default async function DashboardPage({ params, searchParams }: {
     </nav>
     <header className="dashboard-header">
       <div><p className="eyebrow">{shopResult.data.name}</p><h1>Visão geral</h1></div>
-      <div className="account-links"><Link className="primary" href={`/painel/${shop}/agenda?novo=1#novo`}>
+      <div className="account-links dashboard-actions"><Link className="primary dashboard-action-agenda" href={`/painel/${shop}/agenda?novo=1#novo`}>
         <span aria-hidden="true">+</span> Novo agendamento
-      </Link><Link className="secondary" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="secondary" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>
+      </Link><Link className="primary dashboard-action-sale" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="primary dashboard-action-close" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>
     </header>
+    {comanda === "salva" && <p role="status">Comanda salva e mantida em aberto.</p>}
     <div className="checkout checkout-columns">
-      <details className="card panel-form" id="comandas-abertas" open={comanda === "salva"}>
-        <summary>Comandas abertas{openSales && ` · ${openSales.count} · ${money(openSales.total)}`}</summary>
-        {comanda === "salva" && <p role="status">Comanda salva e mantida em aberto.</p>}
-        {openSales ? <SaleList sales={openSales.rows.slice(0,5)} path={checkout} /> : <p role="alert">Não foi possível consultar as comandas avulsas.</p>}
-        <Link href={checkout}>Todas as comandas avulsas abertas</Link>
-      </details>
-      <details className="card panel-form"><summary>Pagamentos em cartão{cardSales && ` · Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}`}</summary>
-        {cardSales ? <div className="checkout-columns">
-          <section><h3>Débito hoje</h3><SaleList sales={cardSales.rows.filter(sale=>sale.method==="debit").slice(0,5)} path={checkout} /></section>
-          <section><h3>Crédito hoje</h3><SaleList sales={cardSales.rows.filter(sale=>sale.method==="credit").slice(0,5)} path={checkout} /></section>
-        </div> : <p role="alert">Não foi possível consultar os pagamentos.</p>}
-        <Link href={checkout+"?aba=fechamento"}>Filtrar e imprimir</Link>
-      </details>
+      <Link className="card checkout-shortcut checkout-shortcut-open" id="comandas-abertas" href={checkout}>
+        <strong>Comandas abertas <span aria-hidden="true">→</span></strong>
+        <span>{openSales ? `${openSales.count} · ${money(openSales.total)}` : "Consultar comandas"}</span>
+      </Link>
+      <Link className="card checkout-shortcut checkout-shortcut-card" href={checkout+"?aba=fechamento#pagamentos-cartao"}>
+        <strong>Pagamentos em cartão <span aria-hidden="true">→</span></strong>
+        <span>{cardSales ? `Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}` : "Consultar pagamentos"}</span>
+      </Link>
     </div>
     <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
       <summary>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>

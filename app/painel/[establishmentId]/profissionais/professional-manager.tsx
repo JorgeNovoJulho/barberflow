@@ -123,7 +123,10 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
         const schedule = new Map((hours.data ?? []).filter((item: Hours) => item.professional_id === professional.id).map((item: Hours) => [item.weekday, item]));
         const available = ((services.data ?? []) as { id: string; name: string; active: boolean }[]).filter((service) => service.active || selected.has(service.id));
         return <article className="card panel-form" key={professional.id}>
-          <h3>{professional.name}</h3><p>{professional.active ? "Ativo" : "Inativo"} · Serviços {professional.commission_bps / 100}% · Produtos {professional.product_commission_bps / 100}%</p>
+          <div className="professional-card-identity">
+            {httpsUrl(professional.photo_url) && <img className="professional-card-photo" src={professional.photo_url} alt="" width={56} height={56} loading="lazy" />}
+            <div><h3>{professional.name}</h3><p>{professional.active ? "Ativo" : "Inativo"} · Serviços {professional.commission_bps / 100}% · Produtos {professional.product_commission_bps / 100}%</p></div>
+          </div>
           {professional.active && <div className="account-links">
             {([-1, 1] as const).map((step) => {
               const neighbor = professionals.data?.[index + step];

@@ -97,9 +97,12 @@ begin
   assert public.barberflow_counter_sale(shop,sale)->>'state'='pending';
   assert public.barberflow_counter_sale(shop,sale)->'pix'->>'pix_key'='owner@example.test';
   assert public.barberflow_counter_report(shop,'dia','ambos',0)->>'pix'='0';
+  assert public.barberflow_counter_archive(shop,0)='[]'::jsonb;
   assert public.barberflow_save_counter_sale(shop,sale,3,'','',null,'confirm',null,'PIX-123456',8999)='amount';
   assert public.barberflow_save_counter_sale(shop,sale,3,'','',null,'confirm',null,'PIX-123456',9000)='ok';
   assert public.barberflow_save_counter_sale(shop,sale,3,'','',null,'confirm',null,'PIX-123456',9000)='ok';
+  assert public.barberflow_counter_archive(shop,0)->0->>'id'=sale::text;
+  assert not ((public.barberflow_counter_archive(shop,0)->0) ? 'pix');
   summary:=public.barberflow_counter_report(shop,'dia','ambos',0);
   assert summary->>'pix'='9000' and summary->>'units'='2';
   assert public.barberflow_counter_report(shop,'dia','servicos',0)->>'pix'='5000';

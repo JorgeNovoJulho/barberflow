@@ -11,6 +11,7 @@ import { saveCheckoutTimezone, saveSale } from "./actions";
 import { SaleEditor } from "./editor";
 import { itemFilters,periods,type Closing,type OpenSales,type Sale } from "./model";
 import { SaleDetails, SaleList } from "./sale-list";
+import { SubmitButton } from "../../../auth/submit";
 import { PrintClosing } from "./print";
 
 const status:Record<string,string> = {
@@ -34,7 +35,7 @@ const methods = { pix:"Pix",debit:"Débito",credit:"Crédito" };
 
 export default async function Checkout({params,searchParams}:{
   params:Promise<{establishmentId:string}>;
-  searchParams:Promise<{ aba?:string; comanda?:string; estado?:string; periodo?:string; itens?:string; pagina?:string }>;
+  searchParams:Promise<{ aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string }>;
 }) {
   const {establishmentId:shop} = await params;
   if (!isUuid(shop)) notFound();
@@ -50,16 +51,20 @@ export default async function Checkout({params,searchParams}:{
   const filter = args.itens && Object.hasOwn(itemFilters,args.itens) ? args.itens as keyof typeof itemFilters : "ambos";
   const id = args.comanda && isUuid(args.comanda) ? args.comanda : null;
   const closing = args.aba==="fechamento";
+  const archived = args.aba==="fechadas";
   const creating = args.aba==="nova";
-  const [current,openResult,reportResult] = await Promise.all([
+  const [current,openResult,reportResult,archiveResult] = await Promise.all([
     id ? supabase.rpc("barberflow_counter_sale",{shop_id:shop,sale_id:id}) : null,
-    !id && !creating && !closing ? supabase.rpc("barberflow_counter_open",{shop_id:shop,page_number:page}) : null,
+    !id && !creating && !closing && !archived ? supabase.rpc("barberflow_counter_open",{shop_id:shop,page_number:page}) : null,
     closing ? supabase.rpc("barberflow_counter_report",{shop_id:shop,period,item_filter:filter,page_number:page}) : null,
+    archived ? supabase.rpc("barberflow_counter_archive",{shop_id:shop,page_number:page}) : null,
   ]);
   const sale = current?.data as Sale|null;
   const opens = openResult?.data as OpenSales|null;
   const report = reportResult?.data as Closing|null;
-  const canEdit = sale?.state==="open" || creating || !!(id && !sale && args.estado && args.estado!=="ok" && !current?.error);
+  const closeSaved = sale?.state === "open" && (args.modo === "fechar" || args.estado === "pix_ready");
+  const archive = archiveResult?.data as Sale[] | null;
+  const canEdit = (sale?.state==="open" && !closeSaved) || creating || !!(id && !sale && args.estado && args.estado!=="ok" && !current?.error);
   const catalog = (table:"barberflow_services"|"barberflow_products")=>supabase.from(table).select("id,name,price_cents")
     .eq("establishment_id",shop).eq("active",true).is("deleted_at",null).order("name").order("id");
   const [services,products] = canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
@@ -71,12 +76,26 @@ export default async function Checkout({params,searchParams}:{
   const pix = sale?.state==="pending" && sale.method==="pix" && sale.pix ? showcasePix({ ...sale.pix,id:sale.id,total_cents:sale.service_cents+sale.product_cents }) : null;
   const reportUrl = (index:number)=>path+"?"+new URLSearchParams({aba:"fechamento",periodo:period,itens:filter,pagina:String(index)});
   return <section className={closing ? "container section checkout finance-report" : "container section checkout"}>
-    <nav className="account-links finance-print-hide"><Link href={`/painel/${shop}/resumo`}>Visão geral</Link><Link href={path}>Comandas abertas</Link><Link href={path+"?aba=nova"}>Criar comanda</Link><Link href={path+"?aba=fechamento"}>Fechamento</Link></nav>
+    <nav className="account-links finance-print-hide"><Link href={`/painel/${shop}/resumo`}>Visão geral</Link><Link href={path}>Comandas abertas</Link><Link href={path+"?aba=fechadas"}>Comandas fechadas</Link><Link href={path+"?aba=nova"}>Criar comanda</Link><Link href={path+"?aba=fechamento"}>Fechamento</Link></nav>
     <p className="eyebrow">{business.data.name}</p>
-    <h1>{closing ? "Fechamento" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
+    <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
     {!canEdit && chargeFeedback && <p role="status">{chargeFeedback}</p>}
-    {[current,openResult,reportResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
+    {[current,openResult,reportResult,archiveResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
     {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
+    {closeSaved && sale && <section className="card panel-form" id="cobranca">
+      <h2>{sale.number} · {sale.client_name || "Cliente não informado"}</h2>
+      <SaleDetails sale={sale} />
+      {args.estado === "pix_missing" && <Link className="secondary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${sale.id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
+      <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision)}>
+        <input type="hidden" name="operation" value="charge" />
+        <input type="hidden" name="modo" value="fechar" />
+        <label>Forma de pagamento <select name="method" defaultValue="pix">
+          <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
+        </select></label>
+        <SubmitButton>Gerar cobrança</SubmitButton>
+      </form>
+      <Link className="secondary" href={path+"?comanda="+sale.id}>Editar comanda</Link>
+    </section>}
     {id && !sale && !canEdit && !current?.error && <p>Comanda indisponível neste estabelecimento.</p>}
     {sale && sale.state!=="open" && <div className="card panel-form" id="cobranca">
       {args.estado === "cobranca_preparada" && sale.state === "pending" && <p role="status">Cobrança gerada. Após o pagamento, confira o recebimento antes de registrá-lo.</p>}
@@ -97,7 +116,7 @@ export default async function Checkout({params,searchParams}:{
         <label><input type="checkbox" name="acknowledged" required /> Conferi o pagamento e o valor recebido.</label>
         <button className="primary">Confirmar recebimento</button>
       </form>}
-      {sale.state === "paid" && <Link className="secondary" href={`/painel/${shop}/resumo`}>Voltar à Visão geral</Link>}
+      {sale.state === "paid" && <Link className="secondary" href={path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
     </div>}
     {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary>Cancelar comanda</summary>
       <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision)}>
@@ -111,6 +130,13 @@ export default async function Checkout({params,searchParams}:{
       <SaleList sales={opens.rows.slice(0,15)} path={path} />
       <nav className="account-links">{page>0 && <Link href={path+"?pagina="+(page-1)}>Anterior</Link>}{opens.rows.length>15 && <Link href={path+"?pagina="+(page+1)}>Próxima</Link>}</nav>
       <Link href={`/painel/${shop}/comandas?aba=abertas`}>Consultar comandas de agendamentos</Link>
+    </>}
+    {archive && <>
+      <SaleList sales={archive.slice(0,15)} path={path} />
+      <nav className="account-links" aria-label="Paginação de comandas fechadas">
+        {page>0 && <Link href={path+"?aba=fechadas&pagina="+(page-1)}>Anterior</Link>}
+        {archive.length>15 && <Link href={path+"?aba=fechadas&pagina="+(page+1)}>Próxima</Link>}
+      </nav>
     </>}
     {closing && <>
       <details className="card panel-form finance-print-hide"><summary>Fuso horário do fechamento</summary>
@@ -136,7 +162,7 @@ export default async function Checkout({params,searchParams}:{
           ]} />
         </div>
         {report.legacy_card>0 && <p>Cartão sem modalidade no histórico · {money(report.legacy_card)}</p>}
-        <h2>Comandas pagas em cartão</h2>
+        <h2 id="pagamentos-cartao">Comandas pagas em cartão</h2>
         <div className="checkout-columns">
           <section><h3>Débito</h3><SaleList sales={report.rows.slice(0,30).filter(s=>s.method==="debit")} path={path} /></section>
           <section><h3>Crédito</h3><SaleList sales={report.rows.slice(0,30).filter(s=>s.method==="credit")} path={path} /></section>

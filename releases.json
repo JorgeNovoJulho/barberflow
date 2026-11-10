@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.5",
+    "date": "2026-11-10",
+    "title": "Atalhos, comandas e fotos da equipe",
+    "changes": [
+      "A Visão geral tem atalhos coloridos para comandas abertas e pagamentos em cartão.",
+      "As comandas têm ações separadas de edição e fechamento e um arquivo de pagamentos confirmados.",
+      "A equipe mostra as fotos salvas e o menu lateral usa o logo ou a foto do perfil."
+    ]
+  },
+  {
     "version": "0.2.4",
     "date": "2026-11-10",
     "title": "Validação da nova senha financeira",

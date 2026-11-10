@@ -233,3 +233,22 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .checkout meter { width: 100%; }
 .checkout summary { cursor: pointer; overflow-wrap: anywhere; min-height: 2.75rem; }
 @media print { .checkout-list details:not([open]) > :not(summary) { display: block; } }
+
+.checkout-shortcut.card {
+  display: grid;
+  gap: .4rem;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+}
+.checkout-shortcut strong { display: flex; justify-content: space-between; gap: 1rem; }
+.checkout-shortcut-open.card { color: #13463c; background: #ddf7ee; border-color: #9edcc8; }
+.checkout-shortcut-card.card { color: #302270; background: #ede7ff; border-color: #cbbbf7; }
+.checkout-shortcut:hover { box-shadow: 0 6px 16px #202b4824; }
+.dashboard-actions .dashboard-action-agenda { background: #6841bb; border-color: #6841bb; color: white; }
+.dashboard-actions .dashboard-action-sale { background: #166657; border-color: #166657; color: white; }
+.dashboard-actions .dashboard-action-close { background: #a23d21; border-color: #a23d21; color: white; }
+.dashboard-actions .primary:hover { filter: brightness(1.12); }
+.professional-card-identity { display: flex; align-items: center; gap: .85rem; }
+.professional-card-photo { flex: 0 0 56px; width: 56px; height: 56px; border-radius: .8rem; object-fit: cover; }
+.workspace-monogram { overflow: hidden; }
+.workspace-monogram img { width: 100%; height: 100%; aspect-ratio: 1; object-fit: cover; }

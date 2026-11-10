@@ -2,6 +2,7 @@
 
 import { signOut } from "../../auth/actions";
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 
 const links = [
@@ -24,14 +25,15 @@ const icons = {
   assinatura: "M3 6h18v12H3zM3 10h18M6 14h5",
 } satisfies Record<(typeof links)[number][0], string>;
 
-export function WorkspaceNav({ shop, name, unread, paidOrders }: { shop: string; name: string; unread: number; paidOrders?: number }) {
+export function WorkspaceNav({ shop, name, image, unread, paidOrders }: { shop: string; name: string; image?: string; unread: number; paidOrders?: number }) {
+  const [failedImage, setFailedImage] = useState<string>();
   const pathname = usePathname();
   const base = `/painel/${shop}`;
   const current = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   return <aside className="workspace-rail finance-print-hide">
     <div className="workspace-identity">
-      <span className="workspace-monogram" aria-hidden="true">{name.trim().slice(0, 2).toUpperCase()}</span>
+      <span className="workspace-monogram" aria-hidden="true">{image && image !== failedImage ? <img src={image} alt="" onError={() => setFailedImage(image)} /> : name.trim().slice(0, 2).toUpperCase()}</span>
       <div><p>Painel do negócio</p><strong>{name}</strong></div>
     </div>
     <nav aria-label="Módulos do estabelecimento" className="workspace-modules">
