@@ -344,3 +344,15 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
   .order-card-heading img, .order-card-placeholder { width: 3.5rem; height: 3.5rem; }
   .order-card-facts { grid-column: 2; justify-items: start; text-align: start; }
 }
+
+.public-profile .public-professional-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,17rem),1fr)); }
+.public-profile #profissionais .card { background: #edf4ff; border-color: #c4d7f5; }
+.public-profile #servicos .card { background: #f4edff; border-color: #dac8f5; }
+.public-profile #vitrine .showcase-card { background: #eaf7ef; border-color: #bedfcb; }
+.public-profile :is(#profissionais,#servicos,#vitrine) .card { color: #17233a; }
+.commission-orders > li { margin-block: .8rem; padding-block: .35rem; break-inside: avoid; }
+.commission-signature { margin-block-start: 2rem; overflow-wrap: anywhere; }
+@media print {
+  body:has(.commission-receipt) :is(.site-header,.footer,.workspace-rail) { display: none; }
+  body:has(.commission-receipt) .workspace { display: block; }
+}

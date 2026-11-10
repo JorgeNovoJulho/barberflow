@@ -74,3 +74,23 @@ export async function saveCheckoutTimezone(shop:string,form:FormData) {
     .eq("id",shop).eq("owner_id",user.id).select("id").maybeSingle();
   redirect(path+"&estado="+(data && !error ? "timezone_saved" : "falha"));
 }
+
+export async function saveCommission(shop: string, period: string, day: string, sale: string | null, expected: number, form: FormData) {
+  if (!isUuid(shop)) redirect("/painel");
+  const query = new URLSearchParams({ aba: "comissoes", periodo: period, data: day });
+  const professional = String(form.get("professional") ?? "");
+  const supabase = await supabaseServer();
+  if (!supabase || !isUuid(professional) || (sale && !isUuid(sale))) {
+    query.set("estado", "comissao_falha");
+  } else if (sale) {
+    const { data } = await supabase.rpc("barberflow_assign_counter_commission", { shop_id: shop, sale_id: sale, professional });
+    query.set("estado", data ? "comissao_vinculada" : "comissao_falha");
+  } else if (form.get("paid") === "on") {
+    const { data } = await supabase.rpc("barberflow_issue_commission_receipt", {
+      shop_id: shop, professional_id: professional, period, reference_day: day || null, expected_cents: expected,
+    });
+    if (typeof data === "string" && isUuid(data)) query.set("recibo", data);
+    else query.set("estado", "comissao_falha");
+  }
+  redirect(`/painel/${shop}/caixa?${query}`);
+}

@@ -6,6 +6,7 @@ import { hasMasterSession, masterPath } from "../lib/master";
 import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
+import { IdleLogout } from "./idle-logout";
 import { AccountActivity } from "./account-activity";
 import { signOut } from "./auth/actions";
 import { MobileNav } from "./mobile-nav";
@@ -49,7 +50,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" data-theme={theme}>
       <body>
-        {user && <AccountActivity />}
+        {user && <><AccountActivity /><IdleLogout user={String(claims?.session_id ?? user)} /></>}
         <header className="site-header">
           <div className="container navigation">
             <Link className="wordmark" href="/" aria-label="BARBERFLOW, início">

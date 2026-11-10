@@ -118,7 +118,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
     </section>}
     {!!professionals.length && <section className="profile-section" id="profissionais">
       <h2>Profissionais</h2>
-      <ul className="cards">{professionals.map((person) => {
+      <ul className="cards public-professional-grid">{professionals.map((person) => {
         const photo = httpsUrl(person.photo_url);
         const slot = slots.get(person.id);
         const services = profile.services.filter((service) => service.professionals.some(({ id }) => id === person.id));

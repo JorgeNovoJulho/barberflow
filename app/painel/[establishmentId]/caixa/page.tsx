@@ -12,6 +12,7 @@ import { SaleEditor } from "./editor";
 import { itemFilters,periods,type Closing,type OpenSales,type Sale } from "./model";
 import { SaleDetails, SaleList } from "./sale-list";
 import { SubmitButton } from "../../../auth/submit";
+import { CommissionClosing } from "./commission";
 import { PrintClosing } from "./print";
 
 const status:Record<string,string> = {
@@ -35,7 +36,7 @@ const methods = { pix:"Pix",debit:"Débito",credit:"Crédito" };
 
 export default async function Checkout({params,searchParams}:{
   params:Promise<{establishmentId:string}>;
-  searchParams:Promise<{ aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string }>;
+  searchParams:Promise<{ aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string; data?:string; recibo?:string }>;
 }) {
   const {establishmentId:shop} = await params;
   if (!isUuid(shop)) notFound();
@@ -46,6 +47,7 @@ export default async function Checkout({params,searchParams}:{
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({next:path}));
   const business = await supabase.from("barberflow_establishments").select("name,checkout_timezone").eq("id",shop).eq("owner_id",user.id).maybeSingle();
   if (!business.data) notFound();
+  if (args.aba === "comissoes") return <CommissionClosing shop={shop} args={args} />;
   const page = pageIndex(args.pagina);
   const period = args.periodo && Object.hasOwn(periods,args.periodo) ? args.periodo as keyof typeof periods : "dia";
   const filter = args.itens && Object.hasOwn(itemFilters,args.itens) ? args.itens as keyof typeof itemFilters : "ambos";
@@ -142,6 +144,7 @@ export default async function Checkout({params,searchParams}:{
       </nav>
     </>}
     {closing && <>
+      <nav className="account-links finance-print-hide" aria-label="Guias do fechamento"><Link aria-current="page" href={path+"?aba=fechamento"}>Fechamento geral</Link><Link className="secondary" href={path+"?aba=comissoes"}>Comissões</Link></nav>
       <details className="card panel-form finance-print-hide"><summary>Fuso horário do fechamento</summary>
         <form className="account-form" action={saveCheckoutTimezone.bind(null,shop)}>
           <label>Fuso do estabelecimento <select name="timezone" defaultValue={business.data.checkout_timezone}>{Object.entries(timezones).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
