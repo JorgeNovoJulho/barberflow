@@ -1,3 +1,6 @@
+import { DirectoryDistance, DirectoryLocation } from "./directory-location";
+import { DirectoryAction } from "./directory-action";
+import { coordinatesFromMap, parseCoordinates } from "../../lib/directory-distance";
 import { changeFavorite, changeFollow } from "../cliente/actions";
 import { pageIndex } from "../cliente/social";
 import Link from "next/link";
@@ -21,12 +24,14 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const user = identity?.data?.claims.sub;
   const listings = (result?.data ?? []) as Listing[];
   const shown = listings.slice(0,24);
-  const [follows, favorites] = supabase && user && shown.length ? await Promise.all([
-    supabase.from("barberflow_social_follow_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)),
-    supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)),
-  ]) : [null,null];
+  const [follows, favorites, maps] = supabase && shown.length ? await Promise.all([
+    user ? supabase.from("barberflow_social_follow_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)) : null,
+    user ? supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user).in("shop",shown.map(item=>item.id)) : null,
+    supabase.rpc("barberflow_directory_map_links",{shops:shown.map(item=>item.id)}),
+  ]) : [null,null,null];
   const followed = new Set((follows?.data ?? []).map(item=>item.shop));
   const favorited = new Set((favorites?.data ?? []).map(item=>item.shop));
+  const coordinates = new Map<string,ReturnType<typeof coordinatesFromMap>>((maps?.data ?? []).map((row:{id:string;map_link:string|null;coordinates:string|null})=>[row.id,parseCoordinates(row.coordinates) ?? coordinatesFromMap(row.map_link)]));
   return <section className="container section public-directory">
     <header className="public-intro">
       <p className="eyebrow">Catálogo de beleza e bem-estar</p>
@@ -43,11 +48,11 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       </select></label>
       <button className="primary" type="submit">Buscar</button>
     </form>
-    {estado && <p role="status">{estado==="salvo" ? "Lista atualizada." : "Complete ou reative seu perfil para seguir ou favoritar um estabelecimento."}</p>}
+    {estado && <p role={estado==="salvo" ? "status" : "alert"} data-feedback={estado==="salvo" ? "success" : "warning"}>{estado==="salvo" ? "Lista atualizada." : "Complete ou reative seu perfil para seguir ou favoritar um estabelecimento."}</p>}
     {result?.error || !result ? <p role="alert">Não foi possível carregar o catálogo.</p>
       : listings.length ? <>
-        <p role="status">{shown.length} {shown.length === 1 ? "estabelecimento nesta página" : "estabelecimentos nesta página"}</p>
-        <ul className="cards directory-results">{shown.map((item) => {
+        <p role="status" data-feedback-ignore>{shown.length} {shown.length === 1 ? "estabelecimento nesta página" : "estabelecimentos nesta página"}</p>
+        <DirectoryLocation available={[...coordinates.values()].some(Boolean)}><ul className="cards directory-results">{shown.map((item) => {
           const logo = httpsUrl(item.logo ?? undefined);
           const cover = httpsUrl(item.cover ?? undefined);
           return <li key={item.slug} className={`card directory-card${cover ? " directory-card-with-cover" : ""}`}>
@@ -61,17 +66,20 @@ export default async function Directory({ searchParams }: { searchParams: Promis
                 <p className="eyebrow">{isSegment(item.segment) ? segments[item.segment] : item.segment}</p>
                 <h2>{item.name}</h2>
                 <p>{item.city}</p>
+                <DirectoryDistance destination={coordinates.get(item.id) ?? null} />
               </div>
-              <Link className="primary directory-services" href={`/estabelecimento/${item.slug}`}
-                aria-label={`Ver serviços de ${item.name}`}>Ver serviços <span aria-hidden="true">↗</span></Link>
-              <div className="account-links">
-                <Link href={`/estabelecimento/${item.slug}/agendar`}>Agendar</Link>
-                {user && <><Link href={`/cliente?loja=${item.id}`}>Publicações</Link><form action={changeFollow.bind(null,path(page),item.id,true,followed.has(item.id))}><button className="secondary" aria-pressed={followed.has(item.id)}>{followed.has(item.id) ? "Deixar de seguir" : "Seguir"}</button></form>
-                  <form action={changeFavorite.bind(null,path(page),item.id,favorited.has(item.id))}><button className="secondary" aria-pressed={favorited.has(item.id)}>{favorited.has(item.id) ? "Remover favorito" : "Favoritar"}</button></form></>}
+              <div className="directory-actions">
+                <DirectoryAction kind="services" label="Ver serviços" href={`/estabelecimento/${item.slug}`} />
+                <DirectoryAction kind="calendar" label="Agendar" href={`/estabelecimento/${item.slug}/agendar`} />
+                {user && <>
+                  <DirectoryAction kind="posts" label="Publicações" href={`/cliente?loja=${item.id}`} />
+                  <DirectoryAction kind={followed.has(item.id) ? "unfollow" : "follow"} label={followed.has(item.id) ? "Deixar de seguir" : "Seguir"} pressed={followed.has(item.id)} action={changeFollow.bind(null,path(page),item.id,true,followed.has(item.id))} />
+                  <DirectoryAction kind="favorite" label={favorited.has(item.id) ? "Remover favorito" : "Favoritar"} pressed={favorited.has(item.id)} action={changeFavorite.bind(null,path(page),item.id,favorited.has(item.id))} />
+                </>}
               </div>
             </div>
           </li>;
-        })}</ul>
+        })}</ul></DirectoryLocation>
       </> : <p className="card">Nenhum estabelecimento encontrado. Tente outra cidade, nome ou segmento.</p>}
     {(page>0 || listings.length>24) && <nav className="account-links" aria-label="Páginas do catálogo">{page>0 && <Link href={path(page-1)}>Anterior</Link>}{listings.length>24 && <Link href={path(page+1)}>Próxima</Link>}</nav>}
   </section>;

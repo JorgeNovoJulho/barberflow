@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.9",
+    "date": "2026-11-10",
+    "title": "Distâncias, prévias e avisos",
+    "changes": [
+      "Catálogo com distância em linha reta e ações com ícones.",
+      "Prévia e remoção de fotos antes de publicar.",
+      "Avisos destacados e confirmação de recuperação da senha financeira."
+    ]
+  },
+  {
     "version": "0.2.8",
     "date": "2026-11-10",
     "title": "Perfil, publicações e agendamentos",

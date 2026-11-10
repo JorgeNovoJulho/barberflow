@@ -6,12 +6,16 @@ import { resetFinanceWithEmail } from "./actions";
 import { PasswordField } from "./password-field";
 
 export function FinanceEmailResetForm({ shop, sale }: { shop: string; sale: string | null }) {
-  const [error, submit, pending] = useActionState(resetFinanceWithEmail.bind(null, shop), null);
+  const [result, submit, pending] = useActionState(resetFinanceWithEmail.bind(null, shop), null);
+  const error = typeof result === "string" ? result : null;
+  const next = result && typeof result !== "string" ? result.next : null;
   const feedback = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
-    if (!pending && error) feedback.current?.focus();
-  }, [error, pending]);
+    if (pending) return;
+    if (next) window.location.replace(next);
+    else if (error) feedback.current?.focus();
+  }, [error, next, pending]);
 
   return (
     <form className="account-form" action={submit} noValidate>
@@ -21,7 +25,8 @@ export function FinanceEmailResetForm({ shop, sale }: { shop: string; sale: stri
       <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
       <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
       {error && !pending && <p ref={feedback} role="alert" tabIndex={-1}>{error}</p>}
-      <SubmitButton>Salvar senha e entrar no Financeiro</SubmitButton>
+      {next && <p role="status" data-feedback="success">Senha financeira alterada. Abrindo o Financeiro… <a href={next}>Entrar no Financeiro</a></p>}
+      <SubmitButton disabled={!!next}>Salvar senha e entrar no Financeiro</SubmitButton>
     </form>
   );
 }

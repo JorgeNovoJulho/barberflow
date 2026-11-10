@@ -91,7 +91,7 @@ export default async function Publication({ params, searchParams }: {
           <PostalLookup initial={profile.postalCode} />
           <div className="publication-columns">
             <label>Cidade <input name="city" maxLength={100} defaultValue={data.city} /></label>
-            {fields(["address", "number", "complement", "neighborhood", "region", "map", "whatsapp", "instagram", "facebook", "tiktok", "youtube"])}
+            {fields(["address", "number", "complement", "neighborhood", "region", "map", "coordinates", "whatsapp", "instagram", "facebook", "tiktok", "youtube"])}
           </div>
         </section>
         <fieldset className="card publication-card" id="horarios"><legend>Horário de funcionamento</legend>

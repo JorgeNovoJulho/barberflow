@@ -44,7 +44,9 @@ function financeRecoveryPath(path: string, status: string, sale: string) {
   return path + "?" + query;
 }
 
-export async function resetFinanceWithEmail(shop: string, _previous: string | null, form: FormData): Promise<string | null> {
+export type FinanceResetResult = string | { next: string } | null;
+
+export async function resetFinanceWithEmail(shop: string, _previous: FinanceResetResult, form: FormData): Promise<FinanceResetResult> {
   const { supabase, path } = await context(shop);
   const sale = String(form.get("comanda") ?? "");
   const secret = String(form.get("new_secret") ?? "");
@@ -57,7 +59,7 @@ export async function resetFinanceWithEmail(shop: string, _previous: string | nu
     switch (data) {
       case "reset":
         revalidatePath(path);
-        redirect(financeRecoveryPath(path, "senha-email-alterada", sale));
+        return { next: financeRecoveryPath(path, "senha-email-alterada", sale) };
       case "expired":
         redirect(financeRecoveryPath(path, "recuperacao-email-expired", sale));
       case "reused":

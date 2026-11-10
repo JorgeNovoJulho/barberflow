@@ -40,7 +40,7 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,p
       </select></label><label>Quantidade <input type="number" name={"units"+i} min={1} max={10000} required={!!value} disabled={!value} value={units[i] || ""} onChange={event=>setUnits(update(units,i,Number(event.target.value)))} /></label></div>)}</fieldset>
     <div aria-live="polite"><p>Serviços {money(serviceTotal)} · Produtos {money(productTotal)}</p><p><strong>Total {money(serviceTotal+productTotal)}</strong></p></div>
     <div id="cobranca">
-      {feedback && <p role="status">{feedback}</p>}
+      {feedback && <p role="status" data-feedback={pixReady ? "success" : "warning"}>{feedback}</p>}
       {pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
       <label>Forma de pagamento ao cobrar <select name="method" defaultValue={pixReady || pixMissing ? "pix" : ""}>
         <option value="">Selecione a forma de pagamento</option>

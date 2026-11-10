@@ -94,7 +94,7 @@ export default async function Finance({ params, searchParams }: {
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>
     </nav>
     <p className="eyebrow">{business.data.name}</p><h1>Financeiro</h1>
-    {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
+    {estado && Object.hasOwn(feedback, estado) && <p role="status" data-feedback={["senha-email-alterada","desbloqueado","recuperacao-email-enviado","recebido","lancado","baixado","classificado"].includes(estado) ? "success" : "warning"}>{feedback[estado]}</p>}
     {blocked && estado !== "bloqueado" && estado !== "senha-bloqueada" && <p role="status">{feedback.bloqueado}</p>}
     {result?.error || entriesResult?.error ? <p role="alert">Não foi possível carregar os lançamentos financeiros.</p>
       : !ledger ? <div className="card panel-form">

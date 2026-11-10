@@ -102,7 +102,7 @@ export default async function ClientPage({ searchParams }: {
     </nav><form action={signOut}><button className="workspace-notices">Sair do sistema</button></form></aside>
     <section className="workspace-content section" data-social-theme={profile?.theme}>
       <h1>{title}</h1>
-      {params.estado && <p role="status">{params.estado==="salvo" ? "Alteração registrada." : "Não foi possível concluir. Confira os dados, a visibilidade e as permissões do perfil."}</p>}
+      {params.estado && <p role={params.estado==="salvo" ? "status" : "alert"} data-feedback={params.estado==="salvo" ? "success" : "warning"}>{params.estado==="salvo" ? "Alteração registrada." : "Não foi possível concluir. Confira os dados, a visibilidade e as permissões do perfil."}</p>}
       {failed && <p role="alert">Parte do conteúdo não pôde ser carregada.</p>}
       {setup && <>
         <p>Salve um nome de usuário e uma foto para concluir. O banner e as redes sociais são opcionais.</p>

@@ -79,7 +79,7 @@ export default async function Checkout({params,searchParams}:{
     <nav className="account-links finance-print-hide"><Link href={`/painel/${shop}/resumo`}>Visão geral</Link><Link href={path}>Comandas abertas</Link><Link href={path+"?aba=fechadas"}>Comandas fechadas</Link><Link href={path+"?aba=nova"}>Criar comanda</Link><Link href={path+"?aba=fechamento"}>Fechamento</Link></nav>
     <p className="eyebrow">{business.data.name}</p>
     <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
-    {!canEdit && chargeFeedback && <p role="status">{chargeFeedback}</p>}
+    {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
     {[current,openResult,reportResult,archiveResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
     {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
     {closeSaved && sale && <section className="card panel-form" id="cobranca">

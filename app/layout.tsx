@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ActionFeedback } from "./action-feedback";
 import type { ReactNode } from "react";
 import { hasMasterSession, masterPath } from "../lib/master";
 import { policyLinks } from "../lib/auth-path";
@@ -64,6 +65,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main>{children}</main>
+        <ActionFeedback />
         <footer className="footer">
           <div className="container footer-content">
             <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>

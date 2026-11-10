@@ -1,3 +1,5 @@
+import { parseCoordinates } from "./directory-distance";
+
 export const businessDays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 
 export const profileFields = [
@@ -7,6 +9,7 @@ export const profileFields = [
   { key: "neighborhood", label: "Bairro", max: 100 },
   { key: "region", label: "UF", max: 2 },
   { key: "postalCode", label: "CEP", max: 9 },
+  { key: "coordinates", label: "Coordenadas para calcular distância (latitude, longitude)", max: 48 },
   { key: "map", label: "Link do Google Maps", max: 500 },
   { key: "whatsapp", label: "WhatsApp com DDD", max: 20 },
   { key: "instagram", label: "Usuário do Instagram", max: 31 },
@@ -91,6 +94,7 @@ export function profileFromForm(form: FormData): BusinessProfile | null {
     if (value.length > max) return null;
     profile[key] = value;
   }
+  if (profile.coordinates && !parseCoordinates(profile.coordinates)) return null;
   if (profile.region && !/^[A-Za-z]{2}$/.test(profile.region)) return null;
   if (profile.postalCode && !/^\d{5}-?\d{3}$/.test(profile.postalCode)) return null;
   if (profile.whatsapp && !/^(55)?\d{10,11}$/.test(profile.whatsapp.replace(/[+()\s-]/g, ""))) return null;
