@@ -67,11 +67,11 @@ function DashboardCharts({ data }: { data: Dashboard }) {
 
 export default async function DashboardPage({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ periodo?: string; notificacoes?: string; aviso?: string }>;
+  searchParams: Promise<{ periodo?: string; notificacoes?: string; aviso?: string; comanda?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { periodo, notificacoes, aviso } = await searchParams;
+  const { periodo, notificacoes, aviso, comanda } = await searchParams;
   const selected = periods.find(({ days }) => String(days) === periodo) ?? periods[0];
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
@@ -122,7 +122,9 @@ export default async function DashboardPage({ params, searchParams }: {
       </Link><Link className="secondary" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="secondary" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>
     </header>
     <div className="checkout checkout-columns">
-      <details className="card panel-form"><summary>Comandas abertas{openSales && ` · ${openSales.count} · ${money(openSales.total)}`}</summary>
+      <details className="card panel-form" id="comandas-abertas" open={comanda === "salva"}>
+        <summary>Comandas abertas{openSales && ` · ${openSales.count} · ${money(openSales.total)}`}</summary>
+        {comanda === "salva" && <p role="status">Comanda salva e mantida em aberto.</p>}
         {openSales ? <SaleList sales={openSales.rows.slice(0,5)} path={checkout} /> : <p role="alert">Não foi possível consultar as comandas avulsas.</p>}
         <Link href={checkout}>Todas as comandas avulsas abertas</Link>
       </details>

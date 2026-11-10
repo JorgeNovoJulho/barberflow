@@ -25,7 +25,11 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
     shop_id:shop,sale_id:id,expected_revision:revision,customer:value("customer"),contact:value("phone"),
     selections,operation,payment_method:value("method") || null,payment_reference:value("reference") || null,received_cents:parsePrice(value("received")),
   });
-  revalidatePath(`/painel/${shop}/resumo`);
+  const overview = `/painel/${shop}/resumo`;
+  revalidatePath(overview);
+  if (!error && data === "ok" && operation === "save") {
+    redirect(overview + "?comanda=salva#comandas-abertas");
+  }
   const status = error ? "falha" : String(data ?? "falha");
   redirect(path + "&estado=" + encodeURIComponent(status));
 }
