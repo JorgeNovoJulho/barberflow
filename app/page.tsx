@@ -3,6 +3,7 @@ import Link from "next/link";
 import { segments as catalogSegments } from "../lib/establishments";
 import { parseLandingSettings, validImageUrl, type LandingBlock, type Section } from "../lib/landing";
 import { hasMasterSession, masterPath } from "../lib/master";
+import { signOut } from "./auth/actions";
 import { supabaseServer } from "../lib/supabase";
 
 function BlockImage({ block, hero = false }: { block: LandingBlock; hero?: boolean }) {
@@ -23,6 +24,7 @@ export default async function Home() {
   ]) : [];
   const settings = parseLandingSettings(settingsResult?.data?.appearance);
   const signedIn = !!session?.data?.claims.sub;
+  const role = signedIn && supabase ? (await supabase.rpc("barberflow_account_kind")).data : null;
   const blocks = (result?.data ?? []) as LandingBlock[];
   const group = (section: Section) => blocks.filter((block) => block.section === section);
   const heroes = group("hero");
@@ -49,7 +51,7 @@ export default async function Home() {
         <Link href="/" className="editorial-brand">{brand}</Link>
         <nav aria-label="Seções da página">{navigation.map(([url, title, count]) => !!count && title && <a key={url} href={url}>{title}</a>)}</nav>
         {master && <Link href={masterPath} className="secondary master-header-link">Administrador</Link>}
-        {signedIn ? <Link href="/painel" className="secondary">Meu painel</Link>
+        {signedIn ? <><Link href={role === "cliente" ? "/cliente" : "/painel"} className="secondary">Meu painel</Link><form action={signOut}><button className="secondary">Sair do sistema</button></form></>
           : settings.headerUrl && settings.headerText && <Link href={settings.headerUrl} className="secondary">{settings.headerText}</Link>}
       </div>
     </header>

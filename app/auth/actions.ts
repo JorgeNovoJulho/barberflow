@@ -1,9 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { accountKind, afterLogin } from "../../lib/account-role";
 import { redirect } from "next/navigation";
 import { authOrigin, localPath, localTestSignup, policyLinks } from "../../lib/auth-path";
 import { isMasterAccount, masterPath } from "../../lib/master";
-import { supabaseServer } from "../../lib/supabase";
+import { supabaseConfig, supabaseServer } from "../../lib/supabase";
 
 function value(data: FormData, name: string) {
   return String(data.get(name) ?? "");
@@ -23,14 +25,20 @@ export async function signIn(data: FormData) {
   const next = localPath(data.get("next"));
   const supabase = await supabaseServer();
   if (!supabase) login(next, "indisponivel");
+  const email = value(data, "email").trim();
+  const jar = await cookies();
+  jar.delete("bf_pending_email");
   const { data: result, error } = await supabase.auth.signInWithPassword({
-    email: value(data, "email").trim(),
+    email,
     password: value(data, "password"),
   });
-  if (error?.code === "email_not_confirmed") login(next, "email_pendente");
+  if (error?.code === "email_not_confirmed") {
+    jar.set("bf_pending_email", email.slice(0, 254), { httpOnly: true, sameSite: "lax", secure: authOrigin().startsWith("https:"), path: "/", maxAge: 120 });
+    login(next, "email_pendente");
+  }
   if (error?.status === 429) login(next, "limite");
   if (error) login(next, "credenciais");
-  redirect(await isMasterAccount(supabase, result.user?.email) ? masterPath : next);
+  redirect(await afterLogin(supabase, result.user, next));
 }
 
 export async function signUp(data: FormData) {
@@ -38,7 +46,7 @@ export async function signUp(data: FormData) {
   const password = value(data, "password");
   const name = value(data, "name").trim();
   const account = value(data, "account");
-  const back = (status: string): never => redirect("/cadastro?" + new URLSearchParams({ next, estado: status }));
+  const back = (status: string): never => redirect("/cadastro?" + new URLSearchParams({ next, estado: status, tipo: account }));
   const policies = policyLinks();
   if (!policies && !localTestSignup()) return back("indisponivel");
   if (!name || !["barbearia", "cliente"].includes(account) || (policies && value(data, "terms") !== "on")) return back("campos");
@@ -58,8 +66,28 @@ export async function signUp(data: FormData) {
   if (error?.code === "weak_password") return back("invalido");
   if (error?.code === "user_already_exists") login(next, "confirmar");
   if (error) return back("falha");
-  if (result.session) redirect(await isMasterAccount(supabase, result.user?.email) ? masterPath : next);
+  if (result.session) redirect(await afterLogin(supabase, result.user, next));
   login(next, "confirmar");
+}
+
+export async function signUpGoogle(chosen: string, form: FormData) {
+  const next = localPath(form.get("next"));
+  const kind = accountKind(chosen);
+  const back = "/cadastro?" + new URLSearchParams({ next, tipo: kind ?? "" });
+  if (!kind || (policyLinks() ? form.get("terms") !== "on" : !localTestSignup())) redirect(back + "&estado=campos");
+  const supabase = await supabaseServer();
+  if (!supabase) redirect(back + "&estado=indisponivel");
+  const config = supabaseConfig();
+  if (!config) redirect(back + "&estado=indisponivel");
+  const provider = await fetch(new URL("/auth/v1/settings", config.url), {
+    headers: { apikey: config.key }, next: { revalidate: 60 },
+  }).then(async response => response.ok ? (await response.json()).external?.google === true : null).catch(() => null);
+  if (provider === false) redirect(back + "&estado=google_desativado");
+  if (provider === null) redirect(back + "&estado=google");
+  const { data, error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback(next), queryParams: { prompt: "select_account" } } });
+  if (error || !data.url) redirect(back + "&estado=google");
+  (await cookies()).set("bf_google_signup", kind, { httpOnly: true, sameSite: "lax", secure: authOrigin().startsWith("https:"), path: "/", maxAge: 600 });
+  redirect(data.url);
 }
 
 export async function resendConfirmation(data: FormData) {

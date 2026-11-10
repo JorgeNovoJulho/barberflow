@@ -25,4 +25,4 @@ export async function publicProfile(slug: string) {
   return data as PublicProfile | null;
 }
 
-export const bookingCurrency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+export { bookingCurrency } from "./currency";

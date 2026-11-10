@@ -1,3 +1,4 @@
+import { PasswordField } from "../../../painel/[establishmentId]/financeiro/password-field";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
@@ -53,8 +54,8 @@ export default async function TeamFinance({ params, searchParams }: {
     </> : <form className="account-form card panel-form" action={updateAccess.bind(null, shop, setup ? "setup" : "unlock")}>
       <h2>{setup ? "Criar senha financeira pessoal" : "Desbloquear relatórios"}</h2>
       <p>O acesso é de consulta e fica desbloqueado por 15 minutos.</p>
-      <label>Senha financeira <input name="secret" type="password" minLength={8} maxLength={72} required autoComplete={setup ? "new-password" : "current-password"} /></label>
-      {setup && <label>Confirmar senha <input name="confirmation" type="password" minLength={8} maxLength={72} required autoComplete="new-password" /></label>}
+      <PasswordField name="secret" label="Senha financeira" autoComplete={setup ? "new-password" : "current-password"} />
+      {setup && <PasswordField name="confirmation" label="Confirmar senha" autoComplete="new-password" />}
       <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>
     </form>}
   </section>;

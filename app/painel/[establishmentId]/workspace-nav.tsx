@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut } from "../../auth/actions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -47,5 +48,6 @@ export function WorkspaceNav({ shop, name, unread, paidOrders }: { shop: string;
     <Link className="workspace-notices" href={`${base}/resumo?notificacoes=1#notificacoes`}>
       Notificações{unread > 0 && <span aria-label={`${unread} não lidas`}>{unread}</span>}
     </Link>
+    <form action={signOut}><button className="workspace-notices">Sair do sistema</button></form>
   </aside>;
 }

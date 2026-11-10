@@ -6,6 +6,7 @@ import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
 import { AccountActivity } from "./account-activity";
+import { signOut } from "./auth/actions";
 import { MobileNav } from "./mobile-nav";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/plus-jakarta-sans/wght.css";
@@ -24,6 +25,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : undefined;
   const user = claims?.sub;
   const master = user && await hasMasterSession();
+  const role = supabase && user ? (await supabase.rpc("barberflow_account_kind")).data : null;
   const preference = supabase && user
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
@@ -35,10 +37,11 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/#funcionalidades">Funcionalidades</Link>
     <Link href="/planos">Planos</Link>
     <Link href="/#duvidas">Dúvidas</Link>
-    {user && <Link href="/painel">Meu painel</Link>}
+    {user && <Link href={role === "cliente" ? "/cliente" : "/painel"}>Meu painel</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
     {user && <Link href="/minhas-compras">Minhas compras</Link>}
     {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}
+    {user && <form action={signOut}><button className="secondary">Sair do sistema</button></form>}
   </>;
 
   return (

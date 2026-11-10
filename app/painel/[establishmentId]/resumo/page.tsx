@@ -1,3 +1,5 @@
+import { SaleList } from "../caixa/sale-list";
+import type { Closing, OpenSales } from "../caixa/model";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
@@ -74,13 +76,18 @@ export default async function DashboardPage({ params, searchParams }: {
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path + "?periodo=" + selected.days }));
-  const [shopResult, report, notificationResult] = await Promise.all([
+  const [shopResult, report, notificationResult, openSalesResult, cardSalesResult] = await Promise.all([
     supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle(),
     supabase.rpc("barberflow_dashboard", { shop, period_days: selected.days }),
     supabase.rpc("barberflow_booking_notifications", { shop }),
+    supabase.rpc("barberflow_counter_open", { shop_id:shop,page_number:0 }),
+    supabase.rpc("barberflow_counter_report", { shop_id:shop,period:"dia",item_filter:"ambos",page_number:0 }),
   ]);
   if (shopResult.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!shopResult.data) notFound();
+  const openSales = openSalesResult.data as OpenSales|null;
+  const cardSales = cardSalesResult.data as Closing|null;
+  const checkout = `/painel/${shop}/caixa`;
   const data = report.data as Dashboard | null;
   const notifications = notificationResult.data as BookingNotifications | null;
   const money = (cents: number) => bookingCurrency.format(cents / 100);
@@ -110,10 +117,23 @@ export default async function DashboardPage({ params, searchParams }: {
     </nav>
     <header className="dashboard-header">
       <div><p className="eyebrow">{shopResult.data.name}</p><h1>Visão geral</h1></div>
-      <Link className="primary" href={`/painel/${shop}/agenda?novo=1#novo`}>
+      <div className="account-links"><Link className="primary" href={`/painel/${shop}/agenda?novo=1#novo`}>
         <span aria-hidden="true">+</span> Novo agendamento
-      </Link>
+      </Link><Link className="secondary" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="secondary" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>
     </header>
+    <div className="checkout checkout-columns">
+      <details className="card panel-form"><summary>Comandas abertas{openSales && ` · ${openSales.count} · ${money(openSales.total)}`}</summary>
+        {openSales ? <SaleList sales={openSales.rows.slice(0,5)} path={checkout} /> : <p role="alert">Não foi possível consultar as comandas avulsas.</p>}
+        <Link href={checkout}>Todas as comandas avulsas abertas</Link>
+      </details>
+      <details className="card panel-form"><summary>Pagamentos em cartão{cardSales && ` · Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}`}</summary>
+        {cardSales ? <div className="checkout-columns">
+          <section><h3>Débito hoje</h3><SaleList sales={cardSales.rows.filter(sale=>sale.method==="debit").slice(0,5)} path={checkout} /></section>
+          <section><h3>Crédito hoje</h3><SaleList sales={cardSales.rows.filter(sale=>sale.method==="credit").slice(0,5)} path={checkout} /></section>
+        </div> : <p role="alert">Não foi possível consultar os pagamentos.</p>}
+        <Link href={checkout+"?aba=fechamento"}>Filtrar e imprimir</Link>
+      </details>
+    </div>
     <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
       <summary>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
       {aviso === "falha" && <p role="alert">Não foi possível marcar as notificações como lidas.</p>}

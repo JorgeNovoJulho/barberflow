@@ -11,6 +11,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fpainel");
 
+  if ((await supabase.rpc("barberflow_account_kind")).data === "cliente") redirect("/cliente");
+
   const [{ data: businesses, error }, team] = await Promise.all([
     supabase.from("barberflow_establishments").select("id,name,segment").order("name"),
     supabase.rpc("barberflow_my_team_shops"),

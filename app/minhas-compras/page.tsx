@@ -2,7 +2,8 @@ import QRCode from "qrcode";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "../../lib/supabase";
-import { isUuid } from "../../lib/establishments";
+import { pageIndex } from "../cliente/social";
+import { isUuid, parsePrice } from "../../lib/establishments";
 import { bookingCurrency } from "../../lib/public-booking";
 import { showcasePix } from "../../lib/pix";
 import { formatShowcaseDate, showcaseStatus } from "../../lib/showcase";
@@ -13,29 +14,60 @@ type Purchase = Parameters<typeof showcasePix>[0] & {
   status: keyof typeof showcaseStatus; created_at: string; expires_at: string;
 };
 
-export default async function Purchases({ searchParams }: { searchParams: Promise<{ pedido?: string }> }) {
+export default async function Purchases({ searchParams }: { searchParams: Promise<{ pedido?: string; pagina?: string; loja?: string; de?: string; ate?: string; minimo?: string; maximo?: string }> }) {
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fminhas-compras");
-  const { pedido } = await searchParams;
+  const { pedido, pagina, loja, de, ate, minimo, maximo } = await searchParams;
+  const page = pageIndex(pagina);
+  const store = typeof loja === "string" ? loja.trim().slice(0,120) : "";
+  const date = (value:string|undefined) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const parsed = new Date(value + "T00:00:00Z");
+    return Number.isFinite(+parsed) && parsed.toISOString().slice(0,10)===value ? value : "";
+  };
+  const from = date(de);
+  const to = date(ate);
+  const min = typeof minimo==="string" ? parsePrice(minimo) : null;
+  const max = typeof maximo==="string" ? parsePrice(maximo) : null;
+  const filterError = (!!minimo && min===null) || (!!maximo && max===null) || (min!==null && max!==null && min>max)
+    || (!!de && !from) || (!!ate && !to) || (!!from && !!to && from>to);
+  const filters = (index:number) => "?" + new URLSearchParams({ pagina:String(index),loja:store,de:from,ate:to,minimo:minimo ?? "",maximo:maximo ?? "" });
   const selected = typeof pedido === "string" && isUuid(pedido) ? pedido : null;
   const fields = "id,shop_name,product_name,quantity,unit_price_cents,total_cents,status,created_at,expires_at,pix_key,merchant,city";
+  let listing = supabase.from("barberflow_showcase_orders").select(fields).eq("buyer_id",user.id);
+  if (store) listing = listing.ilike("shop_name","%"+store.replace(/[\\%_]/g,"\\$&")+"%");
+  if (from) listing = listing.gte("created_at",from+"T00:00:00-03:00");
+  if (to) {
+    const tomorrow = new Date(Date.parse(to+"T00:00:00Z")+86400000).toISOString().slice(0,10);
+    listing = listing.lt("created_at",tomorrow+"T00:00:00-03:00");
+  }
+  if (min!==null) listing = listing.gte("total_cents",min);
+  if (max!==null) listing = listing.lte("total_cents",max);
   const [result, focused] = await Promise.all([
-    supabase.from("barberflow_showcase_orders").select(fields).eq("buyer_id", user.id).order("created_at", { ascending: false }).limit(100),
+    filterError ? { data:[],error:null } : listing.order("created_at",{ ascending:false }).order("id").range(page*20,page*20+20),
     selected ? supabase.from("barberflow_showcase_orders").select(fields).eq("buyer_id", user.id).eq("id", selected).maybeSingle() : null,
   ]);
   const purchases = (result.data ?? []) as Purchase[];
-  const orders = focused?.data ? [focused.data as Purchase, ...purchases.filter(({ id }) => id !== selected)] : purchases;
+  const visible = purchases.slice(0,20);
+  const orders = focused?.data ? [focused.data as Purchase, ...visible.filter(({ id }) => id !== selected)] : visible;
   return <section className="container section">
     <p className="eyebrow">Área do cliente</p>
     <h1>Minhas compras</h1>
     <p>Acompanhe o pagamento e aguarde o status de retirada antes de ir ao estabelecimento.</p>
+    <form action="/minhas-compras" className="account-form card panel-form">
+      <label>Estabelecimento <input name="loja" maxLength={120} defaultValue={store} /></label>
+      <div className="form-columns"><label>De <input type="date" name="de" defaultValue={from} /></label><label>Até <input type="date" name="ate" defaultValue={to} /></label></div>
+      <div className="form-columns"><label>Preço mínimo do pedido (R$) <input name="minimo" inputMode="decimal" defaultValue={minimo} /></label><label>Preço máximo (R$) <input name="maximo" inputMode="decimal" defaultValue={maximo} /></label></div>
+      <button className="primary">Filtrar compras</button>
+    </form>
+    {filterError && <p role="alert">Confira os intervalos de datas e preços.</p>}
     {result.error || focused?.error ? <p role="alert">Não foi possível carregar todas as suas compras.</p> : null}
     {selected && !focused?.data && !focused?.error && <p role="status">Pedido indisponível na sua conta.</p>}
     {orders.length ? <ul className="cards">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
-      const pix = pending && !expired && user.email_confirmed_at && !user.is_anonymous ? showcasePix(order) : null;
+      const pix = selected===order.id && pending && !expired && user.email_confirmed_at && !user.is_anonymous ? showcasePix(order) : null;
       const qr = pix ? await QRCode.toDataURL(pix, { width: 240, margin: 4 }) : null;
       return <li className="card panel-form showcase-order" key={order.id} id={`pedido-${order.id}`}>
         <p className="eyebrow">{order.shop_name}</p>
@@ -44,6 +76,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong></p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · {order.id.slice(0, 8).toUpperCase()}</small></p>
+        {pending && !expired && !pix && <Link href={filters(page)+"&pedido="+order.id+"#pedido-"+order.id}>Abrir pagamento Pix</Link>}
         {pix && <details open={selected === order.id}>
           <summary>Pagar com Pix</summary>
           {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} />}
@@ -55,6 +88,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         </details>}
         {expired && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
       </li>;
-    }))}</ul> : !result.error && <p>Você ainda não tem compras. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
+    }))}</ul> : !result.error && !filterError && <p>Nenhuma compra encontrada com estes filtros. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
+    {(page>0 || purchases.length>20) && <nav className="account-links" aria-label="Páginas de compras">{page>0 && <Link href={filters(page-1)}>Anterior</Link>}{purchases.length>20 && <Link href={filters(page+1)}>Próxima</Link>}</nav>}
   </section>;
 }

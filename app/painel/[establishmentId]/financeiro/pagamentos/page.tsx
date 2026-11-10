@@ -1,3 +1,4 @@
+import { PasswordField } from "../password-field";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../../lib/establishments";
@@ -68,8 +69,7 @@ export default async function PaymentSettings({ params, searchParams }: {
           <label>Ambiente <select name="mode" defaultValue={account?.sandbox === false ? "live" : "test"}>
             <option value="test">Teste</option><option value="live">Produção</option>
           </select></label>
-          <label>Access Token <input name="token" type="password" autoComplete="off" minLength={20} maxLength={300}
-            required disabled={!cardAvailable} /></label>
+          <PasswordField label="Access Token" name="token" autoComplete="off" minLength={20} maxLength={300} disabled={!cardAvailable} />
           <SubmitButton disabled={!cardAvailable}>Validar e conectar provedor</SubmitButton>
         </form>
         {account && <form action={saveCardAccount.bind(null, shop, true)}>

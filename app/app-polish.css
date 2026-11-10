@@ -215,3 +215,21 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .showcase-close { margin-block: .5rem; }
 .showcase-pickup { background: #fff2dc; color: #4d2b12; border-radius: .6rem; padding: .6rem; }
 @media (max-width: 42rem) { .profile-location-grid:has(> :nth-child(2)) { grid-template-columns: 1fr; } }
+.account-kind { display: grid; grid-template-columns: repeat(auto-fit,minmax(9rem,1fr)); gap: .65rem; margin-block: 1rem; }
+.account-kind a { justify-content: center; min-height: 3.1rem; }
+.account-kind a:first-child { background: #28504b; color: white; }
+.account-kind a:last-child { background: #593893; color: white; }
+.account-kind a[aria-current] { outline: 2px solid currentColor; outline-offset: -5px; }
+.social-workspace .workspace-content { min-width: 0; }
+.social-gallery { grid-template-columns: repeat(auto-fit,minmax(min(100%,15rem),1fr)); }
+.social-gallery img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: .5rem; }
+.social-banner { width: 100%; max-height: 14rem; object-fit: cover; border-radius: .5rem; }
+.social-avatar { display: block; width: 4.5rem; height: 4.5rem; object-fit: cover; border-radius: 50%; }
+[data-social-theme=rosa] .social-profile { background: #faeaf2; color: #392034; }
+[data-social-theme=verde] .social-profile { background: #e6f3eb; color: #193625; }
+[data-social-theme=azul] .social-profile { background: #e8effb; color: #172947; }
+.checkout-columns { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,19rem),1fr)); gap: 1rem; }
+.checkout-list { list-style: none; padding: 0; display: grid; gap: .6rem; }
+.checkout meter { width: 100%; }
+.checkout summary { cursor: pointer; overflow-wrap: anywhere; min-height: 2.75rem; }
+@media print { .checkout-list details:not([open]) > :not(summary) { display: block; } }

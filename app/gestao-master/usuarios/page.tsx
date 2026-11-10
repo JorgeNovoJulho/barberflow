@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { requireMaster } from "../../../lib/master";
 import { SubmitButton } from "../../auth/submit";
 import { MasterCards, MasterPagination, MasterTabs, masterDate, reportPage } from "../master-ui";
+import { publishSocialNews, removeSocialNews } from "./social-news";
 import { requestUserRecovery } from "./actions";
 
 const path = "/gestao-master/usuarios";
@@ -10,17 +12,43 @@ type User = { id: string; email: string | null; name: string | null; intent: str
   seen_at: string | null; online: boolean; businesses: number };
 type Report = { total: number; confirmed: number; online: number; filtered: number; rows: User[] };
 
-export default async function UsersAdmin({ searchParams }: { searchParams: Promise<{ busca?: string; pagina?: string; estado?: string }> }) {
+export default async function UsersAdmin({ searchParams }: { searchParams: Promise<{ busca?: string; pagina?: string; estado?: string; exclusoes?: string }> }) {
   const supabase = await requireMaster(path);
   const params = await searchParams;
   const search = typeof params.busca === "string" ? params.busca.trim().slice(0,120) : "";
   const page = reportPage(params.pagina);
-  const { data } = await supabase.rpc("barberflow_master_users", { search_text: search, page_index: page });
+  const deletionPage = reportPage(params.exclusoes);
+  const [{data},deletion,news] = await Promise.all([
+    supabase.rpc("barberflow_master_users", { search_text: search, page_index: page }),
+    supabase.rpc("barberflow_master_deletion_requests",{ page_number:deletionPage }),
+    supabase.from("barberflow_social_news").select("id,title").order("created_at",{ascending:false}).limit(25),
+  ]);
+  const requests = (deletion.data ?? []) as { user_id:string; requested_at:string; email:string }[];
   const report = data as Report | null;
   const recoveryEnabled = process.env.BARBERFLOW_MASTER_RECOVERY_EMAILS === "true";
   return <section className="container section">
     <MasterTabs current={path} />
     <h1>Contas e Usuários</h1>
+    <details className="card panel-form" id="exclusoes" open={params.exclusoes!==undefined}>
+      <summary>Solicitações de exclusão</summary>
+      {deletion.error ? <p role="alert">Não foi possível consultar as solicitações.</p> : requests.length
+        ? <ul>{requests.slice(0,25).map(request=><li key={request.user_id}>{request.email} · {masterDate(request.requested_at)}</li>)}</ul>
+        : <p>Nenhuma solicitação nesta página.</p>}
+      <nav className="account-links">{deletionPage>0 && <Link href={path+"?exclusoes="+(deletionPage-1)+"#exclusoes"}>Anterior</Link>}
+        {requests.length>25 && <Link href={path+"?exclusoes="+(deletionPage+1)+"#exclusoes"}>Próxima</Link>}</nav>
+    </details>
+    <details className="card panel-form" id="noticias" open={params.estado?.startsWith("noticia")}>
+      <summary>Novidades para o feed</summary>
+      {params.estado?.startsWith("noticia") && <p role="status">{params.estado==="noticia-ok" ? "Feed atualizado." : "Não foi possível atualizar o feed."}</p>}
+      <form className="account-form" action={publishSocialNews}>
+        <label>Título <input name="title" maxLength={120} required /></label>
+        <label>Mensagem <textarea name="body" maxLength={1000} required /></label>
+        <SubmitButton>Publicar novidade</SubmitButton>
+      </form>
+      {news.data?.map(item=><form className="account-links" key={item.id} action={removeSocialNews.bind(null,item.id)}>
+        <span>{item.title}</span><button className="secondary">Retirar do feed</button>
+      </form>)}
+    </details>
     {params.estado === "enviado" && <p role="status">Solicitação de recuperação enviada ao provedor de e-mail.</p>}
     {params.estado === "smtp" && <p role="alert">O envio administrativo depende da configuração de e-mail do Supabase.</p>}
     {params.estado === "falha" && <p role="alert">Não foi possível solicitar a recuperação para essa conta.</p>}
