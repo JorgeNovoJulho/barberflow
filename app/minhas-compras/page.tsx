@@ -6,20 +6,23 @@ import { pageIndex } from "../cliente/social";
 import { isUuid, parsePrice } from "../../lib/establishments";
 import { bookingCurrency } from "../../lib/public-booking";
 import { showcasePix } from "../../lib/pix";
+import { cardAdmin } from "../../lib/card-payments";
+import { SubmitButton } from "../auth/submit";
+import { generatePurchasePix } from "./actions";
 import { PurchaseUpdates } from "./purchase-updates";
 import { formatShowcaseDate, showcaseOrderNumber, showcaseStatus } from "../../lib/showcase";
 import { CopyPix } from "../painel/[establishmentId]/assinatura/copy-pix";
 
 type Purchase = Parameters<typeof showcasePix>[0] & {
-  shop_name: string; product_name: string; quantity: number; unit_price_cents: number;
+  asaas_pix: boolean; shop_name: string; product_name: string; quantity: number; unit_price_cents: number;
   status: keyof typeof showcaseStatus; created_at: string; expires_at: string;
 };
 
-export default async function Purchases({ searchParams }: { searchParams: Promise<{ pedido?: string; pagina?: string; loja?: string; de?: string; ate?: string; minimo?: string; maximo?: string }> }) {
+export default async function Purchases({ searchParams }: { searchParams: Promise<{ pedido?: string; pix?: string; pagina?: string; loja?: string; de?: string; ate?: string; minimo?: string; maximo?: string }> }) {
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fminhas-compras");
-  const { pedido, pagina, loja, de, ate, minimo, maximo } = await searchParams;
+  const { pedido, pix: pixFeedback, pagina, loja, de, ate, minimo, maximo } = await searchParams;
   const page = pageIndex(pagina);
   const store = typeof loja === "string" ? loja.trim().slice(0,120) : "";
   const date = (value:string|undefined) => {
@@ -35,7 +38,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     || (!!de && !from) || (!!ate && !to) || (!!from && !!to && from>to);
   const filters = (index:number) => "?" + new URLSearchParams({ pagina:String(index),loja:store,de:from,ate:to,minimo:minimo ?? "",maximo:maximo ?? "" });
   const selected = typeof pedido === "string" && isUuid(pedido) ? pedido : null;
-  const fields = "id,shop_name,product_name,quantity,unit_price_cents,total_cents,status,created_at,expires_at,pix_key,merchant,city";
+  const fields = "id,shop_name,product_name,quantity,unit_price_cents,total_cents,status,created_at,expires_at,pix_key,merchant,city,asaas_pix";
   let listing = supabase.from("barberflow_showcase_orders").select(fields).eq("buyer_id",user.id);
   if (store) listing = listing.ilike("shop_name","%"+store.replace(/[\\%_]/g,"\\$&")+"%");
   if (from) listing = listing.gte("created_at",from+"T00:00:00-03:00");
@@ -52,6 +55,9 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
   const purchases = (result.data ?? []) as Purchase[];
   const visible = purchases.slice(0,20);
   const orders = focused?.data ? [focused.data as Purchase, ...visible.filter(({ id }) => id !== selected)] : visible;
+  const integratedOrder = orders.find((order) => order.id === selected && order.asaas_pix && order.status === "pending");
+  const integratedPix = integratedOrder ? await cardAdmin()?.from("barberflow_showcase_asaas")
+    .select("payload").eq("order_id", integratedOrder.id).maybeSingle() : null;
   return <section className="container section">
     <p className="eyebrow">Área do cliente</p>
     <h1>Minhas compras</h1>
@@ -69,7 +75,9 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     {orders.length ? <ul className="cards">{await Promise.all(orders.map(async (order) => {
       const pending = order.status === "pending";
       const expired = pending && Date.parse(order.expires_at) <= Date.now();
-      const pix = selected===order.id && pending && !expired && user.email_confirmed_at && !user.is_anonymous ? showcasePix(order) : null;
+      const pixExpired = order.asaas_pix && Date.parse(order.expires_at) - 60_000 <= Date.now();
+      const paymentOpen = selected === order.id && pending && !expired && !pixExpired && user.email_confirmed_at && !user.is_anonymous;
+      const pix = paymentOpen ? order.asaas_pix ? integratedPix?.data?.payload ?? null : showcasePix(order) : null;
       const qr = pix ? await QRCode.toDataURL(pix, { width: 240, margin: 4 }) : null;
       return <li className="card panel-form showcase-order" key={order.id} id={`pedido-${order.id}`}>
         <p className="eyebrow">{order.shop_name}</p>
@@ -79,17 +87,23 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong></p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)} · Número do pedido <code className="showcase-order-number">{showcaseOrderNumber(order.id)}</code></small></p>
-        {pending && !expired && !pix && <Link href={filters(page)+"&pedido="+order.id+"#pedido-"+order.id}>Abrir pagamento Pix</Link>}
+        {pending && !expired && selected !== order.id && <Link href={filters(page)+"&pedido="+order.id+"#pedido-"+order.id}>Abrir pagamento Pix</Link>}
+        {paymentOpen && order.asaas_pix && !pix && <form action={generatePurchasePix.bind(null, order.id)}>
+          {pixFeedback === "aguarde" && <p role="alert">O código ainda não está disponível. Aguarde alguns segundos e tente novamente.</p>}
+          <SubmitButton>Gerar QR Code Pix</SubmitButton>
+        </form>}
         {pix && <details open={selected === order.id}>
           <summary>Pagar com Pix</summary>
           {qr && <img src={qr} alt="QR Code Pix para pagar este pedido" width={240} height={240} />}
-          <p>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário. O estabelecimento confirma o crédito pelo extrato e o status aparece aqui assim que for atualizado.</p>
+          <p>{order.asaas_pix
+            ? "Confira o destinatário e pague assim que possível. A confirmação do Asaas será exibida nesta página."
+            : <>Use o código no app do banco até {formatShowcaseDate(order.expires_at)}. Confira o destinatário. O estabelecimento confirma o crédito pelo extrato.</>}</p>
           <label className="showcase-pix-code">Código Pix
             <textarea readOnly value={pix} rows={4} spellCheck={false} />
           </label>
           <CopyPix value={pix} code />
         </details>}
-        {expired && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
+        {pending && (expired || pixExpired) && <p>Se você já pagou, fale com o estabelecimento e guarde o comprovante.</p>}
       </li>;
     }))}</ul> : !result.error && !filterError && <p>Nenhuma compra encontrada com estes filtros. <Link href="/estabelecimentos">Encontrar estabelecimentos</Link></p>}
     {(page>0 || purchases.length>20) && <nav className="account-links" aria-label="Páginas de compras">{page>0 && <Link href={filters(page-1)}>Anterior</Link>}{purchases.length>20 && <Link href={filters(page+1)}>Próxima</Link>}</nav>}

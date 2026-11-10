@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isUuid } from "../../../lib/establishments";
 import { slugPattern } from "../../../lib/public-booking";
+import { issueShowcasePix } from "../../../lib/showcase-asaas";
 import { supabaseServer } from "../../../lib/supabase";
 
 export async function placeShowcaseOrder(slug: string, item: string, form: FormData) {
@@ -21,7 +22,11 @@ export async function placeShowcaseOrder(slug: string, item: string, form: FormD
     profile_slug: slug, item, units, request_id: requestId, quoted_cents: amount,
   });
   if (error || typeof data !== "string" || !isUuid(data)) {
-    finish(error?.code === "42501" ? "conta" : error?.details === "limit" ? "limite" : error?.details === "price" ? "preco" : "indisponivel");
+    return finish(error?.code === "42501" ? "conta" : error?.details === "limit" ? "limite" : error?.details === "price" ? "preco" : "indisponivel");
   }
+  const integrated = await supabase.from("barberflow_showcase_orders")
+    .select("id,establishment_id,expires_at,total_cents,pix_key").eq("id", data)
+    .eq("buyer_id", user.id).eq("status", "pending").eq("asaas_pix", true).maybeSingle();
+  if (integrated.data) await issueShowcasePix(integrated.data);
   redirect(`/minhas-compras?pedido=${data}`);
 }

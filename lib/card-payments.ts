@@ -46,7 +46,7 @@ export function chargeProvider(charge: CardCharge): CardProvider {
   return charge.sealed_token.startsWith("asaas.") ? "asaas" : "mercado_pago";
 }
 
-async function asaas<T>(token: string, sandbox: boolean, path: string, body?: unknown): Promise<T> {
+export async function asaas<T>(token: string, sandbox: boolean, path: string, body?: unknown): Promise<T> {
   const host = sandbox ? "https://api-sandbox.asaas.com" : "https://api.asaas.com";
   const response = await fetch(host + "/v3" + path, {
     method: body ? "POST" : "GET", cache: "no-store", redirect: "error",

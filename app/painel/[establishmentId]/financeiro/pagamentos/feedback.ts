@@ -3,6 +3,8 @@ export const paymentFeedback: Record<string, string> = {
   falha: "Não foi possível concluir a operação.",
   ambiente: "A integração de cartões ainda precisa da configuração do servidor.",
   credencial: "Não foi possível validar a credencial do provedor no ambiente selecionado.",
+  "vitrine-asaas-ativa": "Confirmação automática ativada para novos pedidos da vitrine.",
+  "vitrine-asaas-inativa": "Novos pedidos voltaram à confirmação pelo extrato.",
   "pix-salvo": "Conta Pix atualizada para comandas e vitrine.",
   "pix-removido": "Pix desativado para novas cobranças.",
   "cartao-salvo": "Provedor conectado.",

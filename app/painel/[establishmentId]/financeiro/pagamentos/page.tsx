@@ -1,3 +1,5 @@
+import { authOrigin } from "../../../../../lib/auth-path";
+import { showcaseWebhookToken } from "../../../../../lib/showcase-asaas";
 import { PasswordField } from "../password-field";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -6,7 +8,7 @@ import { cardAdmin, cardProviders, type CardProvider } from "../../../../../lib/
 import { pixLabel } from "../../../../../lib/pix";
 import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
-import { saveBusinessPix, saveCardAccount } from "./actions";
+import { saveBusinessPix, saveCardAccount, setShowcaseAsaas } from "./actions";
 import { paymentFeedback } from "./feedback";
 
 export default async function PaymentSettings({ params, searchParams }: {
@@ -30,12 +32,15 @@ export default async function PaymentSettings({ params, searchParams }: {
   if (business.error || access.error) throw new Error("Não foi possível consultar a configuração de pagamentos.");
   if (!business.data || access.data === "denied") notFound();
   if (access.data !== "unlocked") redirect(path + query);
-  const [pix, cards] = await Promise.all([
+  const [pix, cards, showcase] = await Promise.all([
     supabase.rpc("barberflow_business_pix", { shop }),
     supabase.rpc("barberflow_card_status", { shop }),
+    supabase.from("barberflow_showcase_pix").select("asaas_enabled").eq("establishment_id", shop).maybeSingle(),
   ]);
   const cardAvailable = !!cardAdmin();
   const account = cards.data?.account as { provider: CardProvider; sandbox: boolean } | null | undefined;
+  const webhookToken = cardAvailable && account?.provider === "asaas" && !account.sandbox ? showcaseWebhookToken(shop) : null;
+  const showcaseEnabled = showcase.data?.asaas_enabled === true;
   return <section className="container section" id="recebimento">
     <Link href={path}>Voltar ao Financeiro</Link>
     <p className="eyebrow">{business.data.name}</p>
@@ -80,6 +85,27 @@ export default async function PaymentSettings({ params, searchParams }: {
           <button className="secondary" type="submit" disabled={!cardAvailable}>Desconectar para novas cobranças</button>
         </form>}
       </>}
+    </section>
+    <section className="card panel-form">
+      <h2>Confirmação automática do Pix da vitrine</h2>
+      {showcase.error ? <p role="alert">Não foi possível consultar a configuração da vitrine.</p> :
+        <p>{showcaseEnabled ? "Ativa para novos pedidos." : "Novos pedidos usam confirmação pelo extrato."}</p>}
+      {webhookToken && pix.data ? <>
+        <details>
+          <summary>Configurar retorno no Asaas</summary>
+          <p>Use na vitrine uma chave Pix registrada na mesma conta Asaas. No painel do Asaas, cadastre um webhook de produção para o evento <code>PAYMENT_RECEIVED</code>.</p>
+          <label>URL do webhook <input readOnly value={authOrigin() + "/api/asaas/vitrine/" + shop} /></label>
+          <label>Token de autenticação do webhook <input readOnly type="password" value={webhookToken} /></label>
+          <p>Selecione e copie o token para o Asaas. Guarde-o como segredo.</p>
+        </details>
+        {!showcaseEnabled && !showcase.error && <form className="account-form" action={setShowcaseAsaas.bind(null, shop, true)}>
+          <label><input type="checkbox" required /> Cadastrei o webhook no Asaas e confirmei a chave Pix da conta.</label>
+          <SubmitButton>Ativar confirmação automática</SubmitButton>
+        </form>}
+      </> : <p>Salve a chave Pix e conecte uma conta Asaas em produção para configurar a confirmação automática.</p>}
+      {showcaseEnabled && <form action={setShowcaseAsaas.bind(null, shop, false)}>
+        <button type="submit" className="secondary">Desativar para novos pedidos</button>
+      </form>}
     </section>
   </section>;
 }

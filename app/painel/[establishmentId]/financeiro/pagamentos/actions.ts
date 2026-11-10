@@ -45,6 +45,13 @@ export async function saveBusinessPix(shop: string, remove: boolean, form: FormD
   finish(error || !data ? "falha" : remove ? "pix-removido" : "pix-salvo");
 }
 
+export async function setShowcaseAsaas(shop: string, enabled: boolean) {
+  const { supabase, finish } = await paymentContext(shop);
+  if (enabled && !cardAdmin()) return finish("ambiente");
+  const { data, error } = await supabase.rpc("barberflow_enable_showcase_asaas", { shop, enabled });
+  return finish(error || !data ? "falha" : enabled ? "vitrine-asaas-ativa" : "vitrine-asaas-inativa");
+}
+
 export async function saveCardAccount(shop: string, remove: boolean, form: FormData) {
   const { finish } = await paymentContext(shop);
   const admin = cardAdmin();
