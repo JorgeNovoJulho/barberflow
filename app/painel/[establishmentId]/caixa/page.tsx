@@ -21,7 +21,7 @@ const status:Record<string,string> = {
   amount:"O valor recebido precisa ser igual ao total da comanda.",
   duplicate:"Este identificador de pagamento já foi registrado.",
   stock:"Estoque insuficiente ou produto indisponível. Ajuste os itens antes de cobrar.",
-  pix_missing:"Configure a chave Pix do estabelecimento em Financeiro → Pagamentos.",
+
   limit:"Todos os números de comanda deste ano foram utilizados.",
   denied:"Sua conta não tem acesso à comanda.",
   falha:"Não foi possível concluir a operação. Tente novamente.",
@@ -61,17 +61,23 @@ export default async function Checkout({params,searchParams}:{
   const catalog = (table:"barberflow_services"|"barberflow_products")=>supabase.from(table).select("id,name,price_cents")
     .eq("establishment_id",shop).eq("active",true).is("deleted_at",null).order("name").order("id");
   const [services,products] = canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
+  const chargeFeedback = args.estado === "pix_missing"
+    ? "A cobrança Pix não foi criada porque este estabelecimento ainda não tem uma chave Pix cadastrada. Configure a chave ou escolha Débito ou Crédito."
+    : args.estado === "method"
+      ? "Escolha uma forma de pagamento para fechar e cobrar."
+      : args.estado && Object.hasOwn(status,args.estado) ? status[args.estado] : undefined;
   const pix = sale?.state==="pending" && sale.method==="pix" && sale.pix ? showcasePix({ ...sale.pix,id:sale.id,total_cents:sale.service_cents+sale.product_cents }) : null;
   const reportUrl = (index:number)=>path+"?"+new URLSearchParams({aba:"fechamento",periodo:period,itens:filter,pagina:String(index)});
   return <section className={closing ? "container section checkout finance-report" : "container section checkout"}>
     <nav className="account-links finance-print-hide"><Link href={`/painel/${shop}/resumo`}>Visão geral</Link><Link href={path}>Comandas abertas</Link><Link href={path+"?aba=nova"}>Criar comanda</Link><Link href={path+"?aba=fechamento"}>Fechamento</Link></nav>
     <p className="eyebrow">{business.data.name}</p>
     <h1>{closing ? "Fechamento" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
-    {args.estado && status[args.estado] && <p role="status">{status[args.estado]}</p>}
+    {!canEdit && chargeFeedback && <p role="status">{chargeFeedback}</p>}
     {[current,openResult,reportResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
-    {canEdit && services?.data && products?.data && <SaleEditor key={sale?.revision ?? id ?? "nova"} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} />}
+    {canEdit && services?.data && products?.data && <SaleEditor key={sale?.revision ?? id ?? "nova"} shop={shop} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} />}
     {id && !sale && !canEdit && !current?.error && <p>Comanda indisponível neste estabelecimento.</p>}
-    {sale && sale.state!=="open" && <div className="card panel-form">
+    {sale && sale.state!=="open" && <div className="card panel-form" id="cobranca">
+      {args.estado === "cobranca_preparada" && sale.state === "pending" && <p role="status">Cobrança preparada. Confira o pagamento antes de registrar o recebimento.</p>}
       <h2>{sale.number} · {{pending:"Aguardando pagamento",paid:"Recebimento registrado",cancelled:"Cancelada"}[sale.state]}</h2>
       <SaleDetails sale={sale} />
       {sale.method && <p>Pagamento por {methods[sale.method]}</p>}

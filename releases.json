@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.1",
+    "date": "2026-11-10",
+    "title": "Cobrança de comandas abertas",
+    "changes": [
+      "Ao fechar uma comanda, escolha Pix, Débito ou Crédito.",
+      "Quando falta uma chave Pix, a comanda continua aberta e mostra como configurar a chave ou escolher outra forma de pagamento.",
+      "Quando a cobrança é preparada, a página abre na seção de pagamento."
+    ]
+  },
+  {
     "version": "0.2.0",
     "date": "2026-11-10",
     "title": "Versão e histórico de atualizações",

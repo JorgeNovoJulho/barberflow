@@ -13,6 +13,10 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
   const value = (key:string)=>String(form.get(key) ?? "").trim();
   const operation = value("operation");
   if (["confirm","cancel"].includes(operation) && form.get("acknowledged")!=="on") redirect(path+"&estado=invalid");
+  const method = value("method");
+  if (operation === "charge" && !["pix", "debit", "credit"].includes(method)) {
+    redirect(path + "&estado=method#cobranca");
+  }
   const selections = [];
   for (let index=0; index<4; index++) {
     const service = value("service"+index);
@@ -23,7 +27,7 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
   }
   const { data,error } = await supabase.rpc("barberflow_save_counter_sale",{
     shop_id:shop,sale_id:id,expected_revision:revision,customer:value("customer"),contact:value("phone"),
-    selections,operation,payment_method:value("method") || null,payment_reference:value("reference") || null,received_cents:parsePrice(value("received")),
+    selections,operation,payment_method:method || null,payment_reference:value("reference") || null,received_cents:parsePrice(value("received")),
   });
   const overview = `/painel/${shop}/resumo`;
   revalidatePath(overview);
@@ -31,6 +35,9 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
     redirect(overview + "?comanda=salva#comandas-abertas");
   }
   const status = error ? "falha" : String(data ?? "falha");
+  if (operation === "charge") {
+    redirect(path + "&estado=" + encodeURIComponent(status === "ok" ? "cobranca_preparada" : status) + "#cobranca");
+  }
   redirect(path + "&estado=" + encodeURIComponent(status));
 }
 export async function saveCheckoutTimezone(shop:string,form:FormData) {

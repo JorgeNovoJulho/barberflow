@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { bookingCurrency } from "../../../../lib/currency";
 import { SubmitButton } from "../../../auth/submit";
@@ -12,7 +13,7 @@ function options(catalog:CatalogItem[],saved:Item[]) {
   return prices;
 }
 
-export function SaleEditor({shop,id,sale,services,products}:{shop:string;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[]}) {
+export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing}:{shop:string;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean}) {
   const savedServices = sale?.items.filter(item=>item.kind==="service") ?? [];
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
@@ -38,7 +39,14 @@ export function SaleEditor({shop,id,sale,services,products}:{shop:string;id:stri
         <option value="">Nenhum</option>{[...productOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && productIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}
       </select></label><label>Quantidade <input type="number" name={"units"+i} min={1} max={10000} required={!!value} disabled={!value} value={units[i] || ""} onChange={event=>setUnits(update(units,i,Number(event.target.value)))} /></label></div>)}</fieldset>
     <div aria-live="polite"><p>Serviços {money(serviceTotal)} · Produtos {money(productTotal)}</p><p><strong>Total {money(serviceTotal+productTotal)}</strong></p></div>
-    <label>Forma de pagamento ao cobrar <select name="method"><option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option></select></label>
+    <div id="cobranca">
+      {feedback && <p role="status">{feedback}</p>}
+      {pixMissing && <Link href={`/painel/${shop}/financeiro/pagamentos`}>Configurar chave Pix</Link>}
+      <label>Forma de pagamento ao cobrar <select name="method" defaultValue="">
+        <option value="">Selecione a forma de pagamento</option>
+        <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
+      </select></label>
+    </div>
     <div className="account-links">
       <SubmitButton name="operation" value="charge">Fechar e cobrar</SubmitButton>
       <SubmitButton name="operation" value="save">Manter aberta</SubmitButton>
