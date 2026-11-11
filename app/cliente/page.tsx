@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
@@ -19,6 +20,26 @@ const collectionLabels = {
   favoritos: "Estabelecimentos favoritos", bloqueados: "Usuários bloqueados",
 };
 
+
+function SocialCollectionCard({ name, href, image, detail, followers, children }: {
+  name: string; href?: string; image?: string; detail?: string; followers?: number; children?: ReactNode;
+}) {
+  return <li className="card social-collection-card">
+    <div className="social-collection-identity">
+      <span className="social-collection-avatar" aria-hidden="true">
+        {image ? <img src={image} alt="" width={56} height={56} loading="lazy" /> : name.slice(0,2).toUpperCase()}
+      </span>
+      <div>
+        <strong>{href ? <Link href={href}>{name}</Link> : name}</strong>
+        {detail && <p>{detail}</p>}
+      </div>
+    </div>
+    {followers !== undefined && <span className="social-collection-followers">
+      {followers.toLocaleString("pt-BR")} {followers === 1 ? "seguidor" : "seguidores"}
+    </span>}
+    {children}
+  </li>;
+}
 
 export default async function ClientPage({ searchParams }: {
   searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string }>;
@@ -87,13 +108,19 @@ export default async function ClientPage({ searchParams }: {
   const imagesFor = (post: Photo) => [post.object_path, ...(post.extra_photos ?? [])].filter(Boolean);
   const summary = summaryResult?.data;
   const joined = summary?.joined && new Intl.DateTimeFormat("pt-BR", { month:"long", year:"numeric", timeZone:"America/Sao_Paulo" }).format(new Date(summary.joined));
-  const [links, likes, comments, authors, likerRows] = await Promise.all([
+  const [links, likes, comments, authors, likerRows, cardCounts] = await Promise.all([
     mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar)]),
     photo ? supabase.from("barberflow_social_likes").select("actor",{ count:"exact",head:true }).eq("photo",photo) : null,
     photo ? supabase.from("barberflow_social_comments").select("id,actor,parent,body").eq("photo",photo).order("created_at",{ascending:false}).order("id").range(page*25,page*25+25) : null,
     posts.length ? supabase.from("barberflow_social_profiles").select("user_id,username").in("user_id",[...new Set(posts.map(p=>p.author))]) : null,
     photo ? supabase.from("barberflow_social_likes").select("actor").eq("photo",photo).order("created_at",{ascending:false}).order("actor").range(page*25,page*25+25) : null,
+    people.length || shops.length ? supabase.rpc("barberflow_social_card_counts", {
+      profiles: people.slice(0,12).map(({ user_id }) => user_id),
+      shops: shops.slice(0,12).map(({ id }) => id),
+    }) : null,
   ]);
+  const followers = new Map<string, number>((cardCounts?.data ?? []).map((row: { is_shop: boolean; id: string; followers: number }) =>
+    [`${row.is_shop ? "shop" : "person"}:${row.id}`, row.followers]));
   const likerIds = (likerRows?.data ?? []).slice(0,25).map(row=>row.actor);
   const likerProfiles = likerIds.length ? await profileTable.select("user_id,username").in("user_id",likerIds).eq("frozen",false) : null;
   const likerNames = new Map((likerProfiles?.data ?? []).map(row=>[row.user_id,row.username]));
@@ -206,25 +233,30 @@ export default async function ClientPage({ searchParams }: {
         </form>}
       </div>}
       {connections?.data && <p>{connections.data.count} {collection === "seguidores" ? "seguidores" : "perfis seguidos"}</p>}
-      {(view==="pessoas" || connections?.data) && (people.length ? <ul className="cards">{people.slice(0,12).map(person=><li className="card" key={person.user_id}>
-        {links.get(person.avatar) && <img className="social-avatar social-avatar-small" width={56} height={56} src={links.get(person.avatar)} alt="" loading="lazy" />}
-        <Link href={"/cliente?perfil="+person.user_id}>{person.username}</Link>
-        {collection === "seguindo" && profileId === user.id && <form action={changeFollow.bind(null,path,person.user_id,false,true)}>
-          <button className="secondary">Deixar de seguir</button>
-        </form>}
-      </li>)}</ul> : <p>Nenhum perfil disponível.</p>)}
+      {(view === "pessoas" || connections?.data) && (people.length ? <ul className="cards social-collection-grid">
+        {people.slice(0,12).map((person) => <SocialCollectionCard key={person.user_id} name={person.username}
+          href={"/cliente?perfil=" + person.user_id} image={links.get(person.avatar)} followers={followers.get("person:" + person.user_id)}>
+          {collection === "seguindo" && profileId === user.id && <form action={changeFollow.bind(null,path,person.user_id,false,true)}>
+            <button className="secondary">Deixar de seguir</button>
+          </form>}
+        </SocialCollectionCard>)}
+      </ul> : <p>Nenhum perfil disponível.</p>)}
       {(collection === "lojas-seguidas" || collection === "favoritos" || ((view === "perfil" || collection === "seguindo") && profileId === user.id)) && <>
-        <h2>{collection === "favoritos" ? "Estabelecimentos favoritos" : "Estabelecimentos seguidos"}</h2>
-        {shops.length ? <ul className="cards">{shops.slice(0,12).map(item=><li className="card" key={item.id}>
-        {httpsUrl(item.logo ?? undefined) && <img className="social-avatar social-avatar-small" src={item.logo!} alt="" loading="lazy" width={56} height={56} />}
-        <Link href={"/cliente?loja="+item.id}>{item.name}</Link><p>{item.city}</p>
-        <form action={collection === "favoritos" ? changeFavorite.bind(null,path,item.id,true) : changeFollow.bind(null,path,item.id,true,true)}>
-          <button className="secondary">{collection === "favoritos" ? "Remover favorito" : "Deixar de seguir"}</button>
-        </form>
-      </li>)}</ul> : <p>Nenhum estabelecimento nesta lista.</p>}</>}
-      {collection === "bloqueados" && (blocked.length ? <ul className="cards">{blocked.slice(0,12).map(person=><li className="card" key={person.user_id}>
-        <p>{person.username}</p><form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
-      </li>)}</ul> : <p>Nenhum usuário bloqueado.</p>)}
+        {collection !== "lojas-seguidas" && collection !== "favoritos" && <h2>Estabelecimentos seguidos</h2>}
+        {shops.length ? <ul className="cards social-collection-grid">
+          {shops.slice(0,12).map((item) => <SocialCollectionCard key={item.id} name={item.name}
+            href={"/cliente?loja=" + item.id} image={httpsUrl(item.logo ?? undefined)} detail={item.city} followers={followers.get("shop:" + item.id)}>
+            <form action={collection === "favoritos" ? changeFavorite.bind(null,path,item.id,true) : changeFollow.bind(null,path,item.id,true,true)}>
+              <button className="secondary">{collection === "favoritos" ? "Remover favorito" : "Deixar de seguir"}</button>
+            </form>
+          </SocialCollectionCard>)}
+        </ul> : <p>Nenhum estabelecimento nesta lista.</p>}
+      </>}
+      {collection === "bloqueados" && (blocked.length ? <ul className="cards social-collection-grid">
+        {blocked.slice(0,12).map((person) => <SocialCollectionCard key={person.user_id} name={person.username}>
+          <form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
+        </SocialCollectionCard>)}
+      </ul> : <p>Nenhum usuário bloqueado.</p>)}
       {purchaseNotices?.data?.length ? <section className="section">
         <h2>Compras</h2>
         <ul className="cards">{purchaseNotices.data.map((order) => <li className="card" key={order.id}>
