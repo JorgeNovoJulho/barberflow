@@ -1,3 +1,4 @@
+import { BookingCode } from "./booking-code";
 import { cookies } from "next/headers";
 import { isUuid } from "../../../lib/establishments";
 import Link from "next/link";
@@ -32,7 +33,7 @@ export default async function Establishment({ params, searchParams }: {
           {" "}{booking.service} com {booking.professional}, em {String(booking.start).slice(0,10).split("-").reverse().join("/")} às {String(booking.start).slice(11,16)}.
         </p>
         {booking.state === "cancelled" && booking.reason ? <p role="status" data-feedback="warning">Agendamento cancelado pelo estabelecimento. Motivo: {booking.reason}</p> : <p>O estabelecimento recebeu a notificação do agendamento.</p>}
-        {requestToken && <p>Guarde o código para consultar esta reserva em outro navegador: <code className="guest-booking-code">{requestToken}</code>.</p>}
+        {requestToken && <><p>Guarde o código para consultar a reserva em outro navegador.</p><BookingCode key={requestToken} code={requestToken} /></>}
         <Link className="secondary" href={`/estabelecimento/${slug}/consultar`}>Consultar meu agendamento</Link>
       </section>
     </div>}

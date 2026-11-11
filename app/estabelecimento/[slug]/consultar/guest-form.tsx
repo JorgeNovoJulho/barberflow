@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { BookingCode } from "../booking-code";
 import { manageGuest } from "./actions";
 import { SubmitButton } from "../../../auth/submit";
 
 type Item = { name: string; price: number; units: number };
 export type GuestState = { message?: string; success?: boolean; day?: string; slots?: string[]; booking?: {
-  service: string; price: number; start: string; end: string; professional: string; state: string; reason?: string; cancel: boolean; reschedule: boolean; items: Item[];
+  code: string; service: string; price: number; start: string; end: string; professional: string; state: string; reason?: string; cancel: boolean; reschedule: boolean; items: Item[];
 } };
 const states: Record<string,string> = { scheduled: "Confirmado", pending: "Aguardando aprovação", cancelled: "Cancelado", completed: "Concluído", no_show: "Não compareceu" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,6 +29,7 @@ export function GuestForm({ slug, saved, today }: { slug: string; saved: boolean
     {state.message && <p role="status" data-feedback={state.success ? "success" : "warning"}>{state.message}</p>}
     {booking && <section>
       <h2>{states[booking.state]}</h2>
+      <BookingCode key={booking.code} code={booking.code} />
       <p><strong>{dateLabel(booking.start)} · {booking.start.slice(11,16)}–{booking.end.slice(11,16)}</strong></p>
       <p>Profissional: {booking.professional}</p>
       {booking.reason && <p data-feedback="warning">Motivo: {booking.reason}</p>}
