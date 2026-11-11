@@ -126,3 +126,11 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
   .editorial-search-form { grid-template-columns: minmax(0, 1fr); }
   .editorial-landing .landing-hero::before { background: linear-gradient(0deg, #0e0d0d 3%, rgb(10 8 7 / var(--landing-overlay)) 57%, #0e0d0d35); }
 }
+
+.landing-demo { scroll-margin-top: 5rem; }
+.landing-screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+.landing-screens figure { margin: 0; display: grid; grid-template-rows: 1fr auto; border: 1px solid #a8977b50; border-radius: .85rem; overflow: hidden; background: #1b1e29; }
+.landing-screens img { display: block; width: 100%; height: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #171923; }
+.landing-screens figcaption { padding: .65rem 1rem; color: #fff; font-weight: 700; }
+.landing-video { max-width: 60rem; margin: 2rem auto 0; }
+.landing-video video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: .85rem; background: #111827; object-fit: contain; }

@@ -6,6 +6,12 @@ import { hasMasterSession, masterPath } from "../lib/master";
 import { signOut } from "./auth/actions";
 import { supabaseServer } from "../lib/supabase";
 
+const screenshots = [
+  { file: "painel", title: "Visão geral", alt: "Atalhos para agendamentos, comandas e fechamento no painel do TOP BARBER" },
+  { file: "agenda", title: "Agenda", alt: "Agenda com visões por dia, semana e mês e guia de cancelados" },
+  { file: "vitrine", title: "Vitrine", alt: "Produtos publicados na vitrine do estabelecimento com fotos e preços" },
+];
+
 function BlockImage({ block, hero = false }: { block: LandingBlock; hero?: boolean }) {
   if (!block.image_url || !validImageUrl(block.image_url)) return null;
   return <img className={hero ? "landing-hero-photo" : "landing-card-photo"} src={block.image_url}
@@ -37,6 +43,7 @@ export default async function Home() {
     ["#funcionalidades", settings.navFeatures, features.length],
     ["#estoque", settings.navStock, retail.length],
     ["#duvidas", settings.navFaq, questions.length],
+    ["#demonstracao", "Demonstração", 1],
   ] as const;
   const style = {
     "--landing-gold": settings.accent, "--landing-overlay": Number(settings.overlay) / 100,
@@ -87,8 +94,8 @@ export default async function Home() {
     {features.length > 0 && <section className="container section editorial-features" id="funcionalidades">
       <h2>{settings.featuresTitle}</h2>
       <ul className="cards">
-        {features.map((block, index) => <li key={block.id} className="card">
-          <BlockImage block={block} /><span className="landing-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+        {features.map((block) => <li key={block.id} className="card">
+          <BlockImage block={block} />
           <h3>{block.title}</h3>{block.body && <p>{block.body}</p>}
         </li>)}
       </ul>
@@ -114,6 +121,23 @@ export default async function Home() {
         <summary>{block.title}</summary><p>{block.body}</p><BlockImage block={block} />
       </details>)}
     </section>}
+    <section id="demonstracao" className="container section landing-demo" aria-labelledby="demo-title">
+      <h2 id="demo-title">Veja o TOP BARBER em ação</h2>
+      <div className="landing-screens">
+        {screenshots.map(({ file, title, alt }) => <figure key={file}>
+          <img src={`/media/top-barber-${file}.webp`} alt={alt} loading="lazy" decoding="async" />
+          <figcaption>{title}</figcaption>
+        </figure>)}
+      </div>
+      <div className="landing-video">
+        <h3>Conheça o painel em uma apresentação narrada</h3>
+        <video controls playsInline preload="none" poster="/media/top-barber-painel.webp" aria-label="Apresentação do TOP BARBER">
+          <source src="/media/top-barber-apresentacao.mp4" type="video/mp4" />
+          <track kind="captions" src="/media/top-barber-apresentacao.vtt" srcLang="pt-BR" label="Português" />
+          <a href="/media/top-barber-apresentacao.mp4">Abrir vídeo de apresentação</a>
+        </video>
+      </div>
+    </section>
     <footer className="editorial-footer">
       <div className="container">
         <div><Link href="/" className="editorial-brand">{brand}</Link><p>{settings.footerText}</p></div>
