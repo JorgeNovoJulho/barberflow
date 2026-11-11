@@ -34,7 +34,7 @@ export function validImageUrl(value: string) {
 }
 
 export const landingDefaults = {
-  brand: "BARBERFLOW", logoUrl: "", kicker: "Gestão para beleza e bem-estar",
+  brand: "TOP BARBER", logoUrl: "", kicker: "Gestão para beleza e bem-estar",
   primaryText: "Criar conta", primaryUrl: "/cadastro",
   secondaryText: "Ver planos", secondaryUrl: "/planos",
   headerText: "Entrar", headerUrl: "/login",
@@ -78,6 +78,11 @@ export function parseLandingSettings(raw: unknown): LandingSettings {
     if (key === "overlay" && !/^(?:[5-8]\d|9[0-5])$/.test(value)) continue;
     if (key === "photoFocus" && !["left", "center", "right"].includes(value)) continue;
     result[key] = value;
+  }
+  for (const key of Object.keys(landingDefaults) as (keyof typeof landingDefaults)[]) {
+    if (key !== "logoUrl" && !key.endsWith("Url") && !key.endsWith("Href")) {
+      result[key] = result[key].replace(/\b(?:Top BarberFlow|Barberflow)\b/gi, "TOP BARBER");
+    }
   }
   return result;
 }

@@ -21,7 +21,7 @@ export function FinanceEmailResetForm({ shop, sale }: { shop: string; sale: stri
     <form className="account-form" action={submit} noValidate>
       {sale && <input type="hidden" name="comanda" value={sale} />}
       <h3>Crie uma nova senha financeira</h3>
-      <p>Use pelo menos 8 caracteres e escolha uma senha diferente da que você usa para entrar no BARBERFLOW.</p>
+      <p>Use pelo menos 8 caracteres e escolha uma senha diferente da que você usa para entrar no TOP BARBER.</p>
       <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
       <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
       {error && !pending && <p ref={feedback} role="alert" tabIndex={-1}>{error}</p>}

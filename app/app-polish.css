@@ -565,3 +565,6 @@ svg.booking-client-avatar { padding: 6px; }
 .cover-markers span { position: absolute; transform: translate(-50%, -50%); background: #17112c; color: #fff; border: 1px solid #fff; border-radius: .35rem; padding: .12rem .28rem; font-size: .7rem; font-weight: 750; }
 .cover-markers span[data-active="true"] { background: #ffdc79; color: #271604; border-color: #271604; }
 .publication-media-thumb { display: block; width: 8rem; max-width: 100%; height: 4.5rem; object-fit: contain; border-radius: .5rem; background: #eae8f3; margin-block: .45rem; }
+
+.editorial-brand .landing-brand-name span { font-size: inherit; }
+.footer .brand-name span { color: #b7a8ff; }

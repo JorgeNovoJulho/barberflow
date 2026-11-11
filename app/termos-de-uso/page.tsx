@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Termos de Uso" };
 export default function TermsPage() {
   return <LegalDocument title="Termos de Uso">
     <h2>Uso da plataforma</h2>
-    <p>O BARBERFLOW permite que negócios de beleza e bem-estar publiquem seus perfis, organizem serviços e gerenciem seus atendimentos. Clientes podem consultar estabelecimentos, agendar serviços e, quando disponível, comprar produtos.</p>
+    <p>O TOP BARBER permite que negócios de beleza e bem-estar publiquem seus perfis, organizem serviços e gerenciem seus atendimentos. Clientes podem consultar estabelecimentos, agendar serviços e, quando disponível, comprar produtos.</p>
     <h2>Conta e acesso</h2>
     <p>Informe dados corretos, mantenha seu e-mail atualizado e proteja suas credenciais. Avise o suporte se identificar acesso indevido. O acesso de equipe deve ser concedido somente às pessoas autorizadas pelo estabelecimento.</p>
     <h2>Serviços, produtos e reservas</h2>

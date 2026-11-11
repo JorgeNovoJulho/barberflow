@@ -11,7 +11,7 @@ export default async function Plans() {
   return (
     <section className="container section">
       <p className="eyebrow">Assinatura por estabelecimento</p>
-      <h1>Planos BARBERFLOW</h1>
+      <h1>Planos TOP BARBER</h1>
       <p className="intro">Os dois períodos incluem as mesmas funcionalidades.{prices?.trial_days ? ` O teste de ${prices.trial_days} dias dispensa cartão.` : ""}</p>
       {!prices && <p role="alert">Os preços estão temporariamente indisponíveis.</p>}
       <div className="cards">

@@ -18,7 +18,7 @@ import "./editorial.css";
 import "./app-polish.css";
 
 export const metadata: Metadata = {
-  title: { default: "BARBERFLOW", template: "%s | BARBERFLOW" },
+  title: { default: "TOP BARBER", template: "%s | TOP BARBER" },
   description: "Agendamento online e gestão para profissionais e negócios de beleza e bem-estar.",
 };
 
@@ -53,12 +53,12 @@ export default async function Layout({ children }: { children: ReactNode }) {
         {user && <><AccountActivity /><IdleLogout user={String(claims?.session_id ?? user)} /></>}
         <header className="site-header">
           <div className="container navigation">
-            <Link className="wordmark" href="/" aria-label="BARBERFLOW, início">
+            <Link className="wordmark" href="/" aria-label="TOP BARBER, início">
               <svg className="brand-mark" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                 <rect width="32" height="32" rx="9" fill="currentColor" />
                 <path d="M8 21.5h6.5l4-11h5.5M8 16h4m8 0h4" stroke="#191517" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="brand-name">BARBER<span>FLOW</span></span>
+              <span className="brand-name">TOP <span>BARBER</span></span>
             </Link>
             <nav className="desktop-nav" aria-label="Principal">{navigation}</nav>
             {master && <Link className="header-action master-header-link" href={masterPath}>Administrador</Link>}
@@ -69,7 +69,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
         <ActionFeedback />
         <footer className="footer">
           <div className="container footer-content">
-            <div><strong>BARBERFLOW</strong><p>Gestão para beleza e bem-estar.</p></div>
+            <div><strong className="brand-name">TOP <span>BARBER</span></strong><p>Gestão para beleza e bem-estar.</p></div>
             <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link>{policies && <><a href={policies.terms}>Termos de Uso</a><a href={policies.privacy}>Política de Privacidade</a></>}</nav>
           </div>
         </footer>

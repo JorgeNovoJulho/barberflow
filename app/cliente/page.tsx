@@ -185,7 +185,7 @@ export default async function ClientPage({ searchParams }: {
       {view==="feed" && !setup && <>
         {!profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para publicar e interagir.</Link></p>}
         <form className="account-form card panel-form" action="/estabelecimentos"><label>Busque estabelecimentos por nome, cidade ou serviço <input name="busca" maxLength={120} required /></label><button className="primary">Buscar</button></form>
-        {generalResult?.data?.length ? <section><h2>Novidades do BARBERFLOW</h2>{generalResult.data.map((item)=><article key={item.id} className="card"><h3>{item.title}</h3><p>{item.body}</p></article>)}</section> : null}
+        {generalResult?.data?.length ? <section><h2>Novidades do TOP BARBER</h2>{generalResult.data.map((item)=><article key={item.id} className="card"><h3>{item.title}</h3><p>{item.body}</p></article>)}</section> : null}
         {profile && !profile.frozen && <PhotoForm path={path} shop={null} />}
         <h2>Publicações</h2>{!posts.length && <p>Nenhuma publicação disponível no momento.</p>}
       </>}
@@ -194,7 +194,7 @@ export default async function ClientPage({ searchParams }: {
           {links.get(profile.banner) && <img className="social-banner" src={links.get(profile.banner)} alt="Banner do perfil" />}
           {links.get(profile.avatar) && <img className="social-avatar" src={links.get(profile.avatar)} alt="" />}
           <div className="profile-feature-body"><h2>{profile.username}</h2>
-          {joined && <p className="profile-member">No BARBERFLOW desde {joined}</p>}
+          {joined && <p className="profile-member">No TOP BARBER desde {joined}</p>}
           {presenceResult?.data && <ProfilePresence key={profileId} initial={presenceResult.data} profile={profileId} shop={null} />}
           <div className="profile-stats">
             <Link href={`/cliente?aba=seguidores&perfil=${profileId}`}><strong>{summary?.followers ?? "—"}</strong> Seguidores</Link>

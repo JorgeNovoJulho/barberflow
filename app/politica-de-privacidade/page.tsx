@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     <h2>Compartilhamento</h2>
     <p>O estabelecimento recebe as informações necessárias para atender a reserva ou pedido. Usamos a Hostinger para hospedagem e o Supabase para autenticação, banco de dados e armazenamento. Quando o estabelecimento habilita um provedor de pagamentos, os dados necessários à cobrança são encaminhados ao provedor aplicável. Também podemos compartilhar informações quando houver obrigação legal ou solicitação válida de autoridade competente.</p>
     <h2>Dados cadastrados por estabelecimentos</h2>
-    <p>O estabelecimento decide como usa os dados que coleta para o próprio atendimento e cadastro de clientes. Para questões sobre esse uso, procure o estabelecimento. Para questões sobre sua conta BARBERFLOW e o funcionamento da plataforma, use o contato acima.</p>
+    <p>O estabelecimento decide como usa os dados que coleta para o próprio atendimento e cadastro de clientes. Para questões sobre esse uso, procure o estabelecimento. Para questões sobre sua conta TOP BARBER e o funcionamento da plataforma, use o contato acima.</p>
     <h2>Sessão e conservação</h2>
     <p>Usamos cookies de autenticação para manter a sessão e controlar o acesso. Registramos o horário da última atividade em uma aba visível para que a administração possa acompanhar o estado recente de acesso da conta. Conservamos os dados pelo período necessário à finalidade de cada registro, considerando a duração da conta, o histórico necessário à prestação do serviço e obrigações legais ou contratuais de conservação.</p>
     <h2>Seus direitos</h2>

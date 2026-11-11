@@ -14,8 +14,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <Link className="primary" aria-current={kind === "cliente" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "cliente", next } }}>Sou cliente</Link>
     <Link className="primary" aria-current={kind === "barbearia" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "barbearia", next } }}>Sou profissional</Link>
   </nav>;
-  if (!kind) return <section className="container section"><div className="card account-card"><h1>Crie sua conta</h1><p>Escolha como você quer usar o BARBERFLOW.</p>{choices}<Link href="/login">Já tenho conta</Link></div></section>;
-  return <AccountForm before={choices} title="Crie sua conta" description="Escolha como você quer usar o BARBERFLOW." status={params.estado ?? params.erro} action={signUp} submit="Criar conta" alternateSubmit={<button type="submit" className="secondary" formAction={signUpGoogle.bind(null, kind)} formNoValidate disabled={!policies && !testSignup}>Criar conta com Google</button>} next={next} disabled={!policies && !testSignup} links={<Link href={{ pathname: "/login", query: { next } }}>Já tenho conta</Link>}>
+  if (!kind) return <section className="container section"><div className="card account-card"><h1>Crie sua conta</h1><p>Escolha como você quer usar o TOP BARBER.</p>{choices}<Link href="/login">Já tenho conta</Link></div></section>;
+  return <AccountForm before={choices} title="Crie sua conta" description="Escolha como você quer usar o TOP BARBER." status={params.estado ?? params.erro} action={signUp} submit="Criar conta" alternateSubmit={<button type="submit" className="secondary" formAction={signUpGoogle.bind(null, kind)} formNoValidate disabled={!policies && !testSignup}>Criar conta com Google</button>} next={next} disabled={!policies && !testSignup} links={<Link href={{ pathname: "/login", query: { next } }}>Já tenho conta</Link>}>
       <input type="hidden" name="account" value={kind} />
       <label>Nome completo <input name="name" autoComplete="name" required maxLength={120} /></label>
       <Email /><Password isNew />

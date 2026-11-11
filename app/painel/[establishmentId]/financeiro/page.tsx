@@ -24,11 +24,11 @@ const feedback: Record<string, string> = {
   "senha-alterada": "Senha financeira alterada. Desbloqueie o Financeiro com a nova senha.",
   "recuperacao-dados": "Confira a senha da conta, a nova senha financeira e a confirmação.",
   "recuperacao-invalid": "Use uma senha financeira de pelo menos oito caracteres e até 72 bytes.",
-  "recuperacao-incorrect": "A senha de login do BARBERFLOW está incorreta.",
+  "recuperacao-incorrect": "A senha de login do TOP BARBER está incorreta.",
   "recuperacao-reused": "Use uma senha financeira diferente da senha da sua conta.",
   "recuperacao-blocked": "Muitas tentativas de recuperação. Aguarde até 15 minutos e tente novamente.",
   "recuperacao-mfa": "Conclua a verificação em duas etapas da sua conta antes de recuperar a senha financeira.",
-  "recuperacao-no_password": "Defina uma senha de login para sua conta BARBERFLOW antes de recuperar a senha financeira.",
+  "recuperacao-no_password": "Defina uma senha de login para sua conta TOP BARBER antes de recuperar a senha financeira.",
   "recuperacao-denied": "A recuperação está disponível apenas para o proprietário do estabelecimento.",
   "recuperacao-falha": "Não foi possível recuperar a senha financeira.",
   "email-verificado": "Escolha uma nova senha financeira para concluir a recuperação.",
@@ -105,7 +105,7 @@ export default async function Finance({ params, searchParams }: {
     {result?.error || entriesResult?.error ? <p role="alert">Não foi possível carregar os lançamentos financeiros.</p>
       : !ledger ? <div className="card panel-form">
         <h2>{setup ? "Criar senha financeira" : "Desbloquear financeiro"}</h2>
-        <p>Use uma senha exclusiva do BARBERFLOW, com pelo menos oito caracteres.</p>
+        <p>Use uma senha exclusiva do TOP BARBER, com pelo menos oito caracteres.</p>
         {!blocked && !emailReset && <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
           {sale && <input type="hidden" name="comanda" value={sale} />}
           {atendimento && isUuid(atendimento) && <input type="hidden" name="atendimento" value={atendimento} />}
@@ -121,9 +121,9 @@ export default async function Finance({ params, searchParams }: {
             <SubmitButton>Enviar link por e-mail</SubmitButton>
           </form>}
           <details><summary>Recuperar usando a senha de login</summary>
-          <p>Confirme a senha que você usa para entrar no BARBERFLOW e escolha uma nova senha exclusiva para o Financeiro.</p>
+          <p>Confirme a senha que você usa para entrar no TOP BARBER e escolha uma nova senha exclusiva para o Financeiro.</p>
           <form className="account-form" action={resetFinancePassword.bind(null, shop)}>
-            <PasswordField label="Senha de login do BARBERFLOW" name="account_secret" minLength={1} autoComplete="current-password" />
+            <PasswordField label="Senha de login do TOP BARBER" name="account_secret" minLength={1} autoComplete="current-password" />
             <PasswordField label="Nova senha financeira" name="new_secret" autoComplete="new-password" />
             <PasswordField label="Confirmar nova senha financeira" name="confirmation" autoComplete="new-password" />
             <SubmitButton>Trocar senha financeira</SubmitButton>

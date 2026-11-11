@@ -111,7 +111,7 @@ export async function CashReport({ params, searchParams, delegated = false }: {
           <dt>{label}</dt><dd>{money(Number(value))}</dd>
         </div>)}
       </dl>
-      <p>O saldo acumula os movimentos registrados no BARBERFLOW. Os valores previstos são lançamentos avulsos com vencimento no período. Estornos entram na data em que foram registrados.</p>
+      <p>O saldo acumula os movimentos registrados no TOP BARBER. Os valores previstos são lançamentos avulsos com vencimento no período. Estornos entram na data em que foram registrados.</p>
       <section className="card panel-form finance-chart">
         <h2>Movimentação por {scale[1].toLowerCase()}</h2>
         <p>Azul indica entradas. Laranja indica saídas.</p>

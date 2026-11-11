@@ -20,7 +20,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const { estado } = await searchParams;
 
   return <section className="container section">
-    <p className="eyebrow">Painel BARBERFLOW</p>
+    <p className="eyebrow">Painel TOP BARBER</p>
     <h1>Meus estabelecimentos</h1>
     <PanelStatus status={estado} />
     {!!team.data?.length && <section className="panel-form">

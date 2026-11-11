@@ -62,7 +62,7 @@ export default async function UsersAdmin({ searchParams }: { searchParams: Promi
       </form>
       <p>{report.filtered} resultado(s)</p>
       <ul className="cards">{report.rows.map((user) => <li className="card" key={user.id}>
-        <h2>{user.name || "Conta BARBERFLOW"}</h2>
+        <h2>{user.name || "Conta TOP BARBER"}</h2>
         <p>{user.email ?? "Sem e-mail"} · {user.banned_until && Date.parse(user.banned_until)>Date.now() ? "Bloqueada" : user.online ? "Online recente" : "Sem atividade recente"}</p>
         <dl className="order-totals">
           <div><dt>Perfil</dt><dd>{user.intent === "barbearia" ? "Estabelecimento" : user.intent === "cliente" ? "Cliente" : "Sem classificação"}</dd></div>

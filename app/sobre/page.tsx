@@ -9,13 +9,13 @@ export default async function AboutPage() {
   await connection();
   const release = await getReleaseInformation();
   const identity = legalIdentity();
-  const developer = process.env.BARBERFLOW_DEVELOPER_NAME?.trim() || identity?.operator || "Equipe BARBERFLOW";
+  const developer = process.env.BARBERFLOW_DEVELOPER_NAME?.trim() || identity?.operator || "Equipe TOP BARBER";
   const contact = process.env.BARBERFLOW_DEVELOPER_EMAIL?.trim() || identity?.email;
   const pending = release.available && release.pending;
 
   return <section className="container section">
     <header className="module-heading">
-      <p className="eyebrow">BARBERFLOW</p>
+      <p className="eyebrow">TOP BARBER</p>
       <h1>Sobre</h1>
       <p>Informações do sistema e histórico de atualizações.</p>
     </header>

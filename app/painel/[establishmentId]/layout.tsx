@@ -19,7 +19,7 @@ export default async function EstablishmentLayout({ children, params }: {
   const access = await supabase.rpc("barberflow_shop_access_state", { shop });
   if (access.data === "blocked") return <section className="container section">
     <h1>Estabelecimento bloqueado</h1>
-    <p>Entre em contato com a administração do BARBERFLOW para regularizar o acesso.</p>
+    <p>Entre em contato com a administração do TOP BARBER para regularizar o acesso.</p>
     <Link href="/painel">Voltar aos estabelecimentos</Link>
   </section>;
   const user = (await supabase.auth.getUser()).data.user;

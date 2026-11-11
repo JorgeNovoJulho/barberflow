@@ -62,7 +62,7 @@ export async function resetFinanceWithEmail(shop: string, _previous: FinanceRese
       case "expired":
         redirect(financeRecoveryPath(path, "recuperacao-email-expired", sale));
       case "reused":
-        return "A nova senha financeira precisa ser diferente da senha de login do BARBERFLOW.";
+        return "A nova senha financeira precisa ser diferente da senha de login do TOP BARBER.";
       case "mfa":
         return "Conclua a verificação em duas etapas da conta antes de alterar a senha financeira.";
       case "denied":

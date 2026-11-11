@@ -51,7 +51,7 @@ export async function asaas<T>(token: string, sandbox: boolean, path: string, bo
   const response = await fetch(host + "/v3" + path, {
     method: body ? "POST" : "GET", cache: "no-store", redirect: "error",
     signal: AbortSignal.timeout(8000),
-    headers: { access_token: token, "User-Agent": "BARBERFLOW/1.0", "Content-Type": "application/json" },
+    headers: { access_token: token, "User-Agent": "TopBarber/1.0", "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) throw new Error("Asaas request failed");
@@ -85,7 +85,7 @@ export async function createAsaasCheckout(token: string, charge: CardCharge, ret
     billingTypes: ["CREDIT_CARD"], chargeTypes: ["DETACHED"], minutesToExpire: minutes,
     externalReference: charge.id,
     callback: { successUrl: returnUrl, cancelUrl: returnUrl, expiredUrl: returnUrl },
-    items: [{ name: "Comanda BARBERFLOW", description: "Saldo da comanda", quantity: 1, value: charge.amount / 100 }],
+    items: [{ name: "Comanda TOP BARBER", description: "Saldo da comanda", quantity: 1, value: charge.amount / 100 }],
   });
   const url = "https://" + (charge.sandbox ? "sandbox.asaas.com" : "asaas.com")
     + "/checkoutSession/show?" + new URLSearchParams({ id: result.id });
@@ -137,7 +137,7 @@ export function isMercadoPagoCheckout(value: string) {
 
 export async function createCardCheckout(token: string, charge: CardCharge) {
   const preference = await mercadoPago<{ init_point?: string; sandbox_init_point?: string }>(token, "/checkout/preferences", {
-    items: [{ id: charge.id, title: "Comanda BARBERFLOW", quantity: 1, currency_id: "BRL", unit_price: charge.amount / 100 }],
+    items: [{ id: charge.id, title: "Comanda TOP BARBER", quantity: 1, currency_id: "BRL", unit_price: charge.amount / 100 }],
     external_reference: charge.id,
     binary_mode: true,
     expires: true,

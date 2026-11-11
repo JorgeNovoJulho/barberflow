@@ -43,7 +43,7 @@ export default async function Home() {
     "--landing-focus": settings.photoFocus === "right" ? "72%" : settings.photoFocus === "left" ? "25%" : "50%",
   } as CSSProperties;
   const brand = <>{settings.logoUrl ? <img src={settings.logoUrl} alt="" width={32} height={32} />
-    : <span aria-hidden="true">✦</span>}{settings.brand || "BARBERFLOW"}</>;
+    : <span aria-hidden="true">✦</span>}{settings.brand === "TOP BARBER" ? <strong className="landing-brand-name">TOP <span>BARBER</span></strong> : settings.brand}</>;
 
   return <div className="landing editorial-landing" style={style} data-motion={settings.motion ? "on" : "off"}>
     <header className="editorial-top">
@@ -56,7 +56,7 @@ export default async function Home() {
       </div>
     </header>
     {(!heroes.length || result?.error) && <section className="container section">
-      <h1>{settings.brand || "BARBERFLOW"}</h1><p>{settings.kicker}</p>
+      <h1>{settings.brand || "TOP BARBER"}</h1><p>{settings.kicker}</p>
     </section>}
     {heroes.map((block, index) => <section className="hero landing-hero" key={block.id}>
       <BlockImage block={block} hero />
