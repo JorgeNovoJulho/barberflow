@@ -1,3 +1,6 @@
+import { orderProductPhotos } from "../../lib/order-photos";
+import { formatShowcaseDate } from "../../lib/showcase";
+import { OrderCardHeading } from "../minhas-compras/order-card-heading";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -42,7 +45,7 @@ function SocialCollectionCard({ name, href, image, detail, followers, children }
 }
 
 export default async function ClientPage({ searchParams }: {
-  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string }>;
+  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string }>;
 }) {
   const { supabase,user } = await socialSession();
   const params = await searchParams;
@@ -52,7 +55,9 @@ export default async function ClientPage({ searchParams }: {
   const photo = params.foto && isUuid(params.foto) ? params.foto : null;
   const collection = params.aba && Object.hasOwn(collectionLabels, params.aba) ? params.aba as keyof typeof collectionLabels : null;
   const view = collection ?? (photo ? "foto" : shop ? "loja" : target ? "perfil-publico" : ["perfil","notificacoes","pessoas"].includes(params.aba ?? "") ? params.aba! : "feed");
+  const deniedPurchases = params.compras === "negados";
   const query = new URLSearchParams();
+  if (params.compras) query.set("compras", deniedPurchases ? "negados" : "confirmados");
   if (params.aba) query.set("aba",params.aba);
   if (target) query.set("perfil",target);
   if (shop) query.set("loja",shop);
@@ -88,8 +93,8 @@ export default async function ClientPage({ searchParams }: {
     view === "perfil" || view === "perfil-publico" ? supabase.rpc("barberflow_profile_summary",{ subject:profileId }) : null,
     shop ? supabase.from("barberflow_social_favorite_shops").select("shop").eq("follower",user.id).eq("shop",shop).maybeSingle() : null,
     view === "notificacoes" && page === 0 ? supabase.from("barberflow_showcase_orders")
-      .select("id,shop_name,product_name,status").eq("buyer_id",user.id)
-      .in("status",["paid","ready","denied"]).order("notice_at",{ascending:false}).limit(20) : null,
+      .select("id,establishment_id,product_id,order_number,product_sku,shop_name,product_name,status,created_at,total_cents").eq("buyer_id",user.id)
+      .in("status",deniedPurchases ? ["denied"] : ["paid","ready","collected"]).order("notice_at",{ascending:false}).limit(20) : null,
     profileId !== user.id ? profileTable.select("username,avatar").eq("user_id",user.id).maybeSingle() : null,
   ]);
   const profile = profileResult.data;
@@ -108,7 +113,7 @@ export default async function ClientPage({ searchParams }: {
   const imagesFor = (post: Photo) => [post.object_path, ...(post.extra_photos ?? [])].filter(Boolean);
   const summary = summaryResult?.data;
   const joined = summary?.joined && new Intl.DateTimeFormat("pt-BR", { month:"long", year:"numeric", timeZone:"America/Sao_Paulo" }).format(new Date(summary.joined));
-  const [links, likes, comments, authors, likerRows, cardCounts] = await Promise.all([
+  const [links, likes, comments, authors, likerRows, cardCounts, purchasePhotos] = await Promise.all([
     mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar)]),
     photo ? supabase.from("barberflow_social_likes").select("actor",{ count:"exact",head:true }).eq("photo",photo) : null,
     photo ? supabase.from("barberflow_social_comments").select("id,actor,parent,body").eq("photo",photo).order("created_at",{ascending:false}).order("id").range(page*25,page*25+25) : null,
@@ -118,6 +123,7 @@ export default async function ClientPage({ searchParams }: {
       profiles: people.slice(0,12).map(({ user_id }) => user_id),
       shops: shops.slice(0,12).map(({ id }) => id),
     }) : null,
+    orderProductPhotos(supabase, purchaseNotices?.data ?? []),
   ]);
   const followers = new Map<string, number>((cardCounts?.data ?? []).map((row: { is_shop: boolean; id: string; followers: number }) =>
     [`${row.is_shop ? "shop" : "person"}:${row.id}`, row.followers]));
@@ -257,18 +263,26 @@ export default async function ClientPage({ searchParams }: {
           <form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
         </SocialCollectionCard>)}
       </ul> : <p>Nenhum usuário bloqueado.</p>)}
-      {purchaseNotices?.data?.length ? <section className="section">
+      {view === "notificacoes" && page === 0 && <section className="section">
         <h2>Compras</h2>
-        <ul className="cards">{purchaseNotices.data.map((order) => <li className="card" key={order.id}>
-          {order.status === "denied"
-            ? <p role="alert" data-feedback="warning">Pedido de {order.product_name} negado por {order.shop_name}.</p>
-            : <p>{order.status === "ready" ? "Pedido disponível para retirada" : "Pagamento Pix confirmado"}</p>}
-          <Link href={"/minhas-compras?pedido=" + order.id}>Ver pedido</Link>
-          <p>{order.product_name} · {order.shop_name}</p>
-        </li>)}</ul>
-      </section> : null}
+        <nav className="account-links finance-tabs" aria-label="Situação dos produtos">
+          <Link className="secondary finance-tab" data-tone="rose" aria-current={deniedPurchases ? "page" : undefined} href="/cliente?aba=notificacoes&compras=negados">Produtos Negados</Link>
+          <Link className="secondary finance-tab" data-tone="green" aria-current={!deniedPurchases ? "page" : undefined} href="/cliente?aba=notificacoes&compras=confirmados">Produtos Confirmados</Link>
+        </nav>
+        {purchaseNotices?.error ? <p role="alert">Não foi possível carregar os avisos de compra.</p>
+          : purchaseNotices?.data?.length ? <ul className="cards order-card-grid">
+            {purchaseNotices.data.map((order) => <li className="card showcase-order purchase-notice-card" data-order-status={order.status} key={order.id}>
+              <OrderCardHeading order={order} label={order.shop_name} photo={purchasePhotos.get(order.establishment_id + "/" + order.product_id)}
+                alert={order.status === "denied"} status={order.status === "denied" ? "Pedido negado" : order.status === "collected" ? "Retirado" : order.status === "ready" ? "Disponível para retirada" : "Pagamento confirmado"} />
+              <div className="order-card-body">
+                <p><small>Data da compra · {formatShowcaseDate(order.created_at)}</small></p>
+                <Link className="secondary" href={"/minhas-compras?pedido=" + order.id}>Ver pedido</Link>
+              </div>
+            </li>)}
+          </ul> : <p>{deniedPurchases ? "Nenhum produto negado." : "Nenhum produto confirmado."}</p>}
+      </section>}
       {view==="notificacoes" && (notices.length ? <ul className="cards">{notices.slice(0,25).map((item,index)=><li className="card" key={item.photo+item.occurred+index}>
-        <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : !purchaseNotices?.data?.length && !purchaseNotices?.error && <p>Nenhuma notificação.</p>)}
+        <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação social.</p>)}
       {["perfil","perfil-publico"].includes(view) && <h2>Galeria</h2>}
       {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" key={post.id}>
         <ProductGallery name="Fotos da publicação" compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {

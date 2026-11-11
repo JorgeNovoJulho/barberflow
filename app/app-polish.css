@@ -428,3 +428,10 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
 .social-collection-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .social-collection-followers { background: #e9defa; color: #472785; border-radius: 999px; padding: .3rem .65rem; font-weight: 650; font-size: .86rem; }
 .social-collection-card form { margin-top: auto; }
+
+.purchase-notice-card[data-order-status="denied"] { background: #fff7f8; }
+.purchase-notice-card[data-order-status="paid"],
+.purchase-notice-card[data-order-status="ready"],
+.purchase-notice-card[data-order-status="collected"] { background: #f3faf6; }
+.purchase-notice-card .order-card-body { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; }
+.purchase-notice-card .order-card-body p { margin: 0; }

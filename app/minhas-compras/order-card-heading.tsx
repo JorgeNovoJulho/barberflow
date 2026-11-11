@@ -1,9 +1,9 @@
 import { bookingCurrency } from "../../lib/public-booking";
 import { showcaseOrderNumber } from "../../lib/showcase";
 
-export function OrderCardHeading({ order, photo, label, status }: {
+export function OrderCardHeading({ order, photo, label, status, alert = false }: {
   order: { order_number: number; product_name: string; product_sku: string; total_cents: number };
-  photo?: string; label: string; status: string;
+  photo?: string; label: string; status: string; alert?: boolean;
 }) {
   return <span className="order-card-heading">
     {photo ? <img src={photo} alt="" width={72} height={72} loading="lazy" decoding="async" />
@@ -15,7 +15,7 @@ export function OrderCardHeading({ order, photo, label, status }: {
     </span>
     <span className="order-card-facts">
       <strong>{bookingCurrency.format(order.total_cents / 100)}</strong>
-      <span className="order-status" role="status">{status}</span>
+      <span className="order-status" role={alert ? "alert" : "status"} data-feedback={alert ? "warning" : undefined}>{status}</span>
     </span>
   </span>;
 }
