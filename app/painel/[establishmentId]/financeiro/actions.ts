@@ -77,11 +77,16 @@ export async function resetFinanceWithEmail(shop: string, _previous: FinanceRese
 export async function unlockFinance(shop: string, setup: boolean, form: FormData) {
   const { supabase, finish, path } = await context(shop);
   const sale = String(form.get("comanda") ?? "");
+  const appointment = String(form.get("atendimento") ?? "");
   const returnToPayments = isUuid(sale);
   const respond = (status: string) => {
     if (returnToPayments) {
       if (status === "desbloqueado") redirect(path + "/pagamentos?comanda=" + sale + "#conta-pix");
       redirect(path + "?" + new URLSearchParams({estado:status,comanda:sale}));
+    }
+    if (isUuid(appointment)) {
+      if (status === "desbloqueado") redirect(`/painel/${shop}/comanda/${appointment}#recebimento`);
+      redirect(path + "?" + new URLSearchParams({ estado: status, atendimento: appointment }));
     }
     return finish(status);
   };

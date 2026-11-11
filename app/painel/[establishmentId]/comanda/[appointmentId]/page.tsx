@@ -4,7 +4,7 @@ import { isUuid } from "../../../../../lib/establishments";
 import { bookingCurrency } from "../../../../../lib/public-booking";
 import { supabaseServer } from "../../../../../lib/supabase";
 import { SubmitButton } from "../../../../auth/submit";
-import { closeOrder, setOrderProduct } from "../../estoque/actions";
+import { closeOrder, setOrderProduct, setOrderService } from "../../estoque/actions";
 import { StockFeedback } from "../../estoque/feedback";
 import { CollectPayment } from "./collect-payment";
 import { closedAtLabel, orderPage, orderPeriod, orderTab } from "../../comandas/filters";
@@ -33,12 +33,17 @@ export default async function Order({ params, searchParams }: {
   if (error) throw new Error("Não foi possível carregar o atendimento.");
   if (!appointment) notFound();
 
-  const [products, lines, receipt, professional] = await Promise.all([
+  const [products, lines, receipt, professional, orderNumber, extraServices, serviceCatalog] = await Promise.all([
     supabase.from("barberflow_products").select("id,name,stock,price_cents,active,sku,barcode").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_order_products").select("product_id,product_name,quantity,unit_price_cents,product_sku,product_barcode,promo_units,promo_cents,line_total_cents")
       .eq("establishment_id", shop).eq("appointment_id", appointmentId).order("product_name"),
     supabase.from("barberflow_receipts").select("service_cents,products_cents,total_cents,closed_at").eq("establishment_id", shop).eq("appointment_id", appointmentId).maybeSingle(),
     supabase.from("barberflow_professionals").select("name").eq("establishment_id", shop).eq("id", appointment.professional_id).maybeSingle(),
+    supabase.rpc("barberflow_appointment_order_number", { shop, appointment: appointmentId }),
+    supabase.from("barberflow_order_services").select("service_id,service_name,price_cents")
+      .eq("establishment_id", shop).eq("appointment_id", appointmentId).order("service_name"),
+    supabase.from("barberflow_services").select("id,name,price_cents")
+      .eq("establishment_id", shop).eq("active", true).is("deleted_at", null).order("name"),
   ]);
 
   const [paymentResult, pix, cards] = receipt.data ? await Promise.all([
@@ -56,7 +61,10 @@ export default async function Order({ params, searchParams }: {
   const draft = !receipt.data && ["scheduled", "completed"].includes(appointment.state);
   const activeProducts = new Set((products.data ?? []).filter(({ active, stock }) => active && stock > 0).map(({ id }) => id));
   const hasUnavailable = draft && items.some(({ product_id }) => !activeProducts.has(product_id));
-  const serviceTotal = receipt.data?.service_cents ?? appointment.price_cents ?? 0;
+  const addedServices = extraServices.data ?? [];
+  const serviceOptions = (serviceCatalog.data ?? []).filter((service) => !addedServices.some((line) => line.service_id === service.id));
+  const extraServiceTotal = addedServices.reduce((sum, line) => sum + line.price_cents, 0);
+  const serviceTotal = receipt.data?.service_cents ?? (appointment.price_cents ?? 0) + extraServiceTotal;
   const productTotal = receipt.data?.products_cents ?? items.reduce((sum, item) => sum + item.line_total_cents, 0);
   const total = receipt.data?.total_cents ?? serviceTotal + productTotal;
   const discounts = items.reduce((sum, item) => sum + item.quantity * item.unit_price_cents - item.line_total_cents, 0);
@@ -69,11 +77,11 @@ export default async function Order({ params, searchParams }: {
     </nav>
     <header className="operational-heading">
       <p className="eyebrow">Atendimento</p>
-      <h1>Comanda</h1>
+      <h1>Comanda{orderNumber.data ? " " + orderNumber.data : ""}</h1>
       <p>{appointment.client_name} · {appointment.service_name}</p>
     </header>
     <StockFeedback status={estado} />
-    {products.error || lines.error || receipt.error || professional.error ? <p role="alert">Não foi possível carregar a comanda.</p> : <>
+    {products.error || lines.error || receipt.error || professional.error || orderNumber.error || extraServices.error || serviceCatalog.error ? <p role="alert">Não foi possível carregar a comanda.</p> : <>
       <section className="card panel-form">
         <h2>Dados do atendimento</h2>
         <dl className="stock-product-facts">
@@ -90,20 +98,38 @@ export default async function Order({ params, searchParams }: {
       <aside className="card order-summary" aria-label="Resumo da comanda">
         <h2>{receipt.data ? "Comanda fechada" : draft ? "Comanda aberta" : "Comanda indisponível"}</h2>
         <dl className="order-totals">
-          <div><dt>Serviço</dt><dd>{money(serviceTotal)}</dd></div>
+          <div><dt>Serviços</dt><dd>{money(serviceTotal)}</dd></div>
           <div><dt>Produtos</dt><dd>{money(productTotal)}</dd></div>
           <div><dt>Total</dt><dd>{money(total)}</dd></div>
         </dl>
         {discounts > 0 && <p>Descontos aplicados aos produtos: <strong>{money(discounts)}</strong></p>}
-        {draft && (appointment.state === "completed"
-          ? <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}><SubmitButton disabled={hasUnavailable}>Fechar comanda e baixar estoque</SubmitButton></form>
-          : <p>Conclua o atendimento na agenda para fechar a comanda.</p>)}
+        {draft && <form className="account-links" action={closeOrder.bind(null, shop, appointmentId)}>
+          <SubmitButton disabled={hasUnavailable}>Fechar comanda e gerar cobrança</SubmitButton>
+        </form>}
         {hasUnavailable && <p role="status">Retire os produtos congelados ou excluídos antes de fechar a comanda.</p>}
       </aside>
       <div className="order-items">
-      {draft && productOptions.length > 0 && <details className="card panel-form">
-        <summary>Adicionar produto</summary>
-        <form className="account-form" action={setOrderProduct.bind(null, shop, appointmentId, null)}>
+      {draft && <details className="card panel-form">
+        <summary>Adicionar serviço</summary>
+        {serviceOptions.length > 0 ? <form className="account-form" action={setOrderService.bind(null, shop, appointmentId, null)}>
+          <label>Serviço <select name="service" defaultValue="" required>
+            <option value="" disabled>Selecione</option>
+            {serviceOptions.map(({ id, name, price_cents }) => <option key={id} value={id}>{name} · {money(price_cents)}</option>)}
+          </select></label>
+          <SubmitButton>Adicionar serviço à comanda</SubmitButton>
+        </form> : <p>Nenhum outro serviço disponível.</p>}
+      </details>}
+      <h2>Serviços da comanda</h2>
+      <ul className="cards">
+        <li className="card"><strong>{appointment.service_name}</strong><p>{money(serviceTotal - extraServiceTotal)}</p></li>
+        {addedServices.map((line) => <li className="card" key={line.service_id}>
+          <strong>{line.service_name}</strong><p>{money(line.price_cents)}</p>
+          {draft && <form action={setOrderService.bind(null, shop, appointmentId, line.service_id)}><SubmitButton>Remover serviço</SubmitButton></form>}
+        </li>)}
+      </ul>
+      {draft && <details className="card panel-form">
+        <summary>Adicionar produtos</summary>
+        {productOptions.length ? <form className="account-form" action={setOrderProduct.bind(null, shop, appointmentId, null)}>
           <label>Produto <select name="product" defaultValue="" required>
             <option value="" disabled>Selecione</option>
             {productOptions.map(({ id, name, stock, price_cents, sku, barcode }) => <option key={id} value={id}>
@@ -111,8 +137,8 @@ export default async function Order({ params, searchParams }: {
             </option>)}
           </select></label>
           <label>Quantidade <input type="number" name="units" min={1} max={10000} defaultValue={1} required /></label>
-          <SubmitButton>Adicionar à comanda</SubmitButton>
-        </form>
+          <SubmitButton>Adicionar produto à comanda</SubmitButton>
+        </form> : <p>Nenhum produto disponível para adicionar.</p>}
       </details>}
       <h2>Produtos da comanda</h2>
       {items.length ? <ul className="cards">{items.map((item) => {
@@ -147,7 +173,7 @@ export default async function Order({ params, searchParams }: {
       {receipt.data && <section className="card panel-form" id="recebimento">
         <h2>Pagamentos</h2>
         {paymentResult?.error ? <p role="alert">Não foi possível consultar os pagamentos.</p>
-          : !payments ? <p><Link href={`/painel/${shop}/financeiro`}>Desbloquear o Financeiro para consultar</Link></p>
+          : !payments ? <p><Link href={`/painel/${shop}/financeiro?atendimento=${appointmentId}`}>Desbloquear o Financeiro para gerar cobrança</Link></p>
           : <>
             <dl className="order-totals">
               <div><dt>Recebido</dt><dd>{money(payments.received_cents)}</dd></div>

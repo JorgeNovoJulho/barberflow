@@ -59,11 +59,11 @@ const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZo
 
 export default async function Finance({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string; comandas?: string; paginaComandas?: string }>;
+  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string; comandas?: string; paginaComandas?: string; atendimento?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { estado, guia, comanda, comandas, paginaComandas } = await searchParams;
+  const { estado, guia, comanda, comandas, paginaComandas, atendimento } = await searchParams;
   const sale = comanda && isUuid(comanda) ? comanda : null;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/financeiro` }));
@@ -75,6 +75,7 @@ export default async function Finance({ params, searchParams }: {
   if (!business.data || access.data === "denied") notFound();
 
   if (sale && access.data === "unlocked") redirect(`/painel/${shop}/financeiro/pagamentos?comanda=${sale}#conta-pix`);
+  if (atendimento && isUuid(atendimento) && access.data === "unlocked") redirect(`/painel/${shop}/comanda/${atendimento}#recebimento`);
   const emailReset = ["email-verificado", "recuperacao-email-invalid", "recuperacao-email-reused", "recuperacao-email-mfa"].includes(estado ?? "");
   const guide = financeGuide(guia);
   const billView = comandas === "fechadas" ? "fechadas" : "abertas";
@@ -107,6 +108,7 @@ export default async function Finance({ params, searchParams }: {
         <p>Use uma senha exclusiva do BARBERFLOW, com pelo menos oito caracteres.</p>
         {!blocked && !emailReset && <form className="account-form" action={unlockFinance.bind(null, shop, setup)}>
           {sale && <input type="hidden" name="comanda" value={sale} />}
+          {atendimento && isUuid(atendimento) && <input type="hidden" name="atendimento" value={atendimento} />}
           <PasswordField label="Senha financeira" name="secret" minLength={setup ? 8 : 1} autoComplete={setup ? "new-password" : "current-password"} />
           {setup && <PasswordField label="Confirmar senha financeira" name="confirmation" autoComplete="new-password" />}
           <SubmitButton>{setup ? "Criar senha e desbloquear" : "Desbloquear"}</SubmitButton>

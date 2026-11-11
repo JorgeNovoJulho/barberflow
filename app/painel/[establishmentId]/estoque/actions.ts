@@ -94,5 +94,18 @@ export async function setOrderProduct(shop: string, appointment: string, boundPr
 export async function closeOrder(shop: string, appointment: string) {
   const { supabase, finish } = await context(shop, appointment);
   const { error } = await supabase.rpc("barberflow_close_order", { shop, appointment });
-  finish(error?.details === "promotion_expired" ? "promocao-vencida" : error?.code === "22023" ? "fechamento" : error ? "falha" : "fechada");
+  if (error) finish(error.details === "promotion_expired" ? "promocao-vencida" : error.code === "22023" ? "fechamento" : "falha");
+  const path = `/painel/${shop}/comanda/${appointment}`;
+  revalidatePath(path);
+  redirect(path + "?estado=fechada#recebimento");
+}
+
+export async function setOrderService(shop: string, appointment: string, boundService: string | null, form: FormData) {
+  const { supabase, finish } = await context(shop, appointment);
+  const service = boundService ?? get(form, "service");
+  if (!isUuid(service)) finish("invalido");
+  const { data, error } = await supabase.rpc("barberflow_set_order_service", {
+    shop, appointment, service, remove_item: boundService !== null,
+  });
+  finish(error || !data ? "falha" : "item");
 }
