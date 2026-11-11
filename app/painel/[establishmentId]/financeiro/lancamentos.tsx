@@ -6,7 +6,7 @@ import { expenseGuides, type ExpenseGuide, type FinanceGuide } from "./guias";
 
 type Settlement = { id: string; amount_cents: number; recorded_at: string; reversed_at: string | null; reversal_reason: string | null };
 type Entry = { id: string; direction: "in" | "out"; description: string; category: string; expense_type: ExpenseGuide | null; due_on: string; amount_cents: number; settled_cents: number; settlements: Settlement[] };
-export type FinanceEntries = { payable: number; receivable: number; unclassified: boolean; entries: Entry[] };
+export type FinanceEntries = { payable: number; payable_by_type: Partial<Record<ExpenseGuide | "unclassified", number>>; receivable: number; unclassified: boolean; entries: Entry[] };
 
 const money = (cents: number) => bookingCurrency.format(cents / 100);
 const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -14,24 +14,26 @@ const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZo
 export function FinanceEntriesPanel({ shop, data, today, guide }: { shop: string; data: FinanceEntries; today: string; guide: FinanceGuide }) {
   const receiving = guide === "receivables";
   const unclassified = guide === "unclassified";
-  const label = receiving ? "Outro recebimento" : "Conta a pagar";
+  const label = receiving ? "Cadastrar outro recebimento"
+    : guide === "variable" ? "Cadastrar Despesas Variáveis"
+    : guide === "reinvestment" ? "Cadastrar Reinvestimentos" : "Cadastrar Contas a Pagar";
   return <section id="lancamentos" className="panel-form">
     <h2>{receiving ? "Outros recebimentos" : "Contas a pagar"}</h2>
     {!receiving && <>
       <nav className="account-links" aria-label="Guias de contas a pagar">
         {Object.entries(expenseGuides).map(([key, title]) => <Link key={key}
-          href={`?guia=${key}#lancamentos`} className="secondary" aria-current={guide === key ? "page" : undefined}>{title}</Link>)}
+          href={`?guia=${key}#lancamentos`} className="secondary expense-guide" data-expense={key} aria-current={guide === key ? "page" : undefined}>{title}</Link>)}
       </nav>
       {data.unclassified && <p><Link href="?guia=unclassified#lancamentos" aria-current={unclassified ? "page" : undefined}>Contas anteriores sem classificação</Link></p>}
     </>}
     {unclassified ? <p>Escolha a guia de cada conta anterior para organizar seu histórico.</p>
-    : <details key={guide} className="card"><summary>{`Cadastrar ${label.toLowerCase()}`}</summary>
+    : <details key={guide} className="card"><summary>{label}</summary>
       <form className="account-form" action={addFinanceEntry.bind(null, shop, crypto.randomUUID(), guide)}>
         <label>Descrição <input name="description" required maxLength={160} /></label>
         <label>Categoria <input name="category" required maxLength={80} /></label>
         <label>Vencimento <input name="due" type="date" defaultValue={today} required /></label>
         <label>Valor (R$) <input name="amount" inputMode="decimal" required /></label>
-        <SubmitButton>Cadastrar lançamento</SubmitButton>
+        <SubmitButton>{label}</SubmitButton>
       </form>
     </details>}
     <p>Até 100 lançamentos, com pendências primeiro.</p>

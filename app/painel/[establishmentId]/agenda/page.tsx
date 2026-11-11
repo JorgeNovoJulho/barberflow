@@ -1,3 +1,4 @@
+import { httpsUrl } from "../../../../lib/business-profile";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { offsetDay, saoPauloToday, validDay } from "../../../../lib/agenda";
@@ -56,12 +57,21 @@ export default async function Agenda({ params, searchParams }: {
   const [entries, professionals, services, assignments, clients] = await Promise.all([
     supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes")
       .eq("establishment_id", shop).lt("starts_at", rangeEnd + "T00:00").gt("ends_at", rangeStart + "T00:00").order("starts_at"),
-    supabase.from("barberflow_professionals").select("id,name,active").eq("establishment_id", shop).order("name"),
+    supabase.from("barberflow_professionals").select("id,name,active,photo_url").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_services").select("id,name,duration_minutes").eq("establishment_id", shop).eq("active", true).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_clients").select("id,name").eq("establishment_id", shop).eq("active", true).order("name"),
   ]);
   const staff = professionals.data ?? [];
+  const staffById = new Map(staff.map((person) => [person.id, person]));
+  function providerLine(entry: { professional_id: string; kind: string; state: string }) {
+    const person = staffById.get(entry.professional_id);
+    const photo = httpsUrl(person?.photo_url);
+    return <p className="agenda-provider">
+      {photo && <img src={photo} alt="" width={36} height={36} loading="lazy" />}
+      <span>{person?.name} · {entry.kind === "block" && entry.state === "scheduled" ? "Bloqueado" : states[entry.state]}</span>
+    </p>;
+  }
   const active = staff.filter((person) => person.active);
   const offerings = active.map((person) => {
     const allowed = new Set((assignments.data ?? []).filter((assignment) => assignment.professional_id === person.id).map((assignment) => assignment.service_id));
@@ -114,10 +124,10 @@ export default async function Agenda({ params, searchParams }: {
           </section>;
         })}
       </div> : listView ? (
-        entries.data?.length ? <ul className="cards">{entries.data.map((entry) => <li key={entry.id} className="card">
-          <p>{entry.starts_at.slice(0, 10).split("-").reverse().join("/")} · {entry.starts_at.slice(11, 16)}</p>
+        entries.data?.length ? <ul className="cards">{entries.data.map((entry) => <li key={entry.id} className="card agenda-entry">
+          <p className="agenda-entry-time">{entry.starts_at.slice(0, 10).split("-").reverse().join("/")} · {entry.starts_at.slice(11, 16)}</p>
           <h3>{entry.kind === "block" ? "Bloqueio de horário" : entry.service_name}</h3>
-          <p>{staff.find(({ id }) => id === entry.professional_id)?.name} · {entry.kind === "block" && entry.state === "scheduled" ? "Bloqueado" : states[entry.state]}</p>
+          {providerLine(entry)}
           {entry.client_name && <p>{entry.client_name}</p>}
           <Link href={href(entry.starts_at.slice(0, 10), "dia") + "#registro-" + entry.id}>Abrir registro no dia</Link>
         </li>)}</ul> : <p>Nenhum atendimento ou bloqueio neste período.</p>
@@ -156,10 +166,10 @@ export default async function Agenda({ params, searchParams }: {
         </details>
       </div>
       {entries.data?.length ? <ul className="cards">
-        {entries.data.map((entry) => <li className="card" key={entry.id} id={`registro-${entry.id}`}>
-          <p className="eyebrow">{entryTime(entry.starts_at, day)}–{entryTime(entry.ends_at, day)}</p>
+        {entries.data.map((entry) => <li className="card agenda-entry" key={entry.id} id={`registro-${entry.id}`}>
+          <p className="agenda-entry-time">{entry.starts_at.slice(0,10).split("-").reverse().join("/")} · {entryTime(entry.starts_at, day)}–{entryTime(entry.ends_at, day)}</p>
           <h3>{entry.kind === "block" ? "Bloqueio de horário" : entry.service_name}</h3>
-          <p>{staff.find(({ id }) => id === entry.professional_id)?.name} · {entry.kind === "block" && entry.state === "scheduled" ? "Bloqueado" : states[entry.state]}</p>
+          {providerLine(entry)}
           {entry.client_name && <p>{entry.client_name}{entry.client_phone && ` · ${entry.client_phone}`}</p>}
           {entry.notes && <p>{entry.notes}</p>}
           {entry.kind === "appointment" && entry.state === "completed" && !entry.client_id && !!clients.data?.length &&
@@ -173,7 +183,7 @@ export default async function Agenda({ params, searchParams }: {
               </form>
             </details>}
           {entry.kind === "appointment" && (entry.state === "scheduled" || entry.state === "completed") &&
-            <Link className="secondary" href={`/painel/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>}
+            <Link className="primary agenda-command" href={`/painel/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>}
           {entry.state === "pending" && <div className="account-links">
             <form action={updateEntry.bind(null, shop, day, entry.id, "scheduled")}><SubmitButton>Aprovar reserva</SubmitButton></form>
             <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}><SubmitButton>Recusar reserva</SubmitButton></form>

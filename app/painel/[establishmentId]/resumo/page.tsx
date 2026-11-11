@@ -67,11 +67,11 @@ function DashboardCharts({ data }: { data: Dashboard }) {
 
 export default async function DashboardPage({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ periodo?: string; notificacoes?: string; aviso?: string; comanda?: string }>;
+  searchParams: Promise<{ periodo?: string; notificacoes?: string; guiaAviso?: string; aviso?: string; comanda?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { periodo, notificacoes, aviso, comanda } = await searchParams;
+  const { periodo, notificacoes, guiaAviso, aviso, comanda } = await searchParams;
   const selected = periods.find(({ days }) => String(days) === periodo) ?? periods[0];
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
@@ -90,6 +90,9 @@ export default async function DashboardPage({ params, searchParams }: {
   const checkout = `/painel/${shop}/caixa`;
   const data = report.data as Dashboard | null;
   const notifications = notificationResult.data as BookingNotifications | null;
+  const readNotices = guiaAviso === "lidas";
+  const visibleNotices = notifications?.items.filter((item) => Boolean(item.booking_read_at) === readNotices) ?? [];
+  const noticeLink = (guide: string) => `?periodo=${selected.days}&notificacoes=1&guiaAviso=${guide}#notificacoes`;
   const money = (cents: number) => bookingCurrency.format(cents / 100);
   const percentage = (part: number, total: number) => new Intl.NumberFormat("pt-BR", {
     style: "percent", maximumFractionDigits: 1,
@@ -134,20 +137,30 @@ export default async function DashboardPage({ params, searchParams }: {
       </Link>
     </div>
     <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
-      <summary>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
-      {aviso === "falha" && <p role="alert">Não foi possível marcar as notificações como lidas.</p>}
+      <summary className={notifications?.unread ? "notice-unread" : undefined}>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
+      {aviso === "falha" && <p role="alert">Não foi possível atualizar as notificações.</p>}
       {notificationResult.error || !notifications ? <p role="alert">Não foi possível carregar as notificações.</p>
-        : notifications.items.length ? <>
-          {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days)}>
+        : <>
+          <nav className="account-links" aria-label="Guias de notificações">
+            <Link className="secondary" href={noticeLink("nao-lidas")} aria-current={!readNotices ? "page" : undefined}>Não lidas ({notifications.unread})</Link>
+            <Link className="secondary" href={noticeLink("lidas")} aria-current={readNotices ? "page" : undefined}>Lidas</Link>
+          </nav>
+          {notifications.items.length > 0 && <details><summary>Limpar todas</summary>
+            <p>Remover todos os avisos lidos e não lidos da lista?</p>
+            <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, true)}>
+              <SubmitButton>Confirmar limpeza</SubmitButton>
+            </form>
+          </details>}
+          {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, false)}>
             <SubmitButton>Marcar todas como lidas</SubmitButton>
           </form>}
-          <ul>{notifications.items.map((item) => <li key={item.id}>
+          {visibleNotices.length ? <ul>{visibleNotices.map((item) => <li key={item.id}>
             <strong>Novo agendamento{item.booking_read_at ? "" : " · Não lida"}</strong>
             <p>{item.client_name} · {item.service_name} · {formatDay(item.starts_at)} às {item.starts_at.slice(11, 16)}</p>
             <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
             <Link href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir na agenda</Link>
-          </li>)}</ul>
-        </> : <p>Nenhuma notificação de reserva online.</p>}
+          </li>)}</ul> : <p>Nenhuma notificação {readNotices ? "lida" : "não lida"}.</p>}
+        </>}
     </details>
     <h2 className="panel-form">Indicadores</h2>
     <nav className="account-links" aria-label="Período dos indicadores">
@@ -158,7 +171,7 @@ export default async function DashboardPage({ params, searchParams }: {
       <p className="panel-form">{data.first_day === data.today ? formatDay(data.today) : `${formatDay(data.first_day)} a ${formatDay(data.today)}`}</p>
       <dl className="cards">
         {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric">
-          <dt><span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
+          <dt>{label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
           <dd>{value}</dd>{note && <p>{note}</p>}
           {label === "Faturamento registrado" && <p className="account-links">
             <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>

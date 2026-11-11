@@ -48,7 +48,7 @@ export function WorkspaceNav({ shop, name, image, unread, paidOrders }: { shop: 
     {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
       Pedidos da vitrine{paidOrders > 0 && <span aria-label={paidOrders + " novos pagamentos"}>{paidOrders}</span>}
     </Link>}
-    <Link className="workspace-notices" href={`${base}/resumo?notificacoes=1#notificacoes`}>
+    <Link className={`workspace-notices${unread ? " notice-unread" : ""}`} href={`${base}/resumo?notificacoes=1#notificacoes`}>
       Notificações{unread > 0 && <span aria-label={`${unread} não lidas`}>{unread}</span>}
     </Link>
     <form action={signOut}><button className="workspace-notices">Sair do sistema</button></form>

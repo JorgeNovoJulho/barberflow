@@ -136,7 +136,9 @@ export default async function Finance({ params, searchParams }: {
         </nav>
         <dl className="cards">
           <div className="card dashboard-metric"><dt>Total a receber em aberto</dt><dd>{money(ledger.open_cents + (entries?.receivable ?? 0))}</dd></div>
-          <div className="card dashboard-metric"><dt>Total a pagar em aberto</dt><dd>{money(entries?.payable ?? 0)}</dd></div>
+          {([["fixed", "Contas a pagar"], ["variable", "Despesas variáveis"], ["reinvestment", "Reinvestimentos"]] as const).map(([key, title]) =>
+            <div key={key} className="card dashboard-metric"><dt>{title} em aberto</dt><dd>{money(entries?.payable_by_type?.[key] ?? 0)}</dd></div>)}
+          {!!entries?.payable_by_type?.unclassified && <div className="card dashboard-metric"><dt>Contas sem classificação</dt><dd>{money(entries.payable_by_type.unclassified)}</dd></div>}
           <div className="card dashboard-metric"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
         </dl>
         {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={saoPauloToday()} />}

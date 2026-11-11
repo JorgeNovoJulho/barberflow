@@ -361,3 +361,24 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
 .public-booking input.booking-field-required { border: 2px solid #c7384d; background: #fff0f2; box-shadow: 0 0 0 2px rgb(199 56 77 / 8%); }
 .public-booking .booking-field-help { color: #9e263a; background: #fff0f2; border-radius: .6rem; padding: .7rem; }
 .public-booking button:disabled { opacity: .55; cursor: not-allowed; }
+
+.workspace .notice-unread { background: #b91c32; color: #fff; border-color: #b91c32; }
+#notificacoes > .notice-unread { border-radius: .65rem; padding: .7rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .workspace .notice-unread { animation: notice-flash 1.6s ease-in-out infinite alternate; }
+  @keyframes notice-flash { to { background: #8e1527; box-shadow: 0 0 0 .22rem rgb(185 28 50 / 25%); } }
+}
+.dashboard-metric:has(.dashboard-card-link) { position: relative; }
+.dashboard-card-link { position: absolute; inset: 0; border-radius: inherit; }
+.dashboard-card-link:focus-visible { outline: 3px solid #5132b1; }
+.agenda-entry:nth-child(3n+1) { background: #f3edff; border-color: #d9c9f7; }
+.agenda-entry:nth-child(3n+2) { background: #eaf8f1; border-color: #bfe2d3; }
+.agenda-entry:nth-child(3n) { background: #fff3df; border-color: #f0d6a8; }
+.agenda-entry .agenda-entry-time { display: inline-block; background: #302451; color: #fff; border-radius: .55rem; padding: .4rem .65rem; font-weight: 750; }
+.agenda-provider { display: flex; gap: .55rem; align-items: center; }
+.agenda-provider img { border-radius: 50%; object-fit: cover; }
+.agenda-entry .agenda-command { background: #493094; border-color: #493094; color: #fff; }
+.expense-guide[data-expense="fixed"] { background: #eadfff; color: #46268c; border-color: #b6a1e9; }
+.expense-guide[data-expense="variable"] { background: #ffedcf; color: #723d08; border-color: #eac38d; }
+.expense-guide[data-expense="reinvestment"] { background: #d9f3ea; color: #155b46; border-color: #95cdb9; }
+.expense-guide[aria-current="page"] { outline: 2px solid currentColor; outline-offset: -2px; }
