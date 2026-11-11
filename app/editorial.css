@@ -229,3 +229,15 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .subscription-plan li + li { margin-top: .4rem; }
 .subscription-plan .subscription-option { display: flex; align-items: center; gap: .6rem; padding: .65rem; margin-top: .5rem; border: 1px solid var(--border); border-radius: .6rem; cursor: pointer; }
 .subscription-option:has(:checked) { background: var(--accent-soft); border-color: var(--accent-ink); }
+
+.subscription-plan[data-tier="pro"] { background: #edf4ff; border-color: #9fb9e8; border-top-color: #4d6baf; }
+.subscription-plan[data-tier="premium"] { background: #fff6dc; border-color: #d6b768; border-top-color: #a36a10; }
+.subscription-plan[data-tier="pro"] legend { color: #23498b; }
+.subscription-plan[data-tier="premium"] legend, .subscription-current[data-tier="premium"] { color: #794d00; }
+.subscription-actions { display: flex; align-items: stretch; gap: .75rem; flex-wrap: wrap; }
+.subscription-actions .subscription-whatsapp { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; color: #fff; background: #08754e; border-color: #08754e; }
+.subscription-actions .subscription-whatsapp:hover { background: #065c3e; }
+.workspace-identity .workspace-plan { display: inline-block; margin-top: .4rem; color: #dce6ff; font-size: .82rem; font-weight: 750; }
+.workspace-identity .workspace-plan[data-tier="premium"] { color: #ffd46e; }
+.workspace-identity .workspace-plan small { display: block; font-weight: 500; }
+.workspace-renewal { margin-block: .6rem 0; }

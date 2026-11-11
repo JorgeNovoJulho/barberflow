@@ -1,4 +1,5 @@
 const messages: Record<string, string> = {
+  "assinatura-equipe": "O acesso da equipe está suspenso. Peça ao responsável pelo estabelecimento para consultar a assinatura.",
   invalido: "Confira os dados informados e tente novamente.",
   falha: "Não foi possível concluir a operação.",
   "negocio-criado": "Estabelecimento criado. Você já pode cadastrar seus serviços.",

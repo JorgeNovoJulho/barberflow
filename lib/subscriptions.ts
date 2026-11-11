@@ -31,3 +31,19 @@ export function planPrice(prices: PlanPrices, tier: PlanTier, period: PlanPeriod
     : (period === "monthly" ? prices.monthly_cents : prices.yearly_cents);
   return bookingCurrency.format(cents / 100);
 }
+
+export type SubscriptionStatus = {
+  plan: PlanTier | "free" | "legacy" | "bonus" | null;
+  state: "normal" | "expired" | "blocked" | "frozen";
+  ends_before: string | null;
+  days_left: number | null;
+};
+
+export function subscriptionPlanLabel(plan: SubscriptionStatus["plan"]) {
+  if (plan === "free") return "Free";
+  if (plan === "bonus") return "Bônus";
+  return tierLabel(plan);
+}
+
+export const subscriptionSupportMessage = "Olá, estou com duvida na assinatura do Top Barber ou tenho outra questão, pode me ajudar? ";
+export const subscriptionSupportNumber = "5511948318576";

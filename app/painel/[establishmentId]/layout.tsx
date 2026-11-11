@@ -1,6 +1,8 @@
 import { NotificationSound } from "./notification-sound";
 import { PurchaseUpdates } from "../../minhas-compras/purchase-updates";
 import Link from "next/link";
+import { subscriptionPlanLabel, type SubscriptionStatus } from "../../../lib/subscriptions";
+import { offsetDay } from "../../../lib/agenda";
 import type { ReactNode } from "react";
 import { httpsUrl } from "../../../lib/business-profile";
 import { mediaLinks } from "../../cliente/social";
@@ -16,12 +18,9 @@ export default async function EstablishmentLayout({ children, params }: {
   const supabase = isUuid(shop) ? await supabaseServer() : null;
   const business = await supabase?.from("barberflow_establishments").select("name,owner_id,profile_details").eq("id", shop).maybeSingle();
   if (!supabase || !business?.data) return children;
-  const access = await supabase.rpc("barberflow_shop_access_state", { shop });
-  if (access.data === "blocked") return <section className="container section">
-    <h1>Estabelecimento bloqueado</h1>
-    <p>Entre em contato com a administração do TOP BARBER para regularizar o acesso.</p>
-    <Link href="/painel">Voltar aos estabelecimentos</Link>
-  </section>;
+  const { data: planData } = await supabase.rpc("barberflow_subscription_status", { shop });
+  const plan = planData as SubscriptionStatus | null;
+  const expiry = plan?.ends_before ? offsetDay(plan.ends_before, -1).split("-").reverse().join("/") : null;
   const user = (await supabase.auth.getUser()).data.user;
   const [bookings, orders, notices] = await Promise.all([
     supabase.from("barberflow_schedule").select("id", { count: "exact", head: true })
@@ -49,7 +48,15 @@ export default async function EstablishmentLayout({ children, params }: {
   return <div className="container workspace">
     <PurchaseUpdates interval={10_000} />
     <NotificationSound key={shop} batch={notificationBatch} />
-    <WorkspaceNav shop={shop} name={business.data.name} image={image} unread={Number(notices?.data?.unread ?? bookings.count ?? 0)} pendingOrders={orders ? orders.count ?? 0 : undefined} />
-    <div className="workspace-content">{children}</div>
+    <WorkspaceNav shop={shop} name={business.data.name} image={image} unread={Number(notices?.data?.unread ?? bookings.count ?? 0)} pendingOrders={orders ? orders.count ?? 0 : undefined} plan={plan?.plan} expiry={expiry} />
+    <div className="workspace-content">
+      {plan?.state === "normal" && plan.days_left !== null && plan.days_left <= 7 &&
+        <p role="status" data-feedback="warning" className="workspace-renewal">
+          {plan.days_left <= 0 ? "O período contratado venceu. Renove durante o prazo de regularização."
+            : `O plano ${subscriptionPlanLabel(plan.plan)} vence ${plan.days_left === 1 ? "hoje" : `em ${plan.days_left} dias`}.`}
+          {" "}<Link href={`/painel/${shop}/assinatura`}>Ver assinatura</Link>
+        </p>}
+      {children}
+    </div>
   </div>;
 }

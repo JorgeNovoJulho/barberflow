@@ -1,5 +1,6 @@
 "use client";
 
+import { subscriptionPlanLabel, type SubscriptionStatus } from "../../../lib/subscriptions";
 import { signOut } from "../../auth/actions";
 import Link from "next/link";
 import { useState } from "react";
@@ -25,7 +26,7 @@ const icons = {
   assinatura: "M3 6h18v12H3zM3 10h18M6 14h5",
 } satisfies Record<(typeof links)[number][0], string>;
 
-export function WorkspaceNav({ shop, name, image, unread, pendingOrders }: { shop: string; name: string; image?: string; unread: number; pendingOrders?: number }) {
+export function WorkspaceNav({ shop, name, image, unread, pendingOrders, plan, expiry }: { shop: string; name: string; image?: string; unread: number; pendingOrders?: number; plan?: SubscriptionStatus["plan"]; expiry: string | null }) {
   const [failedImage, setFailedImage] = useState<string>();
   const pathname = usePathname();
   const base = `/painel/${shop}`;
@@ -34,7 +35,12 @@ export function WorkspaceNav({ shop, name, image, unread, pendingOrders }: { sho
   return <aside className="workspace-rail finance-print-hide">
     <div className="workspace-identity">
       <span className="workspace-monogram" aria-hidden="true">{image && image !== failedImage ? <img src={image} alt="" onError={() => setFailedImage(image)} /> : name.trim().slice(0, 2).toUpperCase()}</span>
-      <div><p>Painel do negócio</p><strong>{name}</strong></div>
+      <div><p>Painel do negócio</p><strong>{name}</strong>
+        {plan && <Link className="workspace-plan" data-tier={plan} href={base + "/assinatura"}>
+          {plan === "premium" && <span aria-hidden="true">♛</span>} {subscriptionPlanLabel(plan)}
+          {expiry && <small>Vencimento {expiry}</small>}
+        </Link>}
+      </div>
     </div>
     <nav aria-label="Módulos do estabelecimento" className="workspace-modules">
       {links.map(([id, label]) => <Link key={id} href={`${base}/${id}`}

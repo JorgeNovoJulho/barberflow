@@ -6,7 +6,7 @@ import { isUuid } from "../../../../lib/establishments";
 import { showcasePix } from "../../../../lib/pix";
 import { subscriptionLines, subscriptionProofLinks } from "../../../../lib/subscription-checkout";
 import { bookingCurrency } from "../../../../lib/public-booking";
-import { isPlanTier, periods, planNames, planPrice, planTiers, tierLabel, tiers, type PlanPeriod } from "../../../../lib/subscriptions";
+import { isPlanTier, periods, planNames, planPrice, planTiers, subscriptionPlanLabel, subscriptionSupportMessage, subscriptionSupportNumber, tierLabel, tiers, type PlanPeriod, type SubscriptionStatus } from "../../../../lib/subscriptions";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { issueSubscriptionPix, sendSubscriptionProof } from "./actions";
@@ -28,8 +28,8 @@ export default async function Subscription({ params, searchParams }: {
   if (!business.data) notFound();
   const businessName = business.data.name;
   const today = saoPauloToday();
-  const [settings, subscription, current, history, openCharges] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,support_whatsapp,pix_city,pix_merchant,grace_days,billing_rules,plan_benefits").single(),
+  const [settings, subscription, current, history, openCharges, access] = await Promise.all([
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,support_whatsapp,pix_city,pix_merchant,grace_days,billing_rules,plan_benefits").single(),
     supabase.from("barberflow_subscriptions").select("trial_until,preferred_period,preferred_plan").eq("establishment_id", shop).maybeSingle(),
     supabase.from("barberflow_subscription_payments").select("plan,period,ends_before").eq("establishment_id", shop)
       .lte("starts_on", today).gt("ends_before", today).maybeSingle(),
@@ -37,6 +37,7 @@ export default async function Subscription({ params, searchParams }: {
       .eq("establishment_id", shop).order("starts_on", { ascending: false }).limit(50),
     supabase.from("barberflow_subscription_charges").select("*").eq("establishment_id", shop)
       .neq("status", "confirmed").order("created_at", { ascending: false }).limit(20),
+    supabase.rpc("barberflow_subscription_status", { shop }),
   ]);
   const paymentIds = (history.data ?? []).map((payment) => payment.id);
   const archived = paymentIds.length ? await supabase.from("barberflow_subscription_charges")
@@ -50,19 +51,20 @@ export default async function Subscription({ params, searchParams }: {
     return { charge, code, qr: code ? await QRCode.toDataURL(code, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null };
   }));
   const { estado, comprovante, cobranca } = await searchParams;
-  const trialUntil = subscription.data?.trial_until;
-  const trialActive = Boolean(trialUntil && trialUntil > today);
+  const accessStatus = access.data as SubscriptionStatus | null;
   const queued = history.data?.filter((item) => item.starts_on > today).at(-1);
   const preferred = subscription.data?.preferred_period as PlanPeriod | undefined;
   const preferredPlan = subscription.data?.preferred_plan;
   const defaultPlan = isPlanTier(preferredPlan) ? preferredPlan : isPlanTier(current.data?.plan) ? current.data.plan : "pro";
   const prices = settings.data;
-  const lastEnd = [trialUntil, current.data?.ends_before, ...((history.data ?? []).map((payment) => payment.ends_before))]
-    .filter((day): day is string => !!day).sort().at(-1);
-  const daysLeft = lastEnd ? Math.round((Date.parse(lastEnd) - Date.parse(today)) / 86400000) : null;
+  const supportNumber = prices?.support_whatsapp || subscriptionSupportNumber;
+  const supportLink = "https://wa.me/" + supportNumber + "?" + new URLSearchParams({ text: subscriptionSupportMessage });
 
   const pixReady = Boolean(prices?.pix_key && prices.pix_city && prices.pix_merchant);
   const feedback: Record<string, string> = {
+    "acesso-expired": "Sua assinatura venceu. Envie um comprovante para renovar o acesso ao painel.",
+    "acesso-blocked": "O estabelecimento está bloqueado pela administração. Fale com o suporte para regularizar.",
+    "acesso-frozen": "O estabelecimento está congelado pela administração. Fale com o suporte para regularizar.",
     "pix-falha": "Não foi possível gerar o Pix. Confira se o pagamento Pix está disponível ou tente novamente.",
     "arquivo-invalido": "Selecione um PDF, JPG, PNG ou WebP de até 5 MB.",
     "envio-falha": "Não foi possível enviar o comprovante. Confira a situação da cobrança e tente novamente.",
@@ -75,16 +77,22 @@ export default async function Subscription({ params, searchParams }: {
     </nav>
     <p className="eyebrow">{businessName}</p><h1>Assinatura</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role={estado === "enviado" ? "status" : "alert"}>{feedback[estado]}</p>}
-    {!prices || archived?.error || [subscription, current, history, openCharges].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
+    {!prices || archived?.error || [subscription, current, history, openCharges, access].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
       <section className="card panel-form">
         <h2>Situação da assinatura</h2>
-        {current.data ? <p>{tierLabel(current.data.plan)} · {planNames[current.data.period as PlanPeriod]} ativo até {dateLabel(offsetDay(current.data.ends_before, -1))}.</p>
-          : trialActive && trialUntil ? <p>Teste grátis ativo até {dateLabel(offsetDay(trialUntil, -1))}.</p>
-          : trialUntil ? <p>Teste grátis encerrado em {dateLabel(trialUntil)}.</p> : <p>Estabelecimento sem período de teste registrado.</p>}
-        {daysLeft !== null && daysLeft > 0 && daysLeft <= 7 && <p role="status">Renovação em {daysLeft} {daysLeft === 1 ? "dia" : "dias"}.</p>}
-        {daysLeft !== null && daysLeft <= 0 && <p role="status">{daysLeft > -prices.grace_days
-          ? `A assinatura venceu. Prazo de regularização até ${dateLabel(offsetDay(lastEnd!, prices.grace_days - 1))}.`
-          : "Novos agendamentos públicos pausados até a regularização."}</p>}
+        {accessStatus?.plan && <p className="subscription-current" data-tier={accessStatus.plan}>
+          {accessStatus.plan === "premium" && <span aria-hidden="true">♛ </span>}
+          <strong>{subscriptionPlanLabel(accessStatus.plan)}</strong>
+          {current.data && <> · {planNames[current.data.period as PlanPeriod]}</>}
+          {accessStatus.ends_before && <> · Vencimento {dateLabel(offsetDay(accessStatus.ends_before, -1))}</>}
+        </p>}
+        {accessStatus?.state === "expired" && <p role="status" data-feedback="warning">Acesso vencido. A área de assinatura continua disponível para renovação.</p>}
+        {accessStatus?.state === "blocked" && <p role="status" data-feedback="warning">Acesso bloqueado pela administração.</p>}
+        {accessStatus?.state === "frozen" && <p role="status" data-feedback="warning">Acesso congelado pela administração.</p>}
+        {accessStatus?.state === "normal" && accessStatus.days_left !== null && accessStatus.days_left <= 7 &&
+          <p role="status" data-feedback="warning">{accessStatus.days_left <= 0
+            ? "O período contratado venceu. Renove durante o prazo de regularização."
+            : accessStatus.days_left === 1 ? "Seu acesso vence hoje." : `Seu acesso vence em ${accessStatus.days_left} dias.`}</p>}
         {queued && <p>Próximo plano confirmado: {tierLabel(queued.plan)} · {planNames[queued.period as PlanPeriod]}, de {dateLabel(queued.starts_on)} a {dateLabel(offsetDay(queued.ends_before, -1))}.</p>}
       </section>
       <section aria-labelledby="subscription-options">
@@ -95,7 +103,7 @@ export default async function Subscription({ params, searchParams }: {
         <form className="account-form" action={issueSubscriptionPix.bind(null, shop)}>
           <div className="subscription-plans">
             {tiers.map((tier) => <fieldset key={tier} className="card subscription-plan" data-tier={tier}>
-              <legend>{planTiers[tier].name}</legend>
+              <legend>{tier === "premium" && <span aria-hidden="true">♛ </span>}{planTiers[tier].name}</legend>
               <ul>{planTiers[tier].limits.map((limit) => <li key={limit}>{limit}</li>)}</ul>
               {periods.map((period) => <label key={period} className="subscription-option">
                 <input type="radio" name="option" value={tier + ":" + period} required
@@ -104,9 +112,17 @@ export default async function Subscription({ params, searchParams }: {
               </label>)}
             </fieldset>)}
           </div>
-          <div><SubmitButton disabled={!pixReady}>Gerar Pix do plano selecionado</SubmitButton></div>
+          <div className="subscription-actions">
+            <SubmitButton disabled={!pixReady}>Gerar Pix do plano selecionado</SubmitButton>
+            <a className="secondary subscription-whatsapp" href={supportLink} target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                <path d="M20 11.5a8 8 0 0 1-12 7L4 20l1.3-4A8 8 0 1 1 20 11.5Z" />
+                <path d="M9 8c0 3 3 6 6 6m-6-6-1 1m7 5 1-1" strokeLinecap="round" />
+              </svg>
+              Suporte pelo WhatsApp
+            </a>
+          </div>
         </form>
-        {prices.support_whatsapp && <p><a href={"https://wa.me/" + prices.support_whatsapp} target="_blank" rel="noopener noreferrer">Suporte pelo WhatsApp</a></p>}
       </section>
       {!!checkout.length && <h2 className="panel-form">Cobranças e comprovantes</h2>}
       {checkout.map(({ charge, code, qr }) => {
@@ -117,7 +133,6 @@ export default async function Subscription({ params, searchParams }: {
           {charge.status === "rejected" && <p>Comprovante recusado. {charge.rejection_reason} Se precisar, fale com o suporte antes de fazer outro Pix.</p>}
           {proof && <a href={proof}>Baixar comprovante enviado</a>}
           {qr && code && <>
-            <p>Favorecido: {charge.merchant}</p>
             <img src={qr} width={240} height={240} alt="QR Code para pagamento da assinatura via Pix" style={{ maxWidth: "100%", height: "auto" }} />
             <label>Pix Copia e Cola <textarea rows={3} value={code} readOnly /></label>
             <CopyPix value={code} code />
@@ -137,8 +152,8 @@ export default async function Subscription({ params, searchParams }: {
         <h2>Regras de cobrança e troca de modalidade</h2>
         <ul>{subscriptionLines(prices.billing_rules).map((rule, index) => <li key={index}>{rule}</li>)}</ul>
         <p>{prices.grace_days > 0
-          ? `Há ${prices.grace_days} dia(s) de regularização antes de pausar novos agendamentos públicos.`
-          : "Novos agendamentos públicos são pausados no vencimento."} Histórico e exportações continuam disponíveis.</p>
+          ? `Há ${prices.grace_days} dia(s) de regularização antes de bloquear o painel e novos agendamentos.`
+          : "O painel e novos agendamentos são bloqueados no vencimento."} A área de assinatura permanece disponível para renovação.</p>
         {prices.plan_benefits.trim() && <><h3>O que está incluído</h3>
           <ul className="form-columns">{subscriptionLines(prices.plan_benefits).map((benefit, index) => <li key={index}>{benefit}</li>)}</ul></>}
       </section>

@@ -61,6 +61,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       ["Pro anual",bookingCurrency.format(config.yearly_cents / 100)],["Premium mensal",bookingCurrency.format(config.premium_monthly_cents / 100)],["Premium anual",bookingCurrency.format(config.premium_yearly_cents / 100)],["Dias de teste",config.trial_days],
       ["Comprovantes na fila",pending.error ? "Indisponível" : pending.data.length === 100 ? "100+" : pending.data.length]]} />}
     <h2>Configuração dos planos</h2>
+    <p>O painel avisa sobre o vencimento nos últimos sete dias. Após o vencimento e o prazo de regularização, o acesso é suspenso automaticamente. A área de assinatura fica disponível para renovação.</p>
     {config ? <form className="card account-form panel-form" action={savePlanSettings}>
       <div className="form-columns">
         <label>Pro mensal (R$) <input name="monthly" inputMode="decimal" defaultValue={amount(config.monthly_cents)} required /></label>

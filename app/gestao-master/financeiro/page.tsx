@@ -7,7 +7,7 @@ import { MasterCards, MasterPagination, MasterTabs, masterDate, reportPage } fro
 import { controlSubscription } from "./actions";
 
 const path = "/gestao-master/financeiro";
-const states = { normal: "Normal", frozen: "Congelado", blocked: "Bloqueado", bonus: "Bônus" };
+const states = { normal: "Normal", frozen: "Congelado", blocked: "Bloqueado", expired: "Vencido", bonus: "Bônus" };
 type Shop = { id: string; name: string; city: string; status: keyof typeof states; bonus_until: string | null;
   trial_until: string | null; paid_until: string | null; valid_until: string | null };
 type Payment = { id: string; name: string; period: PlanPeriod; amount_cents: number; reference: string;

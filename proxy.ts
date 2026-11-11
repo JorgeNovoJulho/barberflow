@@ -17,7 +17,21 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getClaims();
+  const { data: session } = await supabase.auth.getClaims();
+  const workspace = /^\/(painel|equipe)\/([a-f0-9-]{36})(?:\/([^/]+))?\/?/i.exec(request.nextUrl.pathname);
+  if (session?.claims.sub && workspace && workspace[3] !== "assinatura") {
+    const [, area, shop] = workspace;
+    const { data: access } = await supabase.rpc("barberflow_shop_access_state", { shop });
+    if (access === "expired" || access === "blocked" || access === "frozen") {
+      const target = request.nextUrl.clone();
+      target.pathname = area === "painel" ? `/painel/${shop}/assinatura` : "/painel";
+      target.search = "";
+      target.searchParams.set("estado", area === "painel" ? "acesso-" + access : "assinatura-equipe");
+      const redirect = NextResponse.redirect(target, 303);
+      for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+      return redirect;
+    }
+  }
   return response;
 }
 
