@@ -1,3 +1,5 @@
+import { AppointmentReminder } from "./appointment-reminder";
+import { httpsUrl } from "../../../../lib/business-profile";
 import type { Closing, OpenSales } from "../caixa/model";
 import Link from "next/link";
 import { PurchaseUpdates } from "../../../minhas-compras/purchase-updates";
@@ -19,7 +21,7 @@ type Dashboard = {
   pending: number; online: number; scheduled_cents: number; confirmed_cents: number; active_clients: number;
   previous_appointments: number; upcoming_count: number; free_slots: number | null; slot_service: string | null;
   marked_today: number; completed_today: number; in_progress: number; pending_today: number; received_today: number | null;
-  upcoming: { id: string; starts_at: string; client_name: string; service_name: string; professional_name: string; state: string }[];
+  upcoming: { id: string; starts_at: string; client_name: string; service_name: string; professional_name: string; professional_photo?: string; state: string }[];
 };
 
 function formatDay(day: string) {
@@ -184,12 +186,22 @@ export default async function DashboardPage({ params, searchParams }: {
       <DashboardCharts data={data} />
       <h2 className="panel-form">Próximos atendimentos</h2>
       <Link href={`/painel/${shop}/agenda?visao=lista`}>Abrir agenda</Link>
-      {data.upcoming.length ? <ul className="cards">{data.upcoming.map((item) => <li key={item.id} className="card">
-        <h3>{item.service_name}</h3>
-        <p>{formatDay(item.starts_at)} às {item.starts_at.slice(11, 16)} · {item.professional_name}</p>
-        <p>{item.client_name} · {item.state === "pending" ? "Aguardando aprovação" : "Agendado"}</p>
-        <Link href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir atendimento na agenda</Link>
-      </li>)}</ul> : <p>Nenhum atendimento futuro na agenda.</p>}
+      <AppointmentReminder shop={shop} appointments={data.upcoming.filter(({ state }) => state === "scheduled")} />
+      {data.upcoming.length ? <ul className="cards">
+        {[...data.upcoming].sort((a,b) => a.starts_at.localeCompare(b.starts_at)).map((item) => {
+          const photo = httpsUrl(item.professional_photo);
+          return <li key={item.id} className="card agenda-entry">
+            <p className="agenda-entry-time">{formatDay(item.starts_at)} às {item.starts_at.slice(11,16)}</p>
+            <h3>{item.service_name}</h3>
+            <p className="agenda-provider">
+              {photo && <img src={photo} alt="" width={36} height={36} loading="lazy" />}
+              <span>{item.professional_name}</span>
+            </p>
+            <p>{item.client_name} · {item.state === "pending" ? "Aguardando aprovação" : "Agendado"}</p>
+            <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0,10)}#registro-${item.id}`}>Abrir na agenda</Link>
+          </li>;
+        })}
+      </ul> : <p>Nenhum atendimento futuro na agenda.</p>}
       <h2 className="panel-form">Hoje em números</h2>
       <dl className="cards">
         {[
