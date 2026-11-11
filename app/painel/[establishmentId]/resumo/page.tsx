@@ -92,9 +92,10 @@ export default async function DashboardPage({ params, searchParams }: {
   const cardSales = cardSalesResult.data as Closing|null;
   const checkout = `/painel/${shop}/caixa`;
   const data = report.data as Dashboard | null;
-  const upcomingIds = data?.upcoming.map(({ id }) => id) ?? [];
+  const upcoming = Array.isArray(data?.upcoming) ? data.upcoming : [];
+  const upcomingIds = upcoming.map(({ id }) => id);
   const upcomingEntries = upcomingIds.length ? await supabase.from("barberflow_schedule").select("id,booked_by").eq("establishment_id", shop).in("id", upcomingIds) : null;
-  const avatars = await appointmentAvatars(supabase, upcomingEntries?.data ?? []);
+  const avatars = await appointmentAvatars(supabase, upcomingEntries?.data ?? []).catch(() => new Map<string, string>());
   const [freeTimes, flagged] = data ? await Promise.all([
     supabase.rpc("barberflow_dashboard_free_times", { shop }),
     supabase.from("barberflow_schedule").select("id,starts_at,service_name,client_name,state")
@@ -102,7 +103,8 @@ export default async function DashboardPage({ params, searchParams }: {
       .gte("starts_at", data.first_day + "T00:00").lte("starts_at", data.today + "T23:59:59.999999")
       .order("starts_at", { ascending: false }),
   ]) : [];
-  const notifications = notificationResult.data as BookingNotifications | null;
+  const noticeData = notificationResult.data as BookingNotifications | null;
+  const notifications = Array.isArray(noticeData?.items) ? noticeData : null;
   const readNotices = guiaAviso === "lidas";
   const visibleNotices = notifications?.items.filter((item) => Boolean(item.booking_read_at) === readNotices).sort((a, b) => Date.parse(b.booking_created_at) - Date.parse(a.booking_created_at)) ?? [];
   const noticeLink = (guide: string) => `?periodo=${selected.days}&notificacoes=1&guiaAviso=${guide}#notificacoes`;
@@ -212,9 +214,9 @@ export default async function DashboardPage({ params, searchParams }: {
       <h2 id="proximos-atendimentos">Próximos atendimentos</h2>
       <CancellationFeedback state={cancelamento} />
       <Link href={`/painel/${shop}/agenda?visao=lista`}>Abrir agenda</Link>
-      <AppointmentReminder shop={shop} appointments={data.upcoming.filter(({ state }) => state === "scheduled")} />
-      {data.upcoming.length ? <ul className="cards">
-        {[...data.upcoming].sort((a,b) => a.starts_at.localeCompare(b.starts_at)).map((item) => {
+      <AppointmentReminder shop={shop} appointments={upcoming.filter(({ state }) => state === "scheduled")} />
+      {upcoming.length ? <ul className="cards">
+        {[...upcoming].sort((a,b) => a.starts_at.localeCompare(b.starts_at)).map((item) => {
           const photo = httpsUrl(item.professional_photo);
           return <li key={item.id} className="card agenda-entry">
             <p className="agenda-entry-time">{formatDay(item.starts_at)} às {item.starts_at.slice(11,16)}</p>

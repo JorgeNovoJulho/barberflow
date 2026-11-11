@@ -32,7 +32,7 @@ export default async function EstablishmentLayout({ children, params }: {
       : null,
     user?.id === business.data.owner_id ? supabase.rpc("barberflow_booking_notifications", { shop }) : null,
   ]);
-  const notificationBatch = notices?.data?.items ? {
+  const notificationBatch = Array.isArray(notices?.data?.items) ? {
     asOf: notices.data.as_of as string,
     items: (notices.data.items as { id: string; kind: string; booking_created_at: string; booking_read_at: string | null }[])
       .filter((item) => !item.booking_read_at)
@@ -42,7 +42,9 @@ export default async function EstablishmentLayout({ children, params }: {
   let image = logo || undefined;
   if (!image && user) {
     const { data: profile } = await supabase.from("barberflow_social_profiles").select("avatar").eq("user_id", user.id).maybeSingle();
-    if (profile?.avatar) image = (await mediaLinks(supabase, [profile.avatar])).get(profile.avatar);
+    if (profile?.avatar) {
+      image = await mediaLinks(supabase, [profile.avatar]).then((links) => links.get(profile.avatar)).catch(() => undefined);
+    }
   }
   return <div className="container workspace">
     <PurchaseUpdates interval={10_000} />
