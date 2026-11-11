@@ -47,7 +47,7 @@ export default async function Subscription({ params, searchParams }: {
   ]);
   const checkout = await Promise.all((openCharges.data ?? []).map(async (charge) => {
     const code = charge.status === "pending" ? showcasePix({ ...charge, total_cents: charge.amount_cents }) : null;
-    return { charge, code, qr: code ? await QRCode.toDataURL(code, { width: 240, margin: 4 }) : null };
+    return { charge, code, qr: code ? await QRCode.toDataURL(code, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null };
   }));
   const { estado, comprovante } = await searchParams;
   const trialUntil = subscription.data?.trial_until;

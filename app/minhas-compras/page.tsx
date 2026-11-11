@@ -5,7 +5,7 @@ import { supabaseServer } from "../../lib/supabase";
 import { pageIndex } from "../cliente/social";
 import { isUuid, parsePrice } from "../../lib/establishments";
 import { bookingCurrency } from "../../lib/public-booking";
-import { showcasePix } from "../../lib/pix";
+import { isPixPayload, showcasePix } from "../../lib/pix";
 import { cardAdmin } from "../../lib/card-payments";
 import { SubmitButton } from "../auth/submit";
 import { generatePurchasePix } from "./actions";
@@ -63,7 +63,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
     integratedOrders.length ? cardAdmin()?.from("barberflow_showcase_asaas")
       .select("order_id,payload").in("order_id", integratedOrders.map(({ id }) => id)) : null,
   ]);
-  const pixByOrder = new Map((integratedPix?.data ?? []).map(({ order_id, payload }) => [order_id, payload as string | null]));
+  const pixByOrder = new Map((integratedPix?.data ?? []).map(({ order_id, payload }) => [order_id, typeof payload === "string" && isPixPayload(payload) ? payload : null]));
   return <section className="container section">
     <p className="eyebrow">Área do cliente</p>
     <h1>Minhas compras</h1>
@@ -84,7 +84,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
       const pixExpired = order.asaas_pix && Date.parse(order.expires_at) - 60_000 <= Date.now();
       const paymentOpen = pending && !expired && !pixExpired && user.email_confirmed_at && !user.is_anonymous;
       const pix = paymentOpen ? order.asaas_pix ? pixByOrder.get(order.id) ?? null : showcasePix(order) : null;
-      const qr = pix ? await QRCode.toDataURL(pix, { width: 240, margin: 4 }) : null;
+      const qr = pix ? await QRCode.toDataURL(pix, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null;
       return <li className="card showcase-order" data-order-status={expired || (pending && pixExpired) ? "expired" : order.status} key={order.id} id={`pedido-${order.id}`}>
         <details open={selected === order.id}>
           <summary><OrderCardHeading order={order} label={order.shop_name} photo={photos.get(order.establishment_id + "/" + order.product_id)}
@@ -94,6 +94,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
         {order.status === "ready" && <p data-feedback="success">Seu pedido está disponível para retirada. Apresente o número abaixo ao estabelecimento.</p>}
         <p>{order.quantity} un. · {bookingCurrency.format(order.unit_price_cents / 100)} por unidade</p>
         <p><small>Pedido feito em {formatShowcaseDate(order.created_at)}</small></p>
+        {paymentOpen && !order.asaas_pix && !pix && <p role="status">O Pix deste pedido está indisponível. Entre em contato com o estabelecimento para conferir a chave.</p>}
         {paymentOpen && order.asaas_pix && !pix && <form action={generatePurchasePix.bind(null, order.id)}>
           {pixFeedback === "aguarde" && <p role="alert">O código ainda não está disponível. Aguarde alguns segundos e tente novamente.</p>}
           <SubmitButton>Gerar QR Code Pix</SubmitButton>

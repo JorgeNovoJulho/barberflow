@@ -21,7 +21,7 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
   const canUseCards = !!cardAdmin();
   const settings = `/painel/${shop}/financeiro/pagamentos`;
   const pixCode = pix && !active && balance > 0 ? showcasePix({ id: receipt, ...pix, total_cents: balance }) : null;
-  const qr = pixCode ? await QRCode.toDataURL(pixCode, { width: 300, margin: 4, errorCorrectionLevel: "M" }) : null;
+  const qr = pixCode ? await QRCode.toDataURL(pixCode, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null;
   const liveLink = active?.url && Date.parse(active.expires) > Date.now() && isCardCheckout(active.url) ? active.url : null;
   return <div className="collection-options">
     {status && Object.hasOwn(paymentFeedback, status) && <p role="status">{paymentFeedback[status]}</p>}

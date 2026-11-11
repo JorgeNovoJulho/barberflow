@@ -40,7 +40,7 @@ export default async function Publication({ params, searchParams }: {
       <label>{key === "address" ? "Rua / logradouro" : label}
         <input name={key} maxLength={max} defaultValue={profile[key]} />
       </label>
-      {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} />}
+      {(key === "logo" || key === "cover" || key === "video") && <ProfileMediaUpload shop={shop} target={key} initialPreview={profile[key]} />}
     </div>);
   const path = "/painel/" + shop;
   const shareUrl = data.published && data.slug ? new URL("/estabelecimento/" + data.slug, authOrigin()).href : null;

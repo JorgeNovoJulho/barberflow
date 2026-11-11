@@ -146,12 +146,14 @@ export function ProfileColors({ initial }: { initial?: string }) {
   </fieldset>;
 }
 
-export function ProfileMediaUpload({ shop, target, professional, onGalleryChange, onPendingChange }: {
+export function ProfileMediaUpload({ shop, target, professional, onGalleryChange, onPendingChange, initialPreview }: {
   shop: string; target: "logo" | "cover" | "video" | "gallery" | "photo"; professional?: string;
+  initialPreview?: string;
   onGalleryChange?: (links: string[]) => void; onPendingChange?: (pending: boolean) => void;
 }) {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
+  const [preview, setPreview] = useState(() => httpsUrl(initialPreview));
   const video = target === "video";
   return <div>
     <label>{target === "gallery" ? "Enviar fotos da galeria" : video ? "Enviar vídeo" : target === "logo" ? "Enviar logotipo" : target === "photo" ? "Enviar foto do profissional" : "Enviar capa"}
@@ -187,7 +189,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
               if (target === "gallery") {
                 links.push(url);
                 destination.value = links.join("\n");
-              } else destination.value = url;
+              } else { destination.value = url; setPreview(url); }
               saved++;
             }
           } catch {
@@ -202,6 +204,8 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
           }
         }} />
     </label>
+    {preview && (video ? <video className="publication-media-thumb" src={preview} controls preload="metadata" />
+      : <img className="publication-media-thumb" src={preview} alt={target === "logo" ? "Prévia do logotipo" : "Prévia da capa"} />)}
     <p role="status">{status}</p>
   </div>;
 }

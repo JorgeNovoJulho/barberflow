@@ -34,12 +34,13 @@ export const coverTemplates: Template[] = [
 
 export type TextLayer = { value: string; size: number; color: string; font: keyof typeof coverFonts };
 export type PhotoLayer = { source: string; zoom: number; x: number; y: number };
-export type CoverDesign = { template: number; background: string; secondary: string; accent: string; texts: TextLayer[]; photos: PhotoLayer[] };
+export const coverTextY = [140, 290, 392, 487];
+export type CoverDesign = { template: number; background: string; secondary: string; accent: string; effect: "none" | "glow" | "vignette"; shadow: boolean; texts: TextLayer[]; photos: PhotoLayer[] };
 
 export function newCoverDesign(template: number, name: string): CoverDesign {
   const model = coverTemplates[template];
   return {
-    template, background: model.background, secondary: model.secondary, accent: model.accent,
+    template, effect: "none", shadow: false, background: model.background, secondary: model.secondary, accent: model.accent,
     texts: [
       { value: "", size: 33, color: model.accent, font: "moderna" },
       { value: name, size: 112, color: "#ffffff", font: model.font },
@@ -77,6 +78,14 @@ export function drawCover(canvas: HTMLCanvasElement, design: CoverDesign, photos
   gradient.addColorStop(1, design.secondary);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, coverWidth, coverHeight);
+  if (design.effect !== "none") {
+    const glow = design.effect === "glow";
+    const light = ctx.createRadialGradient(800, 300, 0, 800, 300, 850);
+    light.addColorStop(0, glow ? design.accent + "66" : "#00000000");
+    light.addColorStop(1, glow ? design.accent + "00" : "#000000bb");
+    ctx.fillStyle = light;
+    ctx.fillRect(0, 0, coverWidth, coverHeight);
+  }
 
   ctx.save();
   ctx.globalAlpha = .14;
@@ -126,7 +135,6 @@ export function drawCover(canvas: HTMLCanvasElement, design: CoverDesign, photos
 
   const x = model.left ? 690 : 85;
   const maxWidth = model.left ? 825 : 810;
-  const baselines = [140, 290, 392, 487];
   ctx.textBaseline = "middle";
   ctx.fillStyle = design.accent;
   ctx.fillRect(x, 179, 88, 5);
@@ -135,6 +143,13 @@ export function drawCover(canvas: HTMLCanvasElement, design: CoverDesign, photos
     if (!value) return;
     ctx.font = `${index === 1 ? 800 : 600} ${layer.size}px ${coverFonts[layer.font]}`;
     ctx.fillStyle = layer.color;
-    ctx.fillText(value, x, baselines[index], maxWidth);
+    ctx.save();
+    if (design.shadow) {
+      ctx.shadowColor = "#000000cc";
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 5;
+    }
+    ctx.fillText(value, x, coverTextY[index], maxWidth);
+    ctx.restore();
   });
 }

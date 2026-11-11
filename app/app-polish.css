@@ -552,3 +552,15 @@ svg.booking-client-avatar { padding: 6px; }
 
 .dashboard-metric:has(> .dashboard-metric-list) { position: relative; }
 .dashboard-metric-list:not([open]) summary::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+
+.cover-studio > summary { background: #5632a0; color: #fff; padding: .75rem .9rem; border-radius: .65rem; }
+.cover-controls details > summary { padding: .6rem .75rem; border-radius: .55rem; }
+.cover-controls [data-cover-section="colors"] > summary { background: #eee5ff; color: #462374; }
+.cover-controls [data-cover-section="effects"] > summary { background: #ffedcc; color: #6d3905; }
+.cover-controls [data-cover-section="text"] > summary { background: #e5efff; color: #16457d; }
+.cover-controls [data-cover-section="photos"] > summary { background: #ddf5ed; color: #145440; }
+.cover-stage { position: relative; }
+.cover-markers { position: absolute; inset: 0; pointer-events: none; }
+.cover-markers span { position: absolute; transform: translate(-50%, -50%); background: #17112c; color: #fff; border: 1px solid #fff; border-radius: .35rem; padding: .12rem .28rem; font-size: .7rem; font-weight: 750; }
+.cover-markers span[data-active="true"] { background: #ffdc79; color: #271604; border-color: #271604; }
+.publication-media-thumb { display: block; width: 8rem; max-width: 100%; height: 4.5rem; object-fit: contain; border-radius: .5rem; background: #eae8f3; margin-block: .45rem; }

@@ -1,4 +1,5 @@
 import "server-only";
+import { isPixPayload } from "./pix";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { asaas, cardAdmin, openCardToken } from "./card-payments";
@@ -17,8 +18,9 @@ export function authorizedShowcaseWebhook(shop: string, token: string | null) {
 }
 
 function pixPayload(value: string) {
-  const payload = value.startsWith("000201") ? value : Buffer.from(value, "base64").toString("utf8");
-  if (payload.length > 1024 || !/^000201[ -~]+6304[0-9A-F]{4}$/i.test(payload)) {
+  value = value.trim();
+  const payload = value.startsWith("000201") ? value : Buffer.from(value, "base64").toString("utf8").trim();
+  if (!isPixPayload(payload)) {
     throw new Error("Invalid Asaas Pix payload");
   }
   return payload;

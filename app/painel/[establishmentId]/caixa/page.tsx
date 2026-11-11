@@ -116,7 +116,7 @@ export default async function Checkout({params,searchParams}:{
       {sale.method && <p>Pagamento por {methods[sale.method]}</p>}
       {sale.state === "pending" && sale.method === "pix" && !pix && <p role="alert">Não foi possível mostrar o Pix desta comanda. Confira os dados antes de registrar qualquer recebimento.</p>}
       {pix && <div className="panel-form">
-        <img src={await QRCode.toDataURL(pix,{width:240,margin:4})} width={240} height={240} alt="QR Code Pix da comanda" />
+        <img src={await QRCode.toDataURL(pix,{scale: 6, margin: 4, errorCorrectionLevel: "M"})} width={240} height={240} alt="QR Code Pix da comanda" />
         <label>Pix Copia e Cola <textarea value={pix} rows={4} readOnly /></label>
         <CopyPix value={pix} code />
       </div>}

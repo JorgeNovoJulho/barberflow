@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { productImageLimit, productImageTypes } from "../../../../lib/product-media";
 import {
-  coverFonts, coverHeight, coverTemplates, coverWidth, drawCover, newCoverDesign, type PhotoLayer, type TextLayer,
+  coverFonts, coverTextY, coverHeight, coverTemplates, coverWidth, drawCover, newCoverDesign, type PhotoLayer, type TextLayer,
 } from "./cover-design";
 import { uploadProfileMedia } from "./upload";
 
@@ -25,6 +25,9 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
   const objectUrls = useRef(new Set<string>());
   const [opened, setOpened] = useState(false);
   const [design, setDesign] = useState(() => newCoverDesign(0, name));
+  const [guides, setGuides] = useState(true);
+  const [focused, setFocused] = useState("");
+  const model = coverTemplates[design.template];
   const [rendered, setRendered] = useState<typeof design | null>(null);
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState("");
@@ -61,16 +64,19 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
     objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
     objectUrls.current.clear();
     setDesign(newCoverDesign(template, currentName || name));
+    setFocused("");
     setStatus("");
   }
 
   function changeText(index: number, patch: Partial<TextLayer>) {
+    setFocused("T" + (index + 1));
     setDesign((current) => ({
       ...current, texts: current.texts.map((layer, i) => i === index ? { ...layer, ...patch } : layer),
     }));
   }
 
   function changePhoto(index: number, patch: Partial<PhotoLayer>) {
+    setFocused("F" + (index + 1));
     if (patch.source !== undefined) {
       const previous = design.photos[index].source;
       if (objectUrls.current.delete(previous)) URL.revokeObjectURL(previous);
@@ -137,8 +143,21 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
           {model.name}
         </button>)}
       </div>
+      <label className="cover-guide-toggle"><input type="checkbox" checked={guides} onChange={(event) => setGuides(event.target.checked)} /> Mostrar marcadores na prévia</label>
+      <div className="cover-stage">
       <canvas ref={canvas} width={coverWidth} height={coverHeight} role="img"
         aria-label={`Prévia do modelo ${coverTemplates[design.template].name} para ${design.texts[1].value || name}`} />
+      {guides && <div className="cover-markers" aria-hidden="true">
+        {coverTextY.map((y, index) => {
+          const tag = "T" + (index + 1);
+          return <span key={tag} data-active={focused === tag} style={{ left: (model.left ? 690 : 85) / 16 + "%", top: y / 6 + "%" }}>{tag}</span>;
+        })}
+        {model.frames.map(([x, y, w, h], index) => {
+          const tag = "F" + (index + 1);
+          return <span key={tag} data-active={focused === tag} style={{ left: (x + w / 2) / 16 + "%", top: (y + h / 2) / 6 + "%" }}>{tag}</span>;
+        })}
+      </div>}
+      </div>
       <p className="cover-preview-note">A imagem inteira aparece na página pública, inclusive no celular.</p>
       <div className="account-links">
         <button type="button" className="primary" disabled={rendered !== design || !!renderError}
@@ -148,7 +167,7 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
       </div>
       <p role="status">{status || renderError}</p>
       <div className="cover-controls">
-        <details open>
+        <details open data-cover-section="colors">
           <summary>Cores do modelo</summary>
           <div className="cover-fields">
             {([["background", "Fundo"], ["secondary", "Fundo secundário"], ["accent", "Molduras e detalhes"]] as const).map(([key, label]) =>
@@ -156,10 +175,19 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
                 onChange={(event) => setDesign({ ...design, [key]: event.currentTarget.value })} /></label>)}
           </div>
         </details>
-        <details>
+        <details data-cover-section="effects">
+          <summary>Efeitos</summary>
+          <div className="cover-fields">
+            <label>Luz do fundo <select value={design.effect} onChange={(event) => setDesign({ ...design, effect: event.target.value as typeof design.effect })}>
+              <option value="none">Original</option><option value="glow">Brilho central</option><option value="vignette">Bordas escurecidas</option>
+            </select></label>
+            <label><input type="checkbox" checked={design.shadow} onChange={(event) => setDesign({ ...design, shadow: event.target.checked })} /> Sombra no texto</label>
+          </div>
+        </details>
+        <details data-cover-section="text">
           <summary>Textos e fontes</summary>
           {design.texts.map((layer, index) => <div key={index} className="cover-layer">
-            <label>{textNames[index]} <input value={layer.value} maxLength={120}
+            <label>T{index + 1} · {textNames[index]} <input value={layer.value} maxLength={120}
               onChange={(event) => changeText(index, { value: event.currentTarget.value })} /></label>
             <div className="cover-fields">
               <label>Fonte <select value={layer.font} onChange={(event) => changeText(index, { font: event.currentTarget.value as TextLayer["font"] })}>
@@ -171,10 +199,10 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
             </div>
           </div>)}
         </details>
-        <details>
+        <details data-cover-section="photos">
           <summary>Imagens e recortes</summary>
           {design.photos.map((photo, index) => <div key={index} className="cover-layer">
-            <label>Foto {index + 1} <input type="file" accept={productImageTypes.join(",")} onChange={(event) => {
+            <label>F{index + 1} · Foto {index + 1} <input type="file" accept={productImageTypes.join(",")} onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               event.currentTarget.value = "";
               if (!file) return;
@@ -188,6 +216,7 @@ export function CoverStudio({ shop, name }: { shop: string; name: string }) {
               setStatus("");
             }} /></label>
             {photo.source && <>
+              <img className="publication-media-thumb" src={photo.source} alt={`Prévia da foto ${index + 1}`} />
               <div className="cover-fields">
                 {([["zoom", "Zoom", 100, 250], ["x", "Posição horizontal", 0, 100], ["y", "Posição vertical", 0, 100]] as const).map(([key, label, min, max]) =>
                   <label key={key}>{label} <input type="range" min={min} max={max} value={photo[key]}

@@ -37,7 +37,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const testCode = teste === "pix" && config?.pix_key && config.pix_merchant && config.pix_city
     ? showcasePix({ id: randomUUID(), pix_key: config.pix_key, merchant: config.pix_merchant, city: config.pix_city, total_cents: 1 })
     : null;
-  const qr = testCode ? await QRCode.toDataURL(testCode, { width: 240, margin: 4 }) : null;
+  const qr = testCode ? await QRCode.toDataURL(testCode, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null;
   const shops = (businesses.data ?? []) as { id: string; name: string }[];
   const selected = shops.length === 1 ? shops[0] : undefined;
   const [subscription, history, archived] = selected ? await Promise.all([
@@ -68,6 +68,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
         <label>Dias de teste para novos estabelecimentos <input name="trial" type="number" min={0} max={365} defaultValue={config.trial_days} required /></label>
       </div>
       <label>Chave Pix <input name="pix" maxLength={160} defaultValue={config.pix_key} /></label>
+          <p>Para chave de telefone do Brasil, informe +55, DDD e número. Use a chave registrada no banco.</p>
       <label>Favorecido Pix <input name="beneficiary" maxLength={120} defaultValue={config.pix_beneficiary} /></label>
       <label>Cidade do recebedor Pix <input name="city" maxLength={60} defaultValue={config.pix_city} /></label>
       <label>Dias de regularização após o vencimento <input name="grace" type="number" min={0} max={30} defaultValue={config.grace_days} required /></label>

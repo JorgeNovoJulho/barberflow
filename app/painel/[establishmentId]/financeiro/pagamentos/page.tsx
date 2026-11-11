@@ -54,6 +54,7 @@ export default async function PaymentSettings({ params, searchParams }: {
         <form className="account-form" action={saveBusinessPix.bind(null, shop, false)}>
           {sale && <input type="hidden" name="comanda" value={sale} />}
           <label>Chave Pix <input name="key" maxLength={77} required defaultValue={pix.data?.pix_key} /></label>
+          <p>Para chave de telefone do Brasil, informe +55, DDD e número. Use a chave registrada no banco.</p>
           <label>Nome do recebedor <input name="merchant" maxLength={25} required
             defaultValue={pix.data?.merchant ?? pixLabel(business.data.name, 25)} /></label>
           <label>Cidade do recebedor <input name="city" maxLength={15} required
