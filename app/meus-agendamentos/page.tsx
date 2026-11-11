@@ -26,10 +26,12 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?next=%2Fmeus-agendamentos");
-  const [{ data, error }, media] = await Promise.all([
+  const [{ data, error }, media, cancellations] = await Promise.all([
     supabase.rpc("barberflow_my_bookings"),
     supabase.rpc("barberflow_booking_shop_media"),
+    supabase.rpc("barberflow_my_cancellation_notices"),
   ]);
+  const reasons = new Map<string,string>((cancellations.data ?? []).map((item: { id:string; reason:string }) => [item.id,item.reason]));
   const images = new Map<string,{slug:string|null;logo:string|null;cover:string|null}>((media.data ?? []).map(
     (item:{id:string;slug:string|null;logo:string|null;cover:string|null})=>[item.id,item]));
   const { estado, remarca, dia } = await searchParams;
@@ -50,7 +52,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
         const shop = images.get(booking.id);
         const cover = httpsUrl(shop?.cover ?? undefined);
         const logo = httpsUrl(shop?.logo ?? undefined);
-        return <li key={booking.id} className="card booking-history-card">
+        return <li key={booking.id} className="card booking-history-card" id={booking.id}>
         {cover && <img className="booking-history-cover" src={cover} alt="" loading="lazy" />}
         <div className="booking-history-brand">
           {logo && <img src={logo} alt="" width={48} height={48} loading="lazy" />}
@@ -58,6 +60,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
         </div>
         <h2>{booking.service_name}</h2>
         <p>{booking.starts_at.slice(0, 10).split("-").reverse().join("/")} às {booking.starts_at.slice(11, 16)} · {states[booking.state]}</p>
+        {reasons.has(booking.id) && <p data-feedback="warning">Cancelado pelo estabelecimento. Motivo: {reasons.get(booking.id)}</p>}
         <p>{bookingCurrency.format(booking.price_cents / 100)}</p>
         {booking.state === "completed" && <details>
           <summary>Avaliar atendimento</summary>

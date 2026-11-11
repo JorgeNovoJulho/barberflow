@@ -55,6 +55,7 @@ export default async function ClientPage({ searchParams }: {
   const photo = params.foto && isUuid(params.foto) ? params.foto : null;
   const collection = params.aba && Object.hasOwn(collectionLabels, params.aba) ? params.aba as keyof typeof collectionLabels : null;
   const view = collection ?? (photo ? "foto" : shop ? "loja" : target ? "perfil-publico" : ["perfil","notificacoes","pessoas"].includes(params.aba ?? "") ? params.aba! : "feed");
+  const cancellations = view === "notificacoes" ? await supabase.rpc("barberflow_my_cancellation_notices") : null;
   const deniedPurchases = params.compras === "negados";
   const query = new URLSearchParams();
   if (params.compras) query.set("compras", deniedPurchases ? "negados" : "confirmados");
@@ -270,6 +271,15 @@ export default async function ClientPage({ searchParams }: {
           <form action={blockSocialProfile.bind(null,person.user_id,false)}><button className="secondary">Desbloquear usuário</button></form>
         </SocialCollectionCard>)}
       </ul> : <p>Nenhum usuário bloqueado.</p>)}
+      {view === "notificacoes" && page === 0 && !!cancellations?.data?.length && <section className="section">
+        <h2>Agendamentos cancelados</h2>
+        <ul className="cards">{cancellations.data.map((item: { id:string; shop_name:string; service_name:string; starts_at:string; reason:string }) => <li className="card" key={item.id}>
+          <strong>{item.service_name} · {item.shop_name}</strong>
+          <p>{item.starts_at.slice(0,10).split("-").reverse().join("/")} às {item.starts_at.slice(11,16)}</p>
+          <p data-feedback="warning">Motivo do cancelamento: {item.reason}</p>
+          <Link href={"/meus-agendamentos#" + item.id}>Ver agendamento</Link>
+        </li>)}</ul>
+      </section>}
       {view === "notificacoes" && page === 0 && <section className="section">
         <h2>Compras</h2>
         <nav className="account-links finance-tabs" aria-label="Situação dos produtos">

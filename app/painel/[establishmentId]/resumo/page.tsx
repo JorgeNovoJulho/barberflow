@@ -1,3 +1,4 @@
+import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { AppointmentReminder } from "./appointment-reminder";
 import { httpsUrl } from "../../../../lib/business-profile";
 import type { Closing, OpenSales } from "../caixa/model";
@@ -69,11 +70,11 @@ function DashboardCharts({ data }: { data: Dashboard }) {
 
 export default async function DashboardPage({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ periodo?: string; notificacoes?: string; guiaAviso?: string; aviso?: string; comanda?: string }>;
+  searchParams: Promise<{ periodo?: string; cancelamento?: string; notificacoes?: string; guiaAviso?: string; aviso?: string; comanda?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { periodo, notificacoes, guiaAviso, aviso, comanda } = await searchParams;
+  const { periodo, cancelamento, notificacoes, guiaAviso, aviso, comanda } = await searchParams;
   const selected = periods.find(({ days }) => String(days) === periodo) ?? periods[0];
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
@@ -91,6 +92,9 @@ export default async function DashboardPage({ params, searchParams }: {
   const cardSales = cardSalesResult.data as Closing|null;
   const checkout = `/painel/${shop}/caixa`;
   const data = report.data as Dashboard | null;
+  const upcomingIds = data?.upcoming.map(({ id }) => id) ?? [];
+  const upcomingEntries = upcomingIds.length ? await supabase.from("barberflow_schedule").select("id,booked_by").eq("establishment_id", shop).in("id", upcomingIds) : null;
+  const avatars = await appointmentAvatars(supabase, upcomingEntries?.data ?? []);
   const notifications = notificationResult.data as BookingNotifications | null;
   const readNotices = guiaAviso === "lidas";
   const visibleNotices = notifications?.items.filter((item) => Boolean(item.booking_read_at) === readNotices) ?? [];
@@ -184,7 +188,8 @@ export default async function DashboardPage({ params, searchParams }: {
         </div>)}
       </dl>
       <DashboardCharts data={data} />
-      <h2 className="panel-form">Próximos atendimentos</h2>
+      <h2 id="proximos-atendimentos">Próximos atendimentos</h2>
+      <CancellationFeedback state={cancelamento} />
       <Link href={`/painel/${shop}/agenda?visao=lista`}>Abrir agenda</Link>
       <AppointmentReminder shop={shop} appointments={data.upcoming.filter(({ state }) => state === "scheduled")} />
       {data.upcoming.length ? <ul className="cards">
@@ -197,7 +202,8 @@ export default async function DashboardPage({ params, searchParams }: {
               {photo && <img src={photo} alt="" width={36} height={36} loading="lazy" />}
               <span>{item.professional_name}</span>
             </p>
-            <p>{item.client_name} · {item.state === "pending" ? "Aguardando aprovação" : "Agendado"}</p>
+            <p className="booking-client"><ClientAvatar photo={avatars.get(item.id)} /><span>{item.client_name} · {item.state === "pending" ? "Aguardando aprovação" : "Agendado"}</span></p>
+            <CancelAppointmentForm shop={shop} day={item.starts_at.slice(0,10)} entry={item.id} overview />
             <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0,10)}#registro-${item.id}`}>Abrir na agenda</Link>
           </li>;
         })}
@@ -209,7 +215,7 @@ export default async function DashboardPage({ params, searchParams }: {
           ["Em atendimento agora", data.in_progress], ["Aguardando confirmação", data.pending_today],
         ].map(([label, value]) => <div key={label} className="card dashboard-metric"><dt>{label}</dt><dd>{value}</dd></div>)}
         <div className="card dashboard-metric"><dt>Pagamentos confirmados hoje</dt>
-          <dd>{data.received_today === null ? <Link href={`/painel/${shop}/financeiro`}>Desbloquear financeiro</Link> : money(data.received_today)}</dd>
+          <dd>{data.received_today === null ? <Link className="finance-unlock-metric" href={`/painel/${shop}/financeiro`}><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg>Desbloquear financeiro</Link> : money(data.received_today)}</dd>
         </div>
       </dl>
     </>}

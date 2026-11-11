@@ -6,6 +6,7 @@ import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { AppointmentFields } from "./appointment-fields";
+import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { createEntry, linkCompletedClient, rescheduleEntry, updateEntry } from "./actions";
 
 const messages: Record<string, string> = {
@@ -30,11 +31,11 @@ function entryTime(value: string, day: string) {
 
 export default async function Agenda({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ dia?: string; estado?: string; visao?: string; novo?: string; profissional?: string; servico?: string; horario?: string }>;
+  searchParams: Promise<{ dia?: string; cancelamento?: string; estado?: string; visao?: string; novo?: string; profissional?: string; servico?: string; horario?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { dia, estado, visao, novo, profissional, servico, horario } = await searchParams;
+  const { dia, estado, cancelamento, visao, novo, profissional, servico, horario } = await searchParams;
   const today = saoPauloToday();
   const day = dia && validDay(dia) ? dia : today;
   const tomorrow = offsetDay(day, 1);
@@ -55,13 +56,14 @@ export default async function Agenda({ params, searchParams }: {
   if (!establishment) notFound();
 
   const [entries, professionals, services, assignments, clients] = await Promise.all([
-    supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes")
+    supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes,booked_by")
       .eq("establishment_id", shop).lt("starts_at", rangeEnd + "T00:00").gt("ends_at", rangeStart + "T00:00").order("starts_at"),
     supabase.from("barberflow_professionals").select("id,name,active,photo_url").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_services").select("id,name,duration_minutes").eq("establishment_id", shop).eq("active", true).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_clients").select("id,name").eq("establishment_id", shop).eq("active", true).order("name"),
   ]);
+  const avatars = await appointmentAvatars(supabase, entries.data ?? []);
   const staff = professionals.data ?? [];
   const staffById = new Map(staff.map((person) => [person.id, person]));
   function providerLine(entry: { professional_id: string; kind: string; state: string }) {
@@ -106,6 +108,7 @@ export default async function Agenda({ params, searchParams }: {
       </form>
     </div>
     <p><Link className="primary" href={href(day, "dia") + "&novo=1#novo"}>+ Agendar para um cliente</Link></p>
+    <CancellationFeedback state={cancelamento} />
     {estado && Object.hasOwn(messages, estado) && <p role="status">{messages[estado]}</p>}
     <h2>{weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : listView ? "Registros dos próximos 7 dias" : dateLabel}</h2>
     {[entries, professionals, services, assignments, clients].some((response) => response.error)
@@ -170,7 +173,7 @@ export default async function Agenda({ params, searchParams }: {
           <p className="agenda-entry-time">{entry.starts_at.slice(0,10).split("-").reverse().join("/")} · {entryTime(entry.starts_at, day)}–{entryTime(entry.ends_at, day)}</p>
           <h3>{entry.kind === "block" ? "Bloqueio de horário" : entry.service_name}</h3>
           {providerLine(entry)}
-          {entry.client_name && <p>{entry.client_name}{entry.client_phone && ` · ${entry.client_phone}`}</p>}
+          {entry.client_name && <p className="booking-client"><ClientAvatar photo={avatars.get(entry.id)} /><span>{entry.client_name}{entry.client_phone && ` · ${entry.client_phone}`}</span></p>}
           {entry.notes && <p>{entry.notes}</p>}
           {entry.kind === "appointment" && entry.state === "completed" && !entry.client_id && !!clients.data?.length &&
             <details><summary>Vincular ao cadastro do cliente</summary>
@@ -186,7 +189,7 @@ export default async function Agenda({ params, searchParams }: {
             <Link className="primary agenda-command" href={`/painel/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>}
           {entry.state === "pending" && <div className="account-links">
             <form action={updateEntry.bind(null, shop, day, entry.id, "scheduled")}><SubmitButton>Aprovar reserva</SubmitButton></form>
-            <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}><SubmitButton>Recusar reserva</SubmitButton></form>
+            <CancelAppointmentForm shop={shop} day={day} entry={entry.id} />
           </div>}
           {entry.kind === "appointment" && entry.state === "scheduled" && <details>
             <summary>Remarcar atendimento</summary>
@@ -200,12 +203,12 @@ export default async function Agenda({ params, searchParams }: {
           </details>}
           {entry.state === "scheduled" && <div className="account-links">
             {entry.kind === "appointment" && <>
-              <form action={updateEntry.bind(null, shop, day, entry.id, "completed")}><SubmitButton>Concluir</SubmitButton></form>
-              <form action={updateEntry.bind(null, shop, day, entry.id, "no_show")}><SubmitButton>Marcar falta</SubmitButton></form>
+              <form action={updateEntry.bind(null, shop, day, entry.id, "completed")}><SubmitButton tone="keep">Concluir</SubmitButton></form>
+              <form action={updateEntry.bind(null, shop, day, entry.id, "no_show")}><SubmitButton tone="cancel">Marcar falta</SubmitButton></form>
             </>}
-            <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}>
-              <SubmitButton tone={entry.kind === "block" ? undefined : "cancel"}>{entry.kind === "block" ? "Desbloquear" : "Cancelar atendimento"}</SubmitButton>
-            </form>
+            {entry.kind === "block" ? <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}>
+              <SubmitButton>Desbloquear</SubmitButton>
+            </form> : <CancelAppointmentForm shop={shop} day={day} entry={entry.id} />}
           </div>}
         </li>)}
       </ul> : <p>Nenhum atendimento ou bloqueio neste dia.</p>}

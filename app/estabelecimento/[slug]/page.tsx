@@ -31,7 +31,7 @@ export default async function Establishment({ params, searchParams }: {
           {booking.state === "scheduled" ? "Seu horário está reservado!" : booking.state === "pending" ? "Sua solicitação foi recebida e aguarda aprovação." : "Consulte o estabelecimento sobre a situação atual."}
           {" "}{booking.service} com {booking.professional}, em {String(booking.start).slice(0,10).split("-").reverse().join("/")} às {String(booking.start).slice(11,16)}.
         </p>
-        <p>O estabelecimento recebeu a notificação do agendamento.</p>
+        {booking.state === "cancelled" && booking.reason ? <p role="status" data-feedback="warning">Agendamento cancelado pelo estabelecimento. Motivo: {booking.reason}</p> : <p>O estabelecimento recebeu a notificação do agendamento.</p>}
       </section>
     </div>}
     <ProfileView profile={profile} denuncia={denuncia} vitrine={vitrine} produtos={produtos} />
