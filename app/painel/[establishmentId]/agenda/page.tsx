@@ -33,17 +33,19 @@ function entryTime(value: string, day: string) {
 
 export default async function Agenda({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ dia?: string; cancelamento?: string; estado?: string; visao?: string; novo?: string; profissional?: string; servico?: string; horario?: string }>;
+  searchParams: Promise<{ dia?: string; periodo?: string; cancelamento?: string; estado?: string; visao?: string; novo?: string; profissional?: string; servico?: string; horario?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { dia, estado, cancelamento, visao, novo, profissional, servico, horario } = await searchParams;
+  const { dia, periodo, estado, cancelamento, visao, novo, profissional, servico, horario } = await searchParams;
   const today = saoPauloToday();
   const day = dia && validDay(dia) ? dia : today;
   const tomorrow = offsetDay(day, 1);
   const weekly = visao === "semana";
   const monthly = visao === "mes" || visao === "lista";
   const cancelled = visao === "cancelados";
+  const cancelledPeriod = periodo === "1" || periodo === "7" || periodo === "30" ? Number(periodo) : null;
+  const cancelledStart = cancelledPeriod ? offsetDay(day, 1 - cancelledPeriod) : null;
   const view = cancelled ? "cancelados" : weekly ? "semana" : monthly ? "mes" : "dia";
   const monthStart = day.slice(0, 7) + "-01";
   const monthEnd = offsetDay(monthStart, 32).slice(0, 7) + "-01";
@@ -64,9 +66,15 @@ export default async function Agenda({ params, searchParams }: {
   const cutoff = new Date().toISOString();
   const schedule = supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes,booked_by")
     .eq("establishment_id", shop);
+  const cancelledEntries = cancelled
+    ? schedule.eq("kind", "appointment").eq("state", "cancelled").is("cancelled_card_archived_at", null)
+    : null;
+  if (cancelledEntries && cancelledStart) {
+    cancelledEntries.gte("starts_at", cancelledStart + "T00:00").lt("starts_at", tomorrow + "T00:00");
+  }
   const [entries, professionals, services, assignments, clients] = await Promise.all([
-    cancelled
-      ? schedule.eq("kind", "appointment").eq("state", "cancelled").is("cancelled_card_archived_at", null).order("starts_at", { ascending: false }).order("id")
+    cancelledEntries
+      ? cancelledEntries.order("starts_at", { ascending: false }).order("id")
       : schedule.neq("state", "cancelled").lt("starts_at", rangeEnd + "T00:00").gt("ends_at", rangeStart + "T00:00").order("starts_at"),
     supabase.from("barberflow_professionals").select("id,name,active,photo_url").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_services").select("id,name,duration_minutes").eq("establishment_id", shop).eq("active", true).order("name"),
@@ -166,7 +174,10 @@ export default async function Agenda({ params, searchParams }: {
           </section>;
         })}
       </div> : <>
-      {cancelled && !!entries.data?.length && <details className="card panel-form">
+      {cancelled && cancelledStart && <p>
+      {cancelledStart.split("-").reverse().join("/")} a {day.split("-").reverse().join("/")} · <Link href={href(day, "cancelados")}>Ver todos os períodos</Link>
+    </p>}
+    {cancelled && !cancelledStart && !!entries.data?.length && <details className="card panel-form">
         <summary className="secondary action-cancel">Limpar todos</summary>
         <p>Remover todos os agendamentos cancelados desta lista?</p>
         <form action={archiveCancelled.bind(null, shop, day, cutoff)}>

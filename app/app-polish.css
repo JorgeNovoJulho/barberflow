@@ -243,6 +243,7 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .checkout-shortcut strong { display: flex; justify-content: space-between; gap: 1rem; }
 .checkout-shortcut-open.card { color: #13463c; background: #ddf7ee; border-color: #9edcc8; }
 .checkout-shortcut-card.card { color: #302270; background: #ede7ff; border-color: #cbbbf7; }
+.checkout-shortcut-orders.card { color: #713f12; background: #fff3d9; border-color: #edce87; }
 .checkout-shortcut:hover { box-shadow: 0 6px 16px #202b4824; }
 .dashboard-actions .dashboard-action-agenda { background: #6841bb; border-color: #6841bb; color: white; }
 .dashboard-actions .dashboard-action-sale { background: #166657; border-color: #166657; color: white; }

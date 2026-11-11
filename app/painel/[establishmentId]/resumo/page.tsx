@@ -79,12 +79,14 @@ export default async function DashboardPage({ params, searchParams }: {
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path + "?periodo=" + selected.days }));
-  const [shopResult, report, notificationResult, openSalesResult, cardSalesResult] = await Promise.all([
+  const [shopResult, report, notificationResult, openSalesResult, cardSalesResult, newOrdersResult] = await Promise.all([
     supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle(),
     supabase.rpc("barberflow_dashboard", { shop, period_days: selected.days }),
     supabase.rpc("barberflow_booking_notifications", { shop }),
     supabase.rpc("barberflow_counter_open", { shop_id:shop,page_number:0 }),
     supabase.rpc("barberflow_counter_report", { shop_id:shop,period:"dia",item_filter:"ambos",page_number:0 }),
+    supabase.from("barberflow_showcase_orders").select("id", { count: "exact", head: true })
+      .eq("establishment_id", shop).eq("status", "pending").gt("expires_at", new Date().toISOString()),
   ]);
   if (shopResult.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!shopResult.data) notFound();
@@ -149,6 +151,11 @@ export default async function DashboardPage({ params, searchParams }: {
         <strong>Pagamentos em cartão hoje <span aria-hidden="true">→</span></strong>
         <span>{cardSales ? `Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}` : "Consultar pagamentos"}</span>
       </Link>
+      <section className="card checkout-shortcut checkout-shortcut-orders">
+        <strong>Novos pedidos da vitrine</strong>
+        <span>{newOrdersResult.error ? "Contagem indisponível" : `${newOrdersResult.count ?? 0} aguardando pagamento`}</span>
+        <div><Link className="secondary" href={`/painel/${shop}/vitrine?aba=pendentes`}>Abrir pedidos da vitrine</Link></div>
+      </section>
     </div>
     <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
       <summary className={notifications?.unread ? "notice-unread" : undefined}>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
@@ -188,8 +195,11 @@ export default async function DashboardPage({ params, searchParams }: {
       <p className="panel-form">{data.first_day === data.today ? formatDay(data.today) : `${formatDay(data.first_day)} a ${formatDay(data.today)}`}</p>
       <dl className="cards">
         {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric">
-          <dt>{label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
-          <dd>{value}</dd>{note && <p>{note}</p>}
+          <dt>{label === "Cancelados" && <Link className="dashboard-card-link" aria-label="Ver agendamentos cancelados no período" href={`/painel/${shop}/agenda?visao=cancelados&dia=${data.today}&periodo=${selected.days}`} />}
+            {label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
+          <dd>{value}</dd>
+          {label === "Agendamentos" && <p>{data.appointments - data.cancelled} sem cancelamento · {data.cancelled} cancelados</p>}
+          {note && <p>{note}</p>}
           {[2, 5, 6].includes(index) && <details className="dashboard-metric-list">
             <summary className="secondary">Ver {index === 2 ? "horários" : "atendimentos"}</summary>
             {index === 2 ? freeTimes?.error ? <p>Não foi possível carregar os horários.</p> : freeTimes?.data?.length
