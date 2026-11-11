@@ -42,7 +42,7 @@ export const landingDefaults = {
   stockTitle: "Estoque e comanda", faqTitle: "Perguntas frequentes",
   discoveryTitle: "Encontre seu próximo atendimento", discoveryText: "Busque por cidade ou segmento e agende na página do estabelecimento.",
   discoveryButton: "Buscar estabelecimentos", footerText: "Gestão para beleza e bem-estar.",
-  contactText: "", contactUrl: "", accent: "#d9a965", overlay: "76", photoFocus: "right",
+  contactText: "", contactUrl: "", accent: "#a89afb", overlay: "76", photoFocus: "right",
   navSegments: "Segmentos", navFeatures: "Funcionalidades", navStock: "Estoque", navFaq: "Dúvidas",
 };
 
@@ -74,7 +74,7 @@ export function parseLandingSettings(raw: unknown): LandingSettings {
     const value = record[key];
     if (typeof value !== "string" || value.length > 500) continue;
     if (key === "logoUrl" ? !validImageUrl(value) : key.endsWith("Url") && value && !validLandingLink(value)) continue;
-    if (key === "accent" && !/^#[a-f\d]{6}$/i.test(value)) continue;
+    if (key === "accent" && (!/^#[a-f\d]{6}$/i.test(value) || value.toLowerCase() === "#d9a965")) continue;
     if (key === "overlay" && !/^(?:[5-8]\d|9[0-5])$/.test(value)) continue;
     if (key === "photoFocus" && !["left", "center", "right"].includes(value)) continue;
     result[key] = value;

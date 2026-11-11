@@ -6,6 +6,20 @@ import { hasMasterSession, masterPath } from "../lib/master";
 import { signOut } from "./auth/actions";
 import { supabaseServer } from "../lib/supabase";
 
+const highlights = [
+  { icon: "↗", title: "Agendamento sem conta", text: "Compartilhe um link para o cliente reservar um horário sem precisar se cadastrar." },
+  { icon: "◷", title: "Agenda por profissional", text: "Organize a equipe por dia, semana ou mês e acompanhe os próximos atendimentos." },
+  { icon: "◇", title: "Vitrine com Pix", text: "Publique produtos e acompanhe os pedidos, da confirmação do pagamento à retirada." },
+  { icon: "≡", title: "Serviços e produtos na mesma comanda", text: "Some os itens em uma cobrança e consulte o histórico no fechamento." },
+];
+
+const workflows = [
+  { title: "Atendimento e equipe", items: ["Horários por profissional e bloqueios na agenda", "Remarcações, cancelamentos e horários liberados na agenda", "Avisos sonoros de notificações e lembretes de atendimento"] },
+  { title: "Estoque e vendas", items: ["Cadastro com fotos, vídeo, código interno e código de barras", "Preço de venda calculado a partir do custo e da margem", "Alertas de estoque mínimo e promoções para itens próximos da validade"] },
+  { title: "Financeiro e comissões", items: ["Contas a pagar e a receber, com despesas por categoria", "Relatórios de movimento e fechamento por período", "Comissões sobre serviços e produtos com recibo de quitação"] },
+  { title: "Presença online", items: ["Página pública com serviços, equipe, localização e WhatsApp", "Editor de capas e personalização da identidade do estabelecimento", "Vitrine, avaliações e publicações para manter clientes informados"] },
+];
+
 const screenshots = [
   { file: "painel", title: "Visão geral", alt: "Atalhos para agendamentos, comandas e fechamento no painel do TOP BARBER" },
   { file: "agenda", title: "Agenda", alt: "Agenda com visões por dia, semana e mês e guia de cancelados" },
@@ -39,14 +53,14 @@ export default async function Home() {
   const retail = group("estoque");
   const questions = group("duvidas");
   const navigation = [
+    ["#funcionalidades", settings.navFeatures, 1],
     ["#segmentos", settings.navSegments, segments.length],
-    ["#funcionalidades", settings.navFeatures, features.length],
     ["#estoque", settings.navStock, retail.length],
     ["#duvidas", settings.navFaq, questions.length],
     ["#demonstracao", "Demonstração", 1],
   ] as const;
   const style = {
-    "--landing-gold": settings.accent, "--landing-overlay": Number(settings.overlay) / 100,
+    "--landing-accent": settings.accent, "--landing-overlay": Number(settings.overlay) / 100,
     "--landing-focus": settings.photoFocus === "right" ? "72%" : settings.photoFocus === "left" ? "25%" : "50%",
   } as CSSProperties;
   const brand = <>{settings.logoUrl ? <img src={settings.logoUrl} alt="" width={32} height={32} />
@@ -77,6 +91,28 @@ export default async function Home() {
         </div>
       </div>
     </section>)}
+    <section className="landing-highlights" aria-label="Diferenciais do TOP BARBER">
+      <ul className="container">{highlights.map(({ icon, title, text }) => <li key={title}>
+        <span className="landing-highlight-icon" aria-hidden="true">{icon}</span>
+        <div><h2>{title}</h2><p>{text}</p></div>
+      </li>)}</ul>
+    </section>
+    <section className="landing-light" id="funcionalidades">
+      <div className="container section">
+        <h2>{settings.featuresTitle || "Da reserva ao fechamento do dia"}</h2>
+        <p className="landing-section-intro">Organize a rotina da equipe, venda produtos e acompanhe as finanças no mesmo painel.</p>
+        <div className="landing-workflows">{workflows.map(({ title, items }) => <article key={title}>
+          <h3>{title}</h3>
+          <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+        </article>)}</div>
+        {features.length > 0 && <ul className="cards editorial-features" aria-label="Mais funcionalidades">
+          {features.map((block) => <li key={block.id} className="card">
+            <BlockImage block={block} />
+            <h3>{block.title}</h3>{block.body && <p>{block.body}</p>}
+          </li>)}
+        </ul>}
+      </div>
+    </section>
     {settings.discovery && <section className="container editorial-search" aria-labelledby="editorial-search-title">
       <div className="editorial-search-heading">
         <span aria-hidden="true">⌖</span>
@@ -91,20 +127,10 @@ export default async function Home() {
         <button type="submit" className="primary">{settings.discoveryButton || "Buscar"} <span aria-hidden="true">↗</span></button>
       </form>
     </section>}
-    {features.length > 0 && <section className="container section editorial-features" id="funcionalidades">
-      <h2>{settings.featuresTitle}</h2>
-      <ul className="cards">
-        {features.map((block) => <li key={block.id} className="card">
-          <BlockImage block={block} />
-          <h3>{block.title}</h3>{block.body && <p>{block.body}</p>}
-        </li>)}
-      </ul>
-    </section>}
     {segments.length > 0 && <section className="editorial-segments" id="segmentos">
       <div className="container section"><h2>{settings.segmentsTitle}</h2>
-        <ul className="specialties">{segments.map((block, index) => <li key={block.id}>
+        <ul className="specialties">{segments.map((block) => <li key={block.id}>
           <BlockImage block={block} />
-          <span className="landing-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
           <h3>{block.title}</h3>{block.body && <p>{block.body}</p>}
         </li>)}</ul>
       </div>
@@ -130,7 +156,11 @@ export default async function Home() {
         </figure>)}
       </div>
       <div className="landing-video">
-        <h3>Conheça o painel em uma apresentação narrada</h3>
+        <div>
+          <h3>Conheça o painel em 1 minuto e 28 segundos</h3>
+          <p>Veja como a agenda, as comandas e a vitrine se encaixam na rotina do estabelecimento.</p>
+          {settings.primaryText && settings.primaryUrl && <Link className="primary" href={settings.primaryUrl}>{settings.primaryText}</Link>}
+        </div>
         <video controls playsInline preload="none" poster="/media/top-barber-painel.webp" aria-label="Apresentação do TOP BARBER">
           <source src="/media/top-barber-apresentacao.mp4" type="video/mp4" />
           <track kind="captions" src="/media/top-barber-apresentacao.vtt" srcLang="pt-BR" label="Português" />
