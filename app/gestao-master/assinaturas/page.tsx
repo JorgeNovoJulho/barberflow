@@ -7,7 +7,7 @@ import { MasterCards, MasterTabs } from "../master-ui";
 import { requireMaster } from "../../../lib/master";
 import { bookingCurrency } from "../../../lib/public-booking";
 import { subscriptionProofLinks } from "../../../lib/subscription-checkout";
-import { planNames, type PlanPeriod } from "../../../lib/subscriptions";
+import { planNames, tierLabel, type PlanPeriod } from "../../../lib/subscriptions";
 import { SubmitButton } from "../../auth/submit";
 import { confirmSubscriptionPayment, reviewSubscriptionPix, savePlanSettings } from "./actions";
 
@@ -28,7 +28,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const { busca, estado, teste } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [settings, businesses, pending] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,pix_merchant,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,pix_merchant,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
     search ? supabase.rpc("barberflow_billing_businesses", { search_text: search }) : Promise.resolve({ data: [], error: null }),
     supabase.from("barberflow_subscription_charges").select("*,barberflow_establishments(name)")
       .eq("status", "submitted").order("submitted_at").limit(100),
@@ -42,7 +42,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const selected = shops.length === 1 ? shops[0] : undefined;
   const [subscription, history, archived] = selected ? await Promise.all([
     supabase.from("barberflow_subscriptions").select("preferred_period").eq("establishment_id", selected.id).maybeSingle(),
-    supabase.from("barberflow_subscription_payments").select("id,period,amount_cents,reference,starts_on,ends_before")
+    supabase.from("barberflow_subscription_payments").select("id,plan,period,amount_cents,reference,starts_on,ends_before")
       .eq("establishment_id", selected.id).order("starts_on", { ascending: false }).limit(50),
     supabase.from("barberflow_subscription_charges").select("payment_id,receipt_path")
       .eq("establishment_id", selected.id).eq("status", "confirmed"),
@@ -57,14 +57,16 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
     <MasterTabs current="/gestao-master/assinaturas" />
     <h1>Gestão de assinaturas</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
-    {config && <MasterCards items={[["Mensal",bookingCurrency.format(config.monthly_cents / 100)],
-      ["Anual",bookingCurrency.format(config.yearly_cents / 100)],["Dias de teste",config.trial_days],
+    {config && <MasterCards items={[["Pro mensal",bookingCurrency.format(config.monthly_cents / 100)],
+      ["Pro anual",bookingCurrency.format(config.yearly_cents / 100)],["Premium mensal",bookingCurrency.format(config.premium_monthly_cents / 100)],["Premium anual",bookingCurrency.format(config.premium_yearly_cents / 100)],["Dias de teste",config.trial_days],
       ["Comprovantes na fila",pending.error ? "Indisponível" : pending.data.length === 100 ? "100+" : pending.data.length]]} />}
     <h2>Configuração dos planos</h2>
     {config ? <form className="card account-form panel-form" action={savePlanSettings}>
       <div className="form-columns">
-        <label>Mensal (R$) <input name="monthly" inputMode="decimal" defaultValue={amount(config.monthly_cents)} required /></label>
-        <label>Anual (R$) <input name="yearly" inputMode="decimal" defaultValue={amount(config.yearly_cents)} required /></label>
+        <label>Pro mensal (R$) <input name="monthly" inputMode="decimal" defaultValue={amount(config.monthly_cents)} required /></label>
+        <label>Pro anual (R$) <input name="yearly" inputMode="decimal" defaultValue={amount(config.yearly_cents)} required /></label>
+        <label>Premium mensal (R$) <input name="premiumMonthly" inputMode="decimal" defaultValue={amount(config.premium_monthly_cents)} required /></label>
+        <label>Premium anual (R$) <input name="premiumYearly" inputMode="decimal" defaultValue={amount(config.premium_yearly_cents)} required /></label>
         <label>Dias de teste para novos estabelecimentos <input name="trial" type="number" min={0} max={365} defaultValue={config.trial_days} required /></label>
       </div>
       <label>Chave Pix <input name="pix" maxLength={160} defaultValue={config.pix_key} /></label>
@@ -98,7 +100,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
         const proof = charge.receipt_path && proofLinks.get(charge.receipt_path);
         return <section className="card panel-form" key={charge.id}>
           <h3><Link href={`?busca=${charge.establishment_id}`}>{charge.barberflow_establishments?.name ?? charge.establishment_id}</Link></h3>
-          <p>{planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</p>
+          <p>{tierLabel(charge.plan)} · {planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</p>
           <p>Confira o recebimento no extrato da conta Pix antes de confirmar.</p>
           {proof ? <a href={proof}>Baixar comprovante</a> : <p role="alert">Comprovante indisponível no momento.</p>}
           <form className="account-form" action={reviewSubscriptionPix.bind(null, charge.establishment_id, charge.id, false)}>
@@ -128,6 +130,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       <h3>{selected.name}</h3>
       {subscription?.error ? <p role="alert">Não foi possível consultar a preferência.</p> : <p>Preferência do proprietário: {preferred ? planNames[preferred] : "Sem preferência"}</p>}
       <form className="account-form" action={confirmSubscriptionPayment.bind(null, selected.id)}>
+        <label>Plano <select name="plan" required defaultValue="pro"><option value="pro">Pro</option><option value="premium">Premium</option></select></label>
         <label>Modalidade <select name="period" defaultValue={preferred ?? "monthly"}>
           {Object.entries(planNames).map(([id, name]) => <option value={id} key={id}>{name}</option>)}
         </select></label>
@@ -140,7 +143,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
         const receipt = receipts.get(payment.id);
         const proof = receipt && proofLinks.get(receipt);
         return <li key={payment.id}>
-          {planNames[payment.period as PlanPeriod]} · {bookingCurrency.format(payment.amount_cents / 100)} · {payment.reference}
+          {tierLabel(payment.plan)} · {planNames[payment.period as PlanPeriod]} · {bookingCurrency.format(payment.amount_cents / 100)} · {payment.reference}
           {proof && <> · <a href={proof}>Baixar comprovante</a></>}
         </li>;
       })}</ul> : <p>Nenhum pagamento confirmado.</p>}

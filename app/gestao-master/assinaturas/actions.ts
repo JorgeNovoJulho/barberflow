@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { isUuid, parsePrice } from "../../../lib/establishments";
 import { requireMaster } from "../../../lib/master";
 import { normalizePixKey, pixLabel } from "../../../lib/pix";
-import { isPlanPeriod } from "../../../lib/subscriptions";
+import { isPlanPeriod, isPlanTier } from "../../../lib/subscriptions";
 
 const path = "/gestao-master/assinaturas";
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -20,6 +20,8 @@ export async function savePlanSettings(form: FormData) {
   const supabase = await requireMaster();
   const monthly_cents = parsePrice(value(form, "monthly"));
   const yearly_cents = parsePrice(value(form, "yearly"));
+  const premium_monthly_cents = parsePrice(value(form, "premiumMonthly"));
+  const premium_yearly_cents = parsePrice(value(form, "premiumYearly"));
   const trial = value(form, "trial");
   const trial_days = Number(trial);
   const rawPix = value(form, "pix");
@@ -36,9 +38,9 @@ export async function savePlanSettings(form: FormData) {
   const support_whatsapp = value(form, "whatsapp").replace(/[\s()+.-]/g, "");
   if (pix_beneficiary.length > 120 || !/^([1-9]\d{9,14})?$/.test(support_whatsapp)) finish("invalido");
   const instructions = value(form, "instructions");
-  if (!monthly_cents || !yearly_cents || !/^\d{1,3}$/.test(trial) || trial_days > 365 || instructions.length > 1500) finish("invalido");
+  if (!monthly_cents || !yearly_cents || !premium_monthly_cents || !premium_yearly_cents || !/^\d{1,3}$/.test(trial) || trial_days > 365 || instructions.length > 1500) finish("invalido");
   const { data, error } = await supabase.from("barberflow_plan_settings")
-    .update({ monthly_cents, yearly_cents, trial_days, pix_key, instructions, pix_beneficiary, support_whatsapp,
+    .update({ monthly_cents, yearly_cents, premium_monthly_cents, premium_yearly_cents, trial_days, pix_key, instructions, pix_beneficiary, support_whatsapp,
       pix_city, pix_merchant, grace_days, billing_rules, plan_benefits }).eq("singleton", true).select("singleton").maybeSingle();
   revalidatePath("/planos");
   finish(error || !data ? "falha" : "configurado");
@@ -48,11 +50,12 @@ export async function confirmSubscriptionPayment(shop: string, form: FormData) {
   const supabase = await requireMaster();
   if (!isUuid(shop)) finish("invalido");
   const period = form.get("period");
+  const plan = form.get("plan");
   const cents = parsePrice(value(form, "amount"));
   const reference = value(form, "reference");
-  if (!isPlanPeriod(period) || !cents || !reference || reference.length > 160) finish("invalido", shop);
+  if (!isPlanPeriod(period) || !isPlanTier(plan) || !cents || !reference || reference.length > 160) finish("invalido", shop);
   const { data, error } = await supabase.rpc("barberflow_confirm_subscription_payment", {
-    shop, paid_period: period, cents, payment_reference: reference,
+    shop, paid_period: period, cents, payment_reference: reference, paid_plan: plan,
   });
   revalidatePath(`/painel/${shop}/assinatura`);
   finish(error ? "falha" : data ? "confirmado" : "duplicado", shop);

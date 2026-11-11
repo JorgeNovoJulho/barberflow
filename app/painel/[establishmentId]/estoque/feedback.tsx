@@ -1,5 +1,6 @@
 const messages: Record<string, string> = {
   invalido: "Confira os dados informados.",
+  "limite-vitrine": "A vitrine atingiu o limite de produtos ativos do seu plano. Retire um produto da vitrine ou consulte sua assinatura.",
   falha: "Não foi possível concluir a operação.",
   sku: "Já existe um produto com esse código.",
   barcode: "Já existe um produto com esse código de barras.",

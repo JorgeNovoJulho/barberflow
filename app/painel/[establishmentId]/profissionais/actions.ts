@@ -75,6 +75,7 @@ export async function saveProfessional(shop: string, professional: string | null
     : supabase.from("barberflow_professionals").insert({ ...profile, establishment_id: shop });
   const { data, error } = await query.select("id").maybeSingle();
   if ((error || !data) && object) await bucket.remove([object]);
+  if (error?.code === "BF001") return error.message;
   if (error) {
     console.error("Falha ao salvar profissional", { code: error.code });
     return error.code === "42501" ? "Sua conta não tem permissão para salvar este profissional." : "O banco recusou o cadastro. Confira os campos e tente novamente.";
@@ -89,7 +90,7 @@ export async function saveAssignments(shop: string, professional: string, delega
   const services = form.getAll("service").map(String);
   if (services.some((id) => !isUuid(id))) result(path, "invalido");
   const { error } = await supabase.rpc("barberflow_set_professional_services", { shop, professional, services });
-  result(path, error ? "falha" : "vinculos-salvos");
+  result(path, error?.code === "BF001" ? "limite-vinculos" : error ? "falha" : "vinculos-salvos");
 }
 
 export async function moveProfessional(shop: string, professional: string, neighbor: string, step: -1 | 1, delegated: boolean) {

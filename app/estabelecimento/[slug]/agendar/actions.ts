@@ -30,7 +30,7 @@ export async function bookOnline(slug: string, data: FormData) {
     ...(!user ? { request_id: requestId } : {}),
   });
   if (error || !booking) {
-    query.set("estado", ["22023", "23P01"].includes(error?.code ?? "") ? "indisponivel" : "falha");
+    query.set("estado", ["22023", "23P01", "BF001"].includes(error?.code ?? "") ? "indisponivel" : "falha");
     redirect(path + "?" + query);
   }
   if (!user) {

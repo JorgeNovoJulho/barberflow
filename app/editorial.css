@@ -220,3 +220,12 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .booking-board .booking-column[data-step="done"] { border-color: #8bc5b4; }
 .booking-board [data-step="current"] > :is(legend, h2) { color: var(--accent-ink); }
 .booking-review .booking-confirm:not(:disabled) { background: #176650; color: white; border-color: #176650; }
+
+.subscription-plans { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,19rem),1fr)); gap: 1rem; margin-block: 1rem; }
+.subscription-plan { min-width: 0; margin: 0; border-top: .25rem solid #4d6baf; }
+.subscription-plan[data-tier="premium"] { border-top-color: #7849be; }
+.subscription-plan legend { padding-inline: .45rem; font-size: 1.25rem; font-weight: 750; }
+.subscription-plan ul { padding-inline-start: 1.15rem; }
+.subscription-plan li + li { margin-top: .4rem; }
+.subscription-plan .subscription-option { display: flex; align-items: center; gap: .6rem; padding: .65rem; margin-top: .5rem; border: 1px solid var(--border); border-radius: .6rem; cursor: pointer; }
+.subscription-option:has(:checked) { background: var(--accent-soft); border-color: var(--accent-ink); }

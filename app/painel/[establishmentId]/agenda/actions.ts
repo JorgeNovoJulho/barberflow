@@ -50,6 +50,7 @@ export async function createEntry(shop: string, day: string, kind: "appointment"
     note,
   });
   const { error } = await request;
+  if (error?.code === "BF001") return finish("limite-plano");
   if (error?.code === "23P01") return finish("conflito");
   if (error?.code === "22023") return finish("indisponivel");
   return finish(error ? "falha" : "salvo");
@@ -70,6 +71,7 @@ export async function rescheduleEntry(shop: string, day: string, entry: string, 
   const { data, error } = await supabase.rpc("barberflow_reschedule", {
     shop, entry, new_start: targetDay + "T" + targetTime,
   });
+  if (error?.code === "BF001") return finish("limite-plano");
   if (error?.code === "23P01") return finish("conflito");
   if (error?.code === "22023") return finish("indisponivel");
   if (error || !data) return finish("falha");

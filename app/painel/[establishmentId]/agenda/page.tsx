@@ -19,6 +19,7 @@ const messages: Record<string, string> = {
   conflito: "Esse horário já está ocupado ou bloqueado para o profissional.",
   indisponivel: "Confira o expediente, os serviços vinculados ao profissional e se o cliente está ativo.",
   invalido: "Confira os campos e a ordem dos horários.",
+  "limite-plano": "O plano Pro permite até 8 agendamentos por dia. Escolha outra data.",
   falha: "Não foi possível concluir a operação.",
 };
 

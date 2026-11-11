@@ -52,6 +52,7 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);
   }
+  if (error?.code === "BF001") finish("limite-vitrine");
   finish(error?.code === "23505" ? error.message.includes("barberflow_products_barcode") ? "barcode" : "sku" : error || !data ? "falha" : "salvo");
 }
 
@@ -72,6 +73,7 @@ export async function changeProductStatus(shop: string, product: string, operati
   const { supabase, finish } = await context(shop);
   if (!isUuid(product)) finish("invalido");
   const { data, error } = await supabase.rpc("barberflow_set_product_status", { shop, product, operation });
+  if (error?.code === "BF001") finish("limite-vitrine");
   if (error || !data) finish("falha");
   finish(operation === "delete" ? "excluido" : operation === "freeze" ? "congelado" : "descongelado");
 }

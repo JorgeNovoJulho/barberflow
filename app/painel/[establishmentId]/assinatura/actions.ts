@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { subscriptionProofBucket } from "../../../../lib/subscription-checkout";
-import { isPlanPeriod } from "../../../../lib/subscriptions";
+import { isPlanPeriod, isPlanTier } from "../../../../lib/subscriptions";
 import { supabaseServer } from "../../../../lib/supabase";
 
 async function subscriptionContext(shop: string) {
@@ -15,19 +15,15 @@ async function subscriptionContext(shop: string) {
   return { supabase, path };
 }
 
-export async function preferPlan(shop: string, form: FormData) {
+export async function issueSubscriptionPix(shop: string, form: FormData) {
   const { supabase, path } = await subscriptionContext(shop);
-  const period = form.get("period");
-  if (!isPlanPeriod(period)) redirect(path + "?estado=falha");
-  const { data, error } = await supabase.rpc("barberflow_prefer_plan", { shop, selected_period: period });
-  redirect(path + "?estado=" + (error || !data ? "falha" : "salvo"));
-}
-
-export async function issueSubscriptionPix(shop: string, period: string, attach = false) {
-  const { supabase, path } = await subscriptionContext(shop);
-  if (!isPlanPeriod(period)) redirect(path + "?estado=pix-falha");
-  const { data, error } = await supabase.rpc("barberflow_issue_subscription_pix", { shop, selected_period: period });
-  redirect(path + (error || !data ? "?estado=pix-falha" : (attach ? "?comprovante=" + data + "#comprovante-" : "#pix-") + data));
+  const [tier, period] = String(form.get("option") ?? "").split(":");
+  if (!isPlanTier(tier) || !isPlanPeriod(period)) redirect(path + "?estado=pix-falha");
+  const { data, error } = await supabase.rpc("barberflow_issue_subscription_pix", {
+    shop, selected_period: period, selected_plan: tier,
+  });
+  if (error || !data) redirect(path + "?estado=pix-falha");
+  redirect(path + "?cobranca=" + data + "#pix-" + data);
 }
 
 export async function sendSubscriptionProof(shop: string, charge: string, form: FormData) {

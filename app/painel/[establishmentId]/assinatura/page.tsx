@@ -6,17 +6,17 @@ import { isUuid } from "../../../../lib/establishments";
 import { showcasePix } from "../../../../lib/pix";
 import { subscriptionLines, subscriptionProofLinks } from "../../../../lib/subscription-checkout";
 import { bookingCurrency } from "../../../../lib/public-booking";
-import { planNames, planPrice, type PlanPeriod } from "../../../../lib/subscriptions";
+import { isPlanTier, periods, planNames, planPrice, planTiers, tierLabel, tiers, type PlanPeriod } from "../../../../lib/subscriptions";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
-import { issueSubscriptionPix, preferPlan, sendSubscriptionProof } from "./actions";
+import { issueSubscriptionPix, sendSubscriptionProof } from "./actions";
 import { CopyPix } from "./copy-pix";
 
 const dateLabel = (day: string) => day.split("-").reverse().join("/");
 
 export default async function Subscription({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; comprovante?: string }>;
+  searchParams: Promise<{ estado?: string; comprovante?: string; cobranca?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
@@ -29,11 +29,11 @@ export default async function Subscription({ params, searchParams }: {
   const businessName = business.data.name;
   const today = saoPauloToday();
   const [settings, subscription, current, history, openCharges] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,support_whatsapp,pix_city,pix_merchant,grace_days,billing_rules,plan_benefits").single(),
-    supabase.from("barberflow_subscriptions").select("trial_until,preferred_period").eq("establishment_id", shop).maybeSingle(),
-    supabase.from("barberflow_subscription_payments").select("period,ends_before").eq("establishment_id", shop)
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,support_whatsapp,pix_city,pix_merchant,grace_days,billing_rules,plan_benefits").single(),
+    supabase.from("barberflow_subscriptions").select("trial_until,preferred_period,preferred_plan").eq("establishment_id", shop).maybeSingle(),
+    supabase.from("barberflow_subscription_payments").select("plan,period,ends_before").eq("establishment_id", shop)
       .lte("starts_on", today).gt("ends_before", today).maybeSingle(),
-    supabase.from("barberflow_subscription_payments").select("id,period,amount_cents,confirmed_at,starts_on,ends_before")
+    supabase.from("barberflow_subscription_payments").select("id,plan,period,amount_cents,confirmed_at,starts_on,ends_before")
       .eq("establishment_id", shop).order("starts_on", { ascending: false }).limit(50),
     supabase.from("barberflow_subscription_charges").select("*").eq("establishment_id", shop)
       .neq("status", "confirmed").order("created_at", { ascending: false }).limit(20),
@@ -49,16 +49,17 @@ export default async function Subscription({ params, searchParams }: {
     const code = charge.status === "pending" ? showcasePix({ ...charge, total_cents: charge.amount_cents }) : null;
     return { charge, code, qr: code ? await QRCode.toDataURL(code, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null };
   }));
-  const { estado, comprovante } = await searchParams;
+  const { estado, comprovante, cobranca } = await searchParams;
   const trialUntil = subscription.data?.trial_until;
   const trialActive = Boolean(trialUntil && trialUntil > today);
   const queued = history.data?.filter((item) => item.starts_on > today).at(-1);
   const preferred = subscription.data?.preferred_period as PlanPeriod | undefined;
+  const preferredPlan = subscription.data?.preferred_plan;
+  const defaultPlan = isPlanTier(preferredPlan) ? preferredPlan : isPlanTier(current.data?.plan) ? current.data.plan : "pro";
   const prices = settings.data;
   const lastEnd = [trialUntil, current.data?.ends_before, ...((history.data ?? []).map((payment) => payment.ends_before))]
     .filter((day): day is string => !!day).sort().at(-1);
   const daysLeft = lastEnd ? Math.round((Date.parse(lastEnd) - Date.parse(today)) / 86400000) : null;
-  const saving = prices ? Math.max(0, 12 * prices.monthly_cents - prices.yearly_cents) : 0;
 
   const pixReady = Boolean(prices?.pix_key && prices.pix_city && prices.pix_merchant);
   const feedback: Record<string, string> = {
@@ -73,65 +74,45 @@ export default async function Subscription({ params, searchParams }: {
       <Link href="/painel">Meus estabelecimentos</Link><Link href={`/painel/${shop}/resumo`}>Visão geral</Link>
     </nav>
     <p className="eyebrow">{businessName}</p><h1>Assinatura</h1>
-    {estado === "salvo" && <p role="status">Preferência de plano salva.</p>}
-    {estado === "falha" && <p role="alert">Não foi possível salvar a preferência.</p>}
     {estado && Object.hasOwn(feedback, estado) && <p role={estado === "enviado" ? "status" : "alert"}>{feedback[estado]}</p>}
     {!prices || archived?.error || [subscription, current, history, openCharges].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
       <section className="card panel-form">
         <h2>Situação da assinatura</h2>
-        {current.data ? <p>Plano {planNames[current.data.period as PlanPeriod].toLowerCase()} ativo até {dateLabel(offsetDay(current.data.ends_before, -1))}.</p>
+        {current.data ? <p>{tierLabel(current.data.plan)} · {planNames[current.data.period as PlanPeriod]} ativo até {dateLabel(offsetDay(current.data.ends_before, -1))}.</p>
           : trialActive && trialUntil ? <p>Teste grátis ativo até {dateLabel(offsetDay(trialUntil, -1))}.</p>
           : trialUntil ? <p>Teste grátis encerrado em {dateLabel(trialUntil)}.</p> : <p>Estabelecimento sem período de teste registrado.</p>}
         {daysLeft !== null && daysLeft > 0 && daysLeft <= 7 && <p role="status">Renovação em {daysLeft} {daysLeft === 1 ? "dia" : "dias"}.</p>}
         {daysLeft !== null && daysLeft <= 0 && <p role="status">{daysLeft > -prices.grace_days
           ? `A assinatura venceu. Prazo de regularização até ${dateLabel(offsetDay(lastEnd!, prices.grace_days - 1))}.`
           : "Novos agendamentos públicos pausados até a regularização."}</p>}
-        {queued && <p>Próximo plano confirmado: {planNames[queued.period as PlanPeriod]}, de {dateLabel(queued.starts_on)} a {dateLabel(offsetDay(queued.ends_before, -1))}.</p>}
+        {queued && <p>Próximo plano confirmado: {tierLabel(queued.plan)} · {planNames[queued.period as PlanPeriod]}, de {dateLabel(queued.starts_on)} a {dateLabel(offsetDay(queued.ends_before, -1))}.</p>}
       </section>
-      <h2 className="panel-form">Escolher modalidade</h2>
-      <form className="account-form card" action={preferPlan.bind(null, shop)}>
-        <fieldset><legend>Preferência para o próximo pagamento</legend>
-          {(Object.keys(planNames) as PlanPeriod[]).map((period) => <label key={period}>
-            <input type="radio" name="period" value={period} defaultChecked={preferred === period} required /> {planNames[period]} · {planPrice(prices, period)}
-          </label>)}
-        </fieldset>
-        {saving > 0 && <p>Economize {bookingCurrency.format(saving / 100)} no anual em comparação com 12 mensalidades.</p>}
-        <SubmitButton>Salvar preferência</SubmitButton>
-      </form>
-      <section className="card panel-form">
-        <h2>Como pagar</h2>
+      <section aria-labelledby="subscription-options">
+        <h2 id="subscription-options">Escolha seu plano</h2>
+        <p>Selecione o plano e o período para gerar o Pix. Envie o comprovante da cobrança para análise. A vigência começa na data indicada após a confirmação do recebimento.</p>
         {prices.instructions && <p style={{ whiteSpace: "pre-wrap" }}>{prices.instructions}</p>}
-        <p>Gere o Pix para o plano escolhido e envie o comprovante por aqui. A vigência é registrada assim que a administração confirmar o recebimento.</p>
-        {pixReady ? <>
-          <p style={{ overflowWrap: "anywhere" }}>Chave Pix <strong>{prices.pix_key}</strong></p>
-          <CopyPix value={prices.pix_key} />
-          <p>Favorecido: {prices.pix_beneficiary}</p>
-          <div className="account-links">
-            {(Object.keys(planNames) as PlanPeriod[]).map((period) =>
-              <form key={period} action={issueSubscriptionPix.bind(null, shop, period, false)}>
-                <SubmitButton>{`Gerar Pix · ${planNames[period]} · ${planPrice(prices, period)}`}</SubmitButton>
-              </form>)}
+        {!pixReady && <p role="status">O recebimento via Pix aguarda configuração da administração.</p>}
+        <form className="account-form" action={issueSubscriptionPix.bind(null, shop)}>
+          <div className="subscription-plans">
+            {tiers.map((tier) => <fieldset key={tier} className="card subscription-plan" data-tier={tier}>
+              <legend>{planTiers[tier].name}</legend>
+              <ul>{planTiers[tier].limits.map((limit) => <li key={limit}>{limit}</li>)}</ul>
+              {periods.map((period) => <label key={period} className="subscription-option">
+                <input type="radio" name="option" value={tier + ":" + period} required
+                  defaultChecked={tier === defaultPlan && period === (preferred ?? "monthly")} />
+                <span>{planNames[period]} · <strong>{planPrice(prices, tier, period)}</strong></span>
+              </label>)}
+            </fieldset>)}
           </div>
-        </> : <p>A configuração de recebimento Pix está pendente na administração.</p>}
-        <div className="account-links" aria-label="Enviar comprovante por modalidade">
-          {(Object.keys(planNames) as PlanPeriod[]).map((period) => {
-            const existing = checkout.find(({ charge }) => charge.period === period && charge.status === "pending");
-            const underReview = checkout.find(({ charge }) => charge.period === period && charge.status === "submitted");
-            const label = `Enviar comprovante · ${planNames[period]}`;
-            if (underReview) return <Link className="secondary" key={period} href={`#pix-${underReview.charge.id}`}>Em análise · {planNames[period]}</Link>;
-            if (existing) return <Link className="secondary" key={period}
-              href={`?comprovante=${existing.charge.id}#comprovante-${existing.charge.id}`}>{label}</Link>;
-            return <form key={period} action={issueSubscriptionPix.bind(null, shop, period, true)}>
-              <SubmitButton disabled={!pixReady}>{label}</SubmitButton>
-            </form>;
-          })}
-        </div>
-        {prices.support_whatsapp && <a href={"https://wa.me/" + prices.support_whatsapp} target="_blank" rel="noopener noreferrer">Suporte pelo WhatsApp</a>}
+          <div><SubmitButton disabled={!pixReady}>Gerar Pix do plano selecionado</SubmitButton></div>
+        </form>
+        {prices.support_whatsapp && <p><a href={"https://wa.me/" + prices.support_whatsapp} target="_blank" rel="noopener noreferrer">Suporte pelo WhatsApp</a></p>}
       </section>
+      {!!checkout.length && <h2 className="panel-form">Cobranças e comprovantes</h2>}
       {checkout.map(({ charge, code, qr }) => {
         const proof = charge.receipt_path && proofLinks.get(charge.receipt_path);
         return <section className="card panel-form" id={"pix-" + charge.id} key={charge.id}>
-          <h3>Pix {planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</h3>
+          <h3>Pix · {tierLabel(charge.plan)} · {planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</h3>
           {charge.status === "submitted" && <p role="status">Comprovante em análise.</p>}
           {charge.status === "rejected" && <p>Comprovante recusado. {charge.rejection_reason} Se precisar, fale com o suporte antes de fazer outro Pix.</p>}
           {proof && <a href={proof}>Baixar comprovante enviado</a>}
@@ -140,7 +121,7 @@ export default async function Subscription({ params, searchParams }: {
             <img src={qr} width={240} height={240} alt="QR Code para pagamento da assinatura via Pix" style={{ maxWidth: "100%", height: "auto" }} />
             <label>Pix Copia e Cola <textarea rows={3} value={code} readOnly /></label>
             <CopyPix value={code} code />
-            <details id={"comprovante-" + charge.id} open={comprovante === charge.id}>
+            <details id={"comprovante-" + charge.id} open={comprovante === charge.id || cobranca === charge.id}>
               <summary>Anexar comprovante · {planNames[charge.period as PlanPeriod]}</summary>
             <form className="account-form" action={sendSubscriptionProof.bind(null, shop, charge.id)}>
               <label>Comprovante do pagamento (PDF, JPG, PNG ou WebP, até 5 MB)
@@ -166,7 +147,7 @@ export default async function Subscription({ params, searchParams }: {
         const receipt = receipts.get(payment.id);
         const proof = receipt && proofLinks.get(receipt);
         return <li className="card" key={payment.id}>
-        <strong>{planNames[payment.period as PlanPeriod]} · {bookingCurrency.format(payment.amount_cents / 100)}</strong>
+        <strong>{tierLabel(payment.plan)} · {planNames[payment.period as PlanPeriod]} · {bookingCurrency.format(payment.amount_cents / 100)}</strong>
         <p>Confirmado em {new Date(payment.confirmed_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
         <p>Vigência de {dateLabel(payment.starts_on)} a {dateLabel(offsetDay(payment.ends_before, -1))}.</p>
               {proof && <a href={proof}>Baixar comprovante arquivado</a>}
