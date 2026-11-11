@@ -5,6 +5,8 @@ import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { adjustStock, changeProductStatus, saveProduct, saveProductPromotion } from "./actions";
+import { BundlePricingFields, StockPricingFields } from "./pricing-fields";
+import { defaultMargins, type Margins, type MarginTier } from "../../../../lib/stock-pricing";
 import { StockFeedback } from "./feedback";
 import { offsetDay, saoPauloToday } from "../../../../lib/agenda";
 import { productMediaSlots, productPhotoBucket, productVideoBucket } from "../../../../lib/product-media";
@@ -12,11 +14,7 @@ import { ProductGallery, type ProductMedia } from "./product-gallery";
 
 type Product = { id: string; name: string; sku: string; barcode: string; price_cents: number; stock: number; active: boolean;
   description: string; showcase: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null; promo_units: number | null;
-  promo_cents: number | null; promo_until: string | null };
-
-function priceInput(cents: number | null | undefined) {
-  return cents == null ? "" : (cents / 100).toFixed(2).replace(".", ",");
-}
+  margin_tier: MarginTier | null; promo_cents: number | null; promo_until: string | null };
 
 function alerts(product: Product, today: string, cutoff: string) {
   if (!product.active) return [];
@@ -30,13 +28,12 @@ function alerts(product: Product, today: string, cutoff: string) {
   return result;
 }
 
-function ProductForm({ shop, product }: { shop: string; product?: Product }) {
+function ProductForm({ shop, product, margins }: { shop: string; product?: Product; margins: Margins }) {
   return <form className="account-form" action={saveProduct.bind(null, shop, product?.id ?? null)}>
     <label>Nome <input name="name" maxLength={120} required defaultValue={product?.name} /></label>
     <label>Código do produto (SKU) <input name="sku" maxLength={60} defaultValue={product?.sku} /></label>
     <label>Código de barras <input name="barcode" inputMode="numeric" pattern="[0-9]{1,32}" maxLength={32} defaultValue={product?.barcode} /></label>
-    <label>Preço de venda (R$) <input name="price" inputMode="decimal" required defaultValue={priceInput(product?.price_cents)} /></label>
-    <label>Custo unitário (R$) <input name="cost" inputMode="decimal" defaultValue={priceInput(product?.cost_cents)} /></label>
+    <StockPricingFields margins={margins} tier={product?.margin_tier} cost={product?.cost_cents} price={product?.price_cents} />
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
     <label>Estoque mínimo <input name="minimum" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required /></label>
     <label>Data de validade <input name="expiry" type="date" defaultValue={product?.expires_on ?? ""} /></label>
@@ -61,13 +58,15 @@ export default async function Stock({ params, searchParams }: {
   if (!business) notFound();
   const { estado, busca } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
-  const [products, movements, searchResult] = await Promise.all([
-    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase")
+  const [products, movements, searchResult, marginResult] = await Promise.all([
+    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase,margin_tier")
       .eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at,barberflow_products(name)")
       .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),
     search ? supabase.rpc("barberflow_search_products", { shop, search_text: search }) : null,
+    supabase.from("barberflow_stock_margins").select("alta,media,baixa").eq("shop", shop).maybeSingle(),
   ]);
+  const margins = marginResult.data ?? defaultMargins;
   const today = saoPauloToday();
   const cutoff = offsetDay(today, 30);
   const flagged = (products.data ?? []).map((product: Product) => ({ product, warnings: alerts(product, today, cutoff) }))
@@ -102,13 +101,14 @@ export default async function Stock({ params, searchParams }: {
       <p>Produtos, quantidades, validade e movimentações do estabelecimento.</p>
     </header>
     <StockFeedback status={estado} />
-    {products.error || movements.error ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
+    <Link className="secondary" href={`/painel/${shop}/financeiro/margens`}>Configurar margens de produtos</Link>
+    {products.error || movements.error || marginResult.error ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
       <dl className="cards stock-metrics">
         <div className="card dashboard-metric"><dt>Produtos à venda</dt><dd>{activeProducts.length}</dd></div>
         <div className="card dashboard-metric"><dt>Unidades em produtos à venda</dt><dd>{activeProducts.reduce((total, item) => total + item.stock, 0).toLocaleString("pt-BR")}</dd></div>
         <div className="card dashboard-metric"><dt>Produtos com alerta</dt><dd>{flagged.length}</dd></div>
       </dl>
-      <details className="card panel-form"><summary>Novo produto</summary><ProductForm shop={shop} /></details>
+      <details className="card panel-form"><summary>Novo produto</summary><ProductForm shop={shop} margins={margins} /></details>
       {flagged.length > 0 && <section className="card panel-form stock-alerts" aria-labelledby="stock-alerts-title">
         <h2 id="stock-alerts-title">Alertas de estoque e validade</h2>
         <ul>{flagged.map(({ product, warnings }) => <li key={product.id}>
@@ -149,12 +149,11 @@ export default async function Stock({ params, searchParams }: {
           {warningsByProduct.get(product.id)?.map((warning) => <li key={warning}>{warning}</li>)}
         </ul>}
         <Link className="secondary" href={`/painel/${shop}/estoque/${product.id}/midia`}>Fotos e vídeo</Link>
-        <details><summary>Editar produto</summary><ProductForm shop={shop} product={product} /></details>
+        <details><summary>Editar produto</summary><ProductForm shop={shop} margins={margins} product={product} /></details>
         {(canOffer || product.promo_units !== null) && <details>
           <summary>{product.promo_units !== null ? "Gerenciar promoção" : "Criar promoção por validade"}</summary>
           {canOffer && <form className="account-form" action={saveProductPromotion.bind(null, shop, product.id, false)}>
-            <label>Unidades por oferta <input name="bundle_units" type="number" min={1} max={10000} defaultValue={product.promo_units ?? 3} required /></label>
-            <label>Valor total da oferta (R$) <input name="bundle_price" inputMode="decimal" defaultValue={priceInput(product.promo_cents)} required /></label>
+            <BundlePricingFields cost={product.cost_cents} stock={product.stock} />
             <label>Oferta válida até <input name="offer_until" type="date" min={today} max={product.expires_on ?? undefined}
               defaultValue={activeOffer ? product.promo_until ?? undefined : product.expires_on ?? undefined} required /></label>
             <SubmitButton>Salvar promoção</SubmitButton>

@@ -137,6 +137,7 @@ export default async function Finance({ params, searchParams }: {
           <Link className="secondary finance-tab" data-tone="purple" href={`/painel/${shop}/financeiro/pagamentos`}>Configurar Pix e cartões</Link>
           <Link className="secondary finance-tab" data-tone="blue" href={`/painel/${shop}/financeiro/relatorios`}>Relatórios e fechamentos</Link>
           <Link className="secondary finance-tab" data-tone="teal" href={`/painel/${shop}/financeiro/desempenho`}>Desempenho</Link>
+          <Link className="secondary finance-tab" data-tone="purple" href={`/painel/${shop}/financeiro/margens`}>Margens de produtos</Link>
           <Link className="secondary finance-tab" data-tone="amber" href="?guia=fixed#lancamentos">Contas a pagar</Link>
           <Link className="secondary finance-tab" data-tone="green" href="?guia=receivables#lancamentos">Outros recebimentos</Link>
           <Link className="secondary finance-tab" data-tone="rose" href={billLink(billView)}>Contas a receber de comandas</Link>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid, parsePrice } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
+import { bundleSizes, marginTypes } from "../../../../lib/stock-pricing";
 import { validDay } from "../../../../lib/agenda";
 
 function get(form: FormData, key: string) {
@@ -29,22 +30,24 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const barcode = get(form, "barcode");
   const description = get(form, "description");
   const showcase = product === null || form.has("showcase");
+  const tier = get(form, "margin_tier") || null;
   const price = parsePrice(get(form, "price"));
   const rawCost = get(form, "cost");
   const cost = rawCost ? parsePrice(rawCost) : null;
   const minimum = Number(get(form, "minimum"));
   const initial = Number(get(form, "initial"));
   const expiry = get(form, "expiry");
-  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || price === null || (product && !isUuid(product))) finish("invalido");
+  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || (!tier && price === null) || (product && !isUuid(product))) finish("invalido");
   if ((rawCost && cost === null) || !Number.isInteger(minimum) || minimum < 0 || minimum > 1000000
     || (!product && (!Number.isInteger(initial) || initial < 0 || initial > 1000000))
     || (expiry && !validDay(expiry))) finish("invalido");
-  const fields = { name, sku, barcode, description, showcase, price_cents: price, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
+  if (tier && (!marginTypes.some(({ id }) => id === tier) || !cost)) finish("margem-invalida");
+  const fields = { margin_tier: tier, name, sku, barcode, description, showcase, price_cents: price ?? 0, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
     ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
-    : await supabase.rpc("barberflow_create_product", { shop, product_name: name, product_sku: sku,
-      sale_price: price, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
+    : await supabase.rpc("barberflow_create_priced_product", { shop, product_name: name, product_sku: sku,
+      tier, sale_price: price ?? 0, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);
@@ -55,12 +58,13 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
 export async function saveProductPromotion(shop: string, product: string, remove: boolean, form: FormData) {
   const { supabase, finish } = await context(shop);
   const units = Number(get(form, "bundle_units"));
-  const cents = parsePrice(get(form, "bundle_price"));
+  const rawMarkup = get(form, "bundle_markup");
+  const markup = Number(rawMarkup);
   const until = get(form, "offer_until");
-  if (!isUuid(product) || (!remove && (!Number.isInteger(units) || units < 1 || units > 10000 || !cents || !validDay(until)))) finish("promocao-invalida");
-  const { data, error } = await supabase.rpc("barberflow_save_product_promotion", {
-    shop, product, bundle_units: remove ? null : units, bundle_cents: remove ? null : cents, offer_until: remove ? null : until,
-  });
+  if (!isUuid(product) || (!remove && (!bundleSizes.some((size) => size === units) || !/^\d{1,2}$/.test(rawMarkup) || markup > 20 || !validDay(until)))) finish("promocao-invalida");
+  const { data, error } = remove
+    ? await supabase.rpc("barberflow_save_product_promotion", { shop, product, bundle_units: null, bundle_cents: null, offer_until: null })
+    : await supabase.rpc("barberflow_save_expiry_offer", { shop, product, units, markup, until_day: until });
   finish(error || !data ? "promocao-invalida" : remove ? "promocao-removida" : "promocao-salva");
 }
 
