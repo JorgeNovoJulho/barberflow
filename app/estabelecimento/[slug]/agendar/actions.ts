@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validDay } from "../../../../lib/agenda";
 import { isUuid } from "../../../../lib/establishments";
@@ -12,20 +13,29 @@ export async function bookOnline(slug: string, service: string, professional: st
   const path = `/estabelecimento/${slug}/agendar`;
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
-  if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path + "?" + query }));
+  if (!supabase) { query.set("estado","falha"); redirect(path + "?" + query); }
   const start = String(data.get("slot") ?? "");
   const customer = String(data.get("customer") ?? "").trim();
   const phone = String(data.get("phone") ?? "").trim();
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start) || !customer || customer.length > 120 || phone.length > 30) {
+  const requestId = String(data.get("requestId") ?? "");
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start) || !customer || customer.length > 120 || phone.length > 30 || (!user && (!isUuid(requestId) || !/^\d{10,15}$/.test(phone.replace(/\D/g, ""))))) {
     query.set("estado", "invalido");
     redirect(path + "?" + query);
   }
-  const { data: booking, error } = await supabase.rpc("barberflow_book_online", {
+  const { data: booking, error } = await supabase.rpc(user ? "barberflow_book_online" : "barberflow_book_guest", {
     profile_slug: slug, service, professional, start_at: day + "T" + start, customer, phone,
+    ...(!user ? { request_id: requestId } : {}),
   });
   if (error || !booking) {
     query.set("estado", ["22023", "23P01"].includes(error?.code ?? "") ? "indisponivel" : "falha");
     redirect(path + "?" + query);
+  }
+  if (!user) {
+    (await cookies()).set("barberflow-guest-" + slug, requestId, {
+      httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax",
+      path, maxAge: 60 * 60 * 24,
+    });
+    redirect(path + "?estado=registrado");
   }
   redirect("/meus-agendamentos?estado=registrado");
 }

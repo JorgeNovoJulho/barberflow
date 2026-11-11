@@ -23,7 +23,7 @@ export default async function EstablishmentLayout({ children, params }: {
   const user = (await supabase.auth.getUser()).data.user;
   const [bookings, orders] = await Promise.all([
     supabase.from("barberflow_schedule").select("id", { count: "exact", head: true })
-      .eq("establishment_id", shop).not("booked_by", "is", null).not("booking_created_at", "is", null).is("booking_read_at", null),
+      .eq("establishment_id", shop).or("booked_by.not.is.null,guest_online.eq.true").not("booking_created_at", "is", null).is("booking_read_at", null),
     user?.id === business.data.owner_id
       ? supabase.from("barberflow_showcase_orders").select("id", { count: "exact", head: true })
         .eq("establishment_id", shop).eq("status", "paid").is("read_at", null)

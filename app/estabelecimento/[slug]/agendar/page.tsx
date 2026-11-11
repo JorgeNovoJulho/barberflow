@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { offsetDay, saoPauloToday, validDay } from "../../../../lib/agenda";
@@ -9,7 +11,7 @@ import { bookOnline } from "./actions";
 const feedback: Record<string, string> = {
   invalido: "Selecione um horário e confira os dados de contato.",
   indisponivel: "Esse horário ficou indisponível. Escolha outro.",
-  falha: "Não foi possível confirmar a reserva. Confira sua conta e tente novamente.",
+  falha: "Não foi possível confirmar a reserva. Tente novamente.",
 };
 
 export default async function Booking({ params, searchParams }: {
@@ -24,6 +26,16 @@ export default async function Booking({ params, searchParams }: {
   const person = service?.professionals.find((entry) => entry.id === profissional);
   const today = saoPauloToday();
   const supabase = await supabaseServer();
+  const requestToken = (await cookies()).get("barberflow-guest-" + slug)?.value;
+  const confirmation = estado === "registrado" && requestToken
+    ? await supabase?.rpc("barberflow_guest_confirmation", { request_id: requestToken }) : null;
+  if (confirmation?.data?.slug === slug) return <section className="container section">
+    <h1>{confirmation.data.state === "scheduled" ? "Agendamento confirmado" : confirmation.data.state === "pending" ? "Agendamento enviado para aprovação" : "Situação do agendamento"}</h1>
+    <p role="status" data-feedback="success">{confirmation.data.service} com {confirmation.data.professional} em {confirmation.data.shop}.</p>
+    <p>{String(confirmation.data.start).slice(0,10).split("-").reverse().join("/")} às {String(confirmation.data.start).slice(11,16)}</p>
+    <p>{confirmation.data.state === "scheduled" ? "Seu horário está reservado. O estabelecimento recebeu a notificação." : "O estabelecimento recebeu sua solicitação. Entre em contato para acompanhar a confirmação."}</p>
+    <Link className="secondary" href={"/estabelecimento/" + slug}>Voltar à página do estabelecimento</Link>
+  </section>;
   const availability = await supabase?.rpc("barberflow_booking_enabled", { profile_slug: slug });
   if (availability?.error || availability?.data === false) return <section className="container section">
     <Link href={"/estabelecimento/" + slug}>Voltar para {profile.name}</Link>
@@ -39,9 +51,6 @@ export default async function Booking({ params, searchParams }: {
   }) : null;
   const slots = (result?.data ?? []) as { slot: string }[];
   const path = `/estabelecimento/${slug}/agendar`;
-  const next = service && person
-    ? path + "?" + new URLSearchParams({ servico: service.id, profissional: person.id, dia: day })
-    : path;
   const availableServices = profile.services.filter((entry) => entry.professionals.some((provider) => !profissional || provider.id === profissional));
   const step = !service ? 0 : !person || !slots.length ? 1 : 2;
 
@@ -82,20 +91,19 @@ export default async function Booking({ params, searchParams }: {
     {result && !result.error && !slots.length && <p className="card booking-panel">Nenhum horário disponível nesta data. Selecione outro dia ou profissional.</p>}
     {service && person && slots.length > 0 && <div className="card booking-panel">
       <h2>Horários disponíveis</h2>
-      {!user ? <>
-        <ul className="booking-time-list" aria-label="Horários disponíveis">{slots.map(({ slot }) => <li key={slot}>{slot.slice(11, 16)}</li>)}</ul>
-        <Link className="primary" href={"/login?" + new URLSearchParams({ next })}>Entrar para confirmar</Link>
-      </> : <form className="account-form" action={bookOnline.bind(null, slug, service.id, person.id, day)}>
+      {!user && <p>Informe seu nome e WhatsApp para confirmar o atendimento.</p>}
+      <form className="account-form" action={bookOnline.bind(null, slug, service.id, person.id, day)}>
+        <input type="hidden" name="requestId" value={randomUUID()} />
         <fieldset className="booking-slots"><legend>Escolha o horário</legend>
           {slots.map(({ slot }) => <label key={slot}>
             <input type="radio" name="slot" value={slot.slice(11, 16)} required /> {slot.slice(11, 16)}
           </label>)}
         </fieldset>
         <label>Nome <input name="customer" required maxLength={120}
-          defaultValue={typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name : ""} /></label>
-        <label>WhatsApp <input name="phone" type="tel" maxLength={30} /></label>
+          defaultValue={typeof user?.user_metadata.full_name === "string" ? user.user_metadata.full_name : ""} /></label>
+        <label>WhatsApp <input name="phone" type="tel" required={!user} maxLength={30} /></label>
         <SubmitButton>Confirmar agendamento</SubmitButton>
-      </form>}
+      </form>
     </div>}
     </div>
     {service && <aside className="card booking-summary" aria-label="Resumo do agendamento">
