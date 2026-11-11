@@ -25,7 +25,7 @@ const icons = {
   assinatura: "M3 6h18v12H3zM3 10h18M6 14h5",
 } satisfies Record<(typeof links)[number][0], string>;
 
-export function WorkspaceNav({ shop, name, image, unread, paidOrders }: { shop: string; name: string; image?: string; unread: number; paidOrders?: number }) {
+export function WorkspaceNav({ shop, name, image, unread, pendingOrders }: { shop: string; name: string; image?: string; unread: number; pendingOrders?: number }) {
   const [failedImage, setFailedImage] = useState<string>();
   const pathname = usePathname();
   const base = `/painel/${shop}`;
@@ -44,9 +44,9 @@ export function WorkspaceNav({ shop, name, image, unread, paidOrders }: { shop: 
         {label}
       </Link>)}
     </nav>
-    {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/publicacao#publicar-no-feed"}>Publicar no feed</Link>}
-    {paidOrders !== undefined && <Link className="workspace-notices" href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
-      Pedidos da vitrine{paidOrders > 0 && <span aria-label={paidOrders + " novos pagamentos"}>{paidOrders}</span>}
+    {pendingOrders !== undefined && <Link className="workspace-notices" href={base + "/publicacao#publicar-no-feed"}>Publicar no feed</Link>}
+    {pendingOrders !== undefined && <Link className={`workspace-notices${pendingOrders > 0 ? " notice-unread" : ""}`} href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
+      Pedidos da vitrine{pendingOrders > 0 && <span aria-label={pendingOrders + " pedidos pendentes de aprovação ou retirada"}>{pendingOrders}</span>}
     </Link>}
     <Link className={`workspace-notices${unread ? " notice-unread" : ""}`} href={`${base}/resumo?notificacoes=1#notificacoes`}>
       Notificações{unread > 0 && <span aria-label={`${unread} não lidas`}>{unread}</span>}

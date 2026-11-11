@@ -393,3 +393,10 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
 .finance-tabs .finance-tab[aria-current="page"] { outline: 2px solid currentColor; outline-offset: -2px; }
 .finance-bill[data-state="abertas"] { border-inline-start: .3rem solid #d98b27; }
 .finance-bill[data-state="fechadas"] { border-inline-start: .3rem solid #369266; }
+
+.workspace .workspace-notices.notice-unread { background: #b91c32; color: #fff; border-color: #b91c32; }
+.workspace-notices.notice-unread span { background: #fff; color: #8e1527; }
+.notification-tools { align-items: flex-start; }
+.notification-tools .account-links { margin: 0; }
+.notification-tools .notification-clear { border: 0; margin: 0; padding: 0; }
+.notification-clear > summary.secondary { cursor: pointer; }

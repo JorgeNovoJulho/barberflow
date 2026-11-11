@@ -141,16 +141,18 @@ export default async function DashboardPage({ params, searchParams }: {
       {aviso === "falha" && <p role="alert">Não foi possível atualizar as notificações.</p>}
       {notificationResult.error || !notifications ? <p role="alert">Não foi possível carregar as notificações.</p>
         : <>
-          <nav className="account-links" aria-label="Guias de notificações">
-            <Link className="secondary" href={noticeLink("nao-lidas")} aria-current={!readNotices ? "page" : undefined}>Não lidas ({notifications.unread})</Link>
-            <Link className="secondary" href={noticeLink("lidas")} aria-current={readNotices ? "page" : undefined}>Lidas</Link>
+          <div className="account-links notification-tools">
+          <nav className="account-links finance-tabs" aria-label="Guias de notificações">
+            <Link className="secondary finance-tab" data-tone="rose" href={noticeLink("nao-lidas")} aria-current={!readNotices ? "page" : undefined}>Não lidas ({notifications.unread})</Link>
+            <Link className="secondary finance-tab" data-tone="green" href={noticeLink("lidas")} aria-current={readNotices ? "page" : undefined}>Lidas</Link>
           </nav>
-          {notifications.items.length > 0 && <details><summary>Limpar todas</summary>
+          {notifications.items.length > 0 && <details className="notification-clear"><summary className="secondary">Limpar todas</summary>
             <p>Remover todos os avisos lidos e não lidos da lista?</p>
             <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, true)}>
               <SubmitButton>Confirmar limpeza</SubmitButton>
             </form>
           </details>}
+          </div>
           {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, false)}>
             <SubmitButton>Marcar todas como lidas</SubmitButton>
           </form>}
