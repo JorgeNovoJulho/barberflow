@@ -18,7 +18,7 @@ export async function bookOnline(slug: string, service: string, professional: st
   const customer = String(data.get("customer") ?? "").trim();
   const phone = String(data.get("phone") ?? "").trim();
   const requestId = String(data.get("requestId") ?? "");
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start) || !customer || customer.length > 120 || phone.length > 30 || (!user && (!isUuid(requestId) || !/^\d{10,15}$/.test(phone.replace(/\D/g, ""))))) {
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(start) || !customer || customer.length > 120 || phone.length > 30 || !/^[1-9]\d9\d{8}$/.test(phone.replace(/\D/g, "")) || (!user && !isUuid(requestId))) {
     query.set("estado", "invalido");
     redirect(path + "?" + query);
   }

@@ -357,3 +357,7 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
   body:has(.commission-receipt) .workspace { display: block; }
 }
 .showcase-order[data-order-status="denied"] { --order-tone: #9c3848; --order-tint: #fce9ed; }
+
+.public-booking input.booking-field-required { border: 2px solid #c7384d; background: #fff0f2; box-shadow: 0 0 0 2px rgb(199 56 77 / 8%); }
+.public-booking .booking-field-help { color: #9e263a; background: #fff0f2; border-radius: .6rem; padding: .7rem; }
+.public-booking button:disabled { opacity: .55; cursor: not-allowed; }

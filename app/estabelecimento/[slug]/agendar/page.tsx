@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { offsetDay, saoPauloToday, validDay } from "../../../../lib/agenda";
 import { bookingCurrency, publicProfile } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
-import { SubmitButton } from "../../../auth/submit";
+import { BookingDate } from "./booking-form";
 import { bookOnline } from "./actions";
 
 const feedback: Record<string, string> = {
@@ -75,36 +75,11 @@ export default async function Booking({ params, searchParams }: {
         <Link className="primary" href={path + "?" + new URLSearchParams({ servico: entry.id, ...(profissional ? { profissional } : {}) })}>Escolher serviço</Link>
       </li>)}
     </ul> : <p className="card">Nenhum serviço com profissional disponível para agendamento.</p>
-    : <div className="card booking-panel">
-      <h2>Profissional e data</h2>
-      <form className="account-form" action={path}>
-        <input type="hidden" name="servico" value={service.id} />
-        <label>Profissional <select name="profissional" required defaultValue={person?.id ?? ""}>
-          <option value="" disabled>Selecione</option>
-          {service.professionals.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
-        </select></label>
-        <label>Data <input type="date" name="dia" min={today} max={limit} required defaultValue={day} /></label>
-        <button className="primary" type="submit">Buscar horários</button>
-      </form>
-    </div>}
-    {result?.error && <p role="alert">Não foi possível carregar os horários.</p>}
-    {result && !result.error && !slots.length && <p className="card booking-panel">Nenhum horário disponível nesta data. Selecione outro dia ou profissional.</p>}
-    {service && person && slots.length > 0 && <div className="card booking-panel">
-      <h2>Horários disponíveis</h2>
-      {!user && <p>Informe seu nome e WhatsApp para confirmar o atendimento.</p>}
-      <form className="account-form" action={bookOnline.bind(null, slug, service.id, person.id, day)}>
-        <input type="hidden" name="requestId" value={randomUUID()} />
-        <fieldset className="booking-slots"><legend>Escolha o horário</legend>
-          {slots.map(({ slot }) => <label key={slot}>
-            <input type="radio" name="slot" value={slot.slice(11, 16)} required /> {slot.slice(11, 16)}
-          </label>)}
-        </fieldset>
-        <label>Nome <input name="customer" required maxLength={120}
-          defaultValue={typeof user?.user_metadata.full_name === "string" ? user.user_metadata.full_name : ""} /></label>
-        <label>WhatsApp <input name="phone" type="tel" required={!user} maxLength={30} /></label>
-        <SubmitButton>Confirmar agendamento</SubmitButton>
-      </form>
-    </div>}
+    : <BookingDate slug={slug} service={service.id} professionals={service.professionals}
+      day={day} professional={person?.id ?? ""} today={today} limit={limit}
+      initialSlots={result && !result.error ? slots : null}
+      contact={{ initialName: typeof user?.user_metadata.full_name === "string" ? user.user_metadata.full_name : "",
+        requestId: randomUUID(), action: bookOnline.bind(null, slug, service.id, person?.id ?? "", day) }} />}
     </div>
     {service && <aside className="card booking-summary" aria-label="Resumo do agendamento">
       <h2>Seu agendamento</h2>
