@@ -15,7 +15,7 @@ import { markBookingNotifications } from "./notification-actions";
 const periods = [{ days: 1, label: "Hoje" }, { days: 7, label: "7 dias" }, { days: 30, label: "30 dias" }];
 
 type BookingNotifications = { unread: number; as_of: string; items: {
-  id: string; client_name: string; service_name: string; starts_at: string; booking_created_at: string; booking_read_at: string | null;
+  id: string; kind?: "booking" | "cancellation"; client_name: string; service_name: string; starts_at: string; booking_created_at: string; booking_read_at: string | null;
 }[] };
 
 type Dashboard = {
@@ -170,8 +170,8 @@ export default async function DashboardPage({ params, searchParams }: {
             <SubmitButton tone="keep">Marcar todas como lidas</SubmitButton>
           </form>}
           </div>
-          {visibleNotices.length ? <ul className="dashboard-notice-list">{visibleNotices.map((item) => <li key={item.id}>
-            <strong>Novo agendamento{item.booking_read_at ? "" : " · Não lida"}</strong>
+          {visibleNotices.length ? <ul className="dashboard-notice-list">{visibleNotices.map((item) => <li key={item.id + "-" + (item.kind ?? "booking")}>
+            <strong>{item.kind === "cancellation" ? "Agendamento cancelado pelo cliente" : "Novo agendamento"}{item.booking_read_at ? "" : " · Não lida"}</strong>
             <p>{item.client_name} · {item.service_name} · {formatDay(item.starts_at)} às {item.starts_at.slice(11, 16)}</p>
             <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
             <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir na agenda</Link>
