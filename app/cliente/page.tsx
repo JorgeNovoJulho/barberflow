@@ -230,9 +230,16 @@ export default async function ClientPage({ searchParams }: {
       {shop && shopInfo && <div className="card panel-form">
         {presenceResult?.data && <ProfilePresence key={shop} initial={presenceResult.data} profile={null} shop={shop} />}
         <p>{countsResult?.data?.followers ?? 0} seguidores</p>
-        <div className="account-links"><Link href={"/estabelecimento/"+shopInfo.slug}>Visitar estabelecimento</Link><Link href={"/estabelecimento/"+shopInfo.slug+"/agendar"}>Agendar</Link></div>
-        <form action={changeFollow.bind(null,path,shop,true,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir estabelecimento"}</button></form>
-        <form action={changeFavorite.bind(null,path,shop,!!shopFavorite?.data)}><button className="secondary">{shopFavorite?.data ? "Remover favorito" : "Favoritar"}</button></form>
+        <div className="account-links finance-tabs">
+          <Link className="secondary finance-tab" data-tone="blue" href={"/estabelecimento/" + shopInfo.slug}>Visitar estabelecimento</Link>
+          <Link className="secondary finance-tab" data-tone="green" href={"/estabelecimento/" + shopInfo.slug + "/agendar"}>Agendar</Link>
+          <form action={changeFollow.bind(null,path,shop,true,!!followingResult?.data)}>
+            <button className="secondary finance-tab" data-tone="purple">{followingResult?.data ? "Deixar de seguir" : "Seguir"}</button>
+          </form>
+          <form action={changeFavorite.bind(null,path,shop,!!shopFavorite?.data)}>
+            <button className="secondary finance-tab" data-tone="amber">{shopFavorite?.data ? "Remover favorito" : "Favoritar"}</button>
+          </form>
+        </div>
         {shopInfo.can_review && <form className="account-form panel-form" action={reviewSocialShop.bind(null,shop)}>
           <label>Avaliação <select name="stars" defaultValue="5">{[0,1,2,3,4,5].map(star=><option key={star} value={star}>{star} estrelas</option>)}</select></label>
           <label>Comentário <textarea name="message" maxLength={500} /></label><button className="secondary">Enviar avaliação</button>
