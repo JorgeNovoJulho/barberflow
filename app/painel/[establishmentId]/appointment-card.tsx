@@ -1,6 +1,7 @@
 import { mediaLinks } from "../../cliente/social";
 import { supabaseServer } from "../../../lib/supabase";
 import { SubmitButton } from "../../auth/submit";
+import { AgendaIcon } from "./agenda-icon";
 import { cancelAppointment } from "./cancel-appointment";
 
 export async function appointmentAvatars(supabase: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>, entries: { id: string; booked_by: string | null }[]) {
@@ -19,10 +20,10 @@ export function ClientAvatar({ photo }: { photo?: string }) {
 
 export function CancelAppointmentForm({ shop, entry, day, overview = false }: { shop: string; entry: string; day: string; overview?: boolean }) {
   return <details className="booking-cancel">
-    <summary className="secondary action-cancel">Cancelar agendamento</summary>
+    <summary className="secondary agenda-card-button agenda-cancel-button"><AgendaIcon name="cancel" />Cancelar agendamento</summary>
     <form className="account-form" action={cancelAppointment.bind(null, shop, entry, day, overview)}>
       <label>Motivo do cancelamento<textarea name="reason" rows={3} required maxLength={500} /></label>
-      <SubmitButton tone="cancel">Confirmar cancelamento</SubmitButton>
+      <SubmitButton className="agenda-card-button agenda-cancel-button" icon={<AgendaIcon name="cancel" />}>Confirmar cancelamento</SubmitButton>
     </form>
   </details>;
 }

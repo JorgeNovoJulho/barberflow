@@ -5,6 +5,7 @@ import { offsetDay, saoPauloToday, validDay } from "../../../../lib/agenda";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
+import { AgendaIcon } from "../agenda-icon";
 import { AppointmentFields } from "./appointment-fields";
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { createEntry, linkCompletedClient, rescheduleEntry, updateEntry } from "./actions";
@@ -40,11 +41,14 @@ export default async function Agenda({ params, searchParams }: {
   const day = dia && validDay(dia) ? dia : today;
   const tomorrow = offsetDay(day, 1);
   const weekly = visao === "semana";
-  const listView = visao === "lista";
-  const view = weekly ? "semana" : listView ? "lista" : "dia";
+  const monthly = visao === "mes" || visao === "lista";
+  const view = weekly ? "semana" : monthly ? "mes" : "dia";
+  const monthStart = day.slice(0, 7) + "-01";
+  const monthEnd = offsetDay(monthStart, 32).slice(0, 7) + "-01";
+  const previousMonth = offsetDay(monthStart, -1).slice(0, 7) + "-01";
   const monday = offsetDay(day, -((new Date(day).getUTCDay() + 6) % 7));
-  const rangeStart = weekly ? monday : day;
-  const rangeEnd = weekly ? offsetDay(monday, 7) : listView ? offsetDay(day, 7) : tomorrow;
+  const rangeStart = weekly ? monday : monthly ? monthStart : day;
+  const rangeEnd = weekly ? offsetDay(monday, 7) : monthly ? monthEnd : tomorrow;
   const path = `/painel/${shop}/agenda`;
   const href = (date: string, mode = view) => path + "?dia=" + date + (mode === "dia" ? "" : "&visao=" + mode);
   const supabase = await supabaseServer();
@@ -63,7 +67,17 @@ export default async function Agenda({ params, searchParams }: {
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_clients").select("id,name").eq("establishment_id", shop).eq("active", true).order("name"),
   ]);
-  const avatars = await appointmentAvatars(supabase, entries.data ?? []);
+  const avatars = monthly || weekly ? new Map<string, string>() : await appointmentAvatars(supabase, entries.data ?? []);
+  const monthlyEntries = new Map<string, NonNullable<typeof entries.data>>();
+  if (monthly) {
+    for (const entry of entries.data ?? []) {
+      if (entry.kind !== "appointment" || entry.state === "cancelled") continue;
+      const date = entry.starts_at.slice(0, 10);
+      const items = monthlyEntries.get(date) ?? [];
+      items.push(entry);
+      monthlyEntries.set(date, items);
+    }
+  }
   const staff = professionals.data ?? [];
   const staffById = new Map(staff.map((person) => [person.id, person]));
   function providerLine(entry: { professional_id: string; kind: string; state: string }) {
@@ -82,7 +96,9 @@ export default async function Agenda({ params, searchParams }: {
   const suggestedProvider = novo === "1" ? offerings.find(({ id }) => id === profissional) : undefined;
   const suggestedService = suggestedProvider?.services.find(({ id }) => id === servico);
   const suggestedTime = suggestedService && typeof horario === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horario) ? horario : "";
-  const dateLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full", timeZone: "UTC" }).format(new Date(day));
+  const dayFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full", timeZone: "UTC" });
+  const dateLabel = dayFormat.format(new Date(day));
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(monthStart));
 
   return <section className="container section">
     <nav className="account-links" aria-label="Estabelecimento">
@@ -95,22 +111,22 @@ export default async function Agenda({ params, searchParams }: {
     <nav className="account-links" aria-label="Visão da agenda">
       <Link className="secondary" aria-current={view === "dia" ? "page" : undefined} href={href(day, "dia")}>Dia</Link>
       <Link className="secondary" aria-current={weekly ? "page" : undefined} href={href(day, "semana")}>Semana</Link>
-      <Link className="secondary" aria-current={listView ? "page" : undefined} href={href(day, "lista")}>Lista</Link>
+      <Link className="secondary" aria-current={monthly ? "page" : undefined} href={href(day, "mes")}>Mês</Link>
     </nav>
     <div className="agenda-toolbar">
-      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? -7 : -1))} data-agenda-tone="violet">Anterior</Link>
+      <Link className="secondary" href={href(monthly ? previousMonth : offsetDay(day, weekly ? -7 : -1))} data-agenda-tone="violet">Anterior</Link>
       <Link className="secondary" href={href(today)} data-agenda-tone="green">Hoje</Link>
-      <Link className="secondary" href={href(offsetDay(day, weekly || listView ? 7 : 1))} data-agenda-tone="violet">Próximo</Link>
+      <Link className="secondary" href={href(monthly ? monthEnd : offsetDay(day, weekly ? 7 : 1))} data-agenda-tone="violet">Próximo</Link>
       <form className="agenda-date" action={path} method="get" key={`${view}-${day}`}>
         {view !== "dia" && <input type="hidden" name="visao" value={view} />}
         <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
-        <button type="submit" className="secondary" data-agenda-tone="blue">Abrir {view}</button>
+        <button type="submit" className="secondary" data-agenda-tone="blue">Abrir {monthly ? "mês" : view}</button>
       </form>
     </div>
     <p><Link className="primary" href={href(day, "dia") + "&novo=1#novo"}>+ Agendar para um cliente</Link></p>
     <CancellationFeedback state={cancelamento} />
     {estado && Object.hasOwn(messages, estado) && <p role="status">{messages[estado]}</p>}
-    <h2>{weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : listView ? "Registros dos próximos 7 dias" : dateLabel}</h2>
+    <h2>{weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : monthly ? monthLabel : dateLabel}</h2>
     {[entries, professionals, services, assignments, clients].some((response) => response.error)
       ? <p role="alert">Não foi possível carregar a agenda.</p> : weekly ? <div className="week-grid">
         {Array.from({ length: 7 }, (_, index) => {
@@ -126,15 +142,23 @@ export default async function Agenda({ params, searchParams }: {
             </li>)}</ul> : <p>Sem registros</p>}
           </section>;
         })}
-      </div> : listView ? (
-        entries.data?.length ? <ul className="cards">{entries.data.map((entry) => <li key={entry.id} className="card agenda-entry">
-          <p className="agenda-entry-time">{entry.starts_at.slice(0, 10).split("-").reverse().join("/")} · {entry.starts_at.slice(11, 16)}</p>
-          <h3>{entry.kind === "block" ? "Bloqueio de horário" : entry.service_name}</h3>
-          {providerLine(entry)}
-          {entry.client_name && <p>{entry.client_name}</p>}
-          <Link href={href(entry.starts_at.slice(0, 10), "dia") + "#registro-" + entry.id}>Abrir registro no dia</Link>
-        </li>)}</ul> : <p>Nenhum atendimento ou bloqueio neste período.</p>
-      ) : <>
+      </div> : monthly ? <div className="agenda-month">
+        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((name) => <span key={name} className="agenda-month-weekday">{name}</span>)}
+        {Array.from({ length: (new Date(monthStart).getUTCDay() + 6) % 7 }, (_, index) => <span key={index} className="agenda-month-empty" aria-hidden="true" />)}
+        {Array.from({ length: Number(offsetDay(monthEnd, -1).slice(8)) }, (_, index) => {
+          const date = offsetDay(monthStart, index);
+          const appointments = monthlyEntries.get(date) ?? [];
+          return <section className="agenda-month-day" data-booked={appointments.some(({ state }) => state === "scheduled" || state === "completed")} key={date}>
+            <Link className="agenda-month-date" href={href(date, "dia")} aria-current={date === today ? "date" : undefined} aria-label={dayFormat.format(new Date(date))}>{index + 1}</Link>
+            {!!appointments.length && <ul>{appointments.map((entry) => <li key={entry.id}>
+              <Link href={href(date, "dia") + "#registro-" + entry.id}>
+                <strong>{entry.starts_at.slice(11,16)}</strong> {entry.service_name}
+                {entry.state !== "scheduled" && <small>{states[entry.state]}</small>}
+              </Link>
+            </li>)}</ul>}
+          </section>;
+        })}
+      </div> : <>
       <div className="agenda-forms">
         <details className="card" id="novo" open={novo === "1"}>
           <summary data-agenda-tone="green">Novo agendamento manual</summary>
@@ -175,41 +199,43 @@ export default async function Agenda({ params, searchParams }: {
           {providerLine(entry)}
           {entry.client_name && <p className="booking-client"><ClientAvatar photo={avatars.get(entry.id)} /><span>{entry.client_name}{entry.client_phone && ` · ${entry.client_phone}`}</span></p>}
           {entry.notes && <p>{entry.notes}</p>}
+          <div className="agenda-entry-actions">
           {entry.kind === "appointment" && entry.state === "completed" && !entry.client_id && !!clients.data?.length &&
-            <details><summary>Vincular ao cadastro do cliente</summary>
+            <details><summary className="secondary agenda-card-button"><AgendaIcon name="person" />Vincular cliente</summary>
               <form className="account-form" action={linkCompletedClient.bind(null, shop, day, entry.id)}>
                 <label>Cliente <select name="client" required defaultValue="">
                   <option value="" disabled>Selecione</option>
                   {clients.data.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
                 </select></label>
-                <SubmitButton>Vincular atendimento</SubmitButton>
+                <SubmitButton className="agenda-card-button" icon={<AgendaIcon name="person" />}>Vincular atendimento</SubmitButton>
               </form>
             </details>}
           {entry.kind === "appointment" && (entry.state === "scheduled" || entry.state === "completed") &&
-            <Link className="primary agenda-command" href={`/painel/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>}
-          {entry.state === "pending" && <div className="account-links">
-            <form action={updateEntry.bind(null, shop, day, entry.id, "scheduled")}><SubmitButton>Aprovar reserva</SubmitButton></form>
+            <Link className="primary agenda-command agenda-card-button" href={`/painel/${shop}/comanda/${entry.id}`}><AgendaIcon name="receipt" />Abrir comanda</Link>}
+          {entry.state === "pending" && <>
+            <form action={updateEntry.bind(null, shop, day, entry.id, "scheduled")}><SubmitButton className="agenda-card-button" tone="keep" icon={<AgendaIcon name="check" />}>Aprovar reserva</SubmitButton></form>
             <CancelAppointmentForm shop={shop} day={day} entry={entry.id} />
-          </div>}
+          </>}
           {entry.kind === "appointment" && entry.state === "scheduled" && <details>
-            <summary>Remarcar atendimento</summary>
+            <summary className="secondary agenda-card-button agenda-reschedule-button"><AgendaIcon name="calendar" />Remarcar atendimento</summary>
             <form className="account-form" action={rescheduleEntry.bind(null, shop, day, entry.id, false)}>
               <div className="form-columns">
                 <label>Nova data <input type="date" name="date" defaultValue={entry.starts_at.slice(0, 10)} required /></label>
                 <label>Novo horário <input type="time" name="start" defaultValue={entry.starts_at.slice(11, 16)} required /></label>
               </div>
-              <SubmitButton>Salvar novo horário</SubmitButton>
+              <SubmitButton className="agenda-card-button" icon={<AgendaIcon name="calendar" />}>Salvar novo horário</SubmitButton>
             </form>
           </details>}
-          {entry.state === "scheduled" && <div className="account-links">
+          {entry.state === "scheduled" && <>
             {entry.kind === "appointment" && <>
-              <form action={updateEntry.bind(null, shop, day, entry.id, "completed")}><SubmitButton tone="keep">Concluir</SubmitButton></form>
-              <form action={updateEntry.bind(null, shop, day, entry.id, "no_show")}><SubmitButton tone="cancel">Marcar falta</SubmitButton></form>
+              <form action={updateEntry.bind(null, shop, day, entry.id, "completed")}><SubmitButton className="agenda-card-button" icon={<AgendaIcon name="check" />} tone="keep">Concluir</SubmitButton></form>
+              <form action={updateEntry.bind(null, shop, day, entry.id, "no_show")}><SubmitButton className="agenda-card-button" icon={<AgendaIcon name="absent" />} tone="cancel">Marcar falta</SubmitButton></form>
             </>}
             {entry.kind === "block" ? <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}>
-              <SubmitButton>Desbloquear</SubmitButton>
+              <SubmitButton className="agenda-card-button" icon={<AgendaIcon name="unlock" />}>Desbloquear</SubmitButton>
             </form> : <CancelAppointmentForm shop={shop} day={day} entry={entry.id} />}
-          </div>}
+          </>}
+          </div>
         </li>)}
       </ul> : <p>Nenhum atendimento ou bloqueio neste dia.</p>}
     </>}
