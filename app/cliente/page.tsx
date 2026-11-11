@@ -42,7 +42,7 @@ export default async function ClientPage({ searchParams }: {
   const profileTable = supabase.from("barberflow_social_profiles");
   const photos = supabase.from("barberflow_social_photos");
   const followTable = supabase.from(shop ? "barberflow_social_follow_shops" : "barberflow_social_follow_users");
-  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult, roleResult, connections, savedShops, presenceResult, blockedProfiles, summaryResult, shopFavorite, purchaseNotices] = await Promise.all([
+  const [profileResult, postsResult, countsResult, followingResult, shopResult, servicesResult, directoryResult, noticesResult, deletionResult, generalResult, roleResult, connections, savedShops, presenceResult, blockedProfiles, summaryResult, shopFavorite, purchaseNotices, ownProfile] = await Promise.all([
     profileTable.select("username,avatar,banner,links,theme,frozen,revision").eq("user_id",profileId).maybeSingle(),
     view === "feed" ? supabase.rpc("barberflow_social_feed",{ page_number:page })
       : view === "foto" ? photos.select("*").eq("id",photo!)
@@ -69,8 +69,13 @@ export default async function ClientPage({ searchParams }: {
     view === "notificacoes" && page === 0 ? supabase.from("barberflow_showcase_orders")
       .select("id,shop_name,product_name,status").eq("buyer_id",user.id)
       .in("status",["paid","ready","denied"]).order("notice_at",{ascending:false}).limit(20) : null,
+    profileId !== user.id ? profileTable.select("username,avatar").eq("user_id",user.id).maybeSingle() : null,
   ]);
   const profile = profileResult.data;
+  const account = profileId === user.id ? profile : ownProfile?.data;
+  const username = account?.username?.trim();
+  const fullName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
+  const accountName = fullName || username || "Minha conta";
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
   if ((target && !profile && !profileResult.error) || (shop && !shopInfo && !shopResult?.error) || (photo && !postsResult?.data?.length && !postsResult?.error)) notFound();
   const posts = (postsResult?.data ?? []) as Photo[];
@@ -83,7 +88,7 @@ export default async function ClientPage({ searchParams }: {
   const summary = summaryResult?.data;
   const joined = summary?.joined && new Intl.DateTimeFormat("pt-BR", { month:"long", year:"numeric", timeZone:"America/Sao_Paulo" }).format(new Date(summary.joined));
   const [links, likes, comments, authors, likerRows] = await Promise.all([
-    mediaLinks(supabase,[profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar)]),
+    mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar)]),
     photo ? supabase.from("barberflow_social_likes").select("actor",{ count:"exact",head:true }).eq("photo",photo) : null,
     photo ? supabase.from("barberflow_social_comments").select("id,actor,parent,body").eq("photo",photo).order("created_at",{ascending:false}).order("id").range(page*25,page*25+25) : null,
     posts.length ? supabase.from("barberflow_social_profiles").select("user_id,username").in("user_id",[...new Set(posts.map(p=>p.author))]) : null,
@@ -98,11 +103,35 @@ export default async function ClientPage({ searchParams }: {
   const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,purchaseNotices,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles,summaryResult,likerRows,likerProfiles].some(result=>result?.error);
   const title = setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
   return <div className="container workspace social-workspace">
-    <aside className="workspace-rail"><nav className="workspace-modules" aria-label="Área do cliente">
-      <Link href="/cliente">Feed</Link><Link href="/cliente?aba=perfil">Meu perfil</Link><Link href="/cliente?aba=pessoas">Encontrar pessoas</Link>
-      <Link href="/estabelecimentos">Encontrar estabelecimentos</Link><Link href="/cliente?aba=lojas-seguidas">Estabelecimentos seguidos</Link><Link href="/cliente?aba=favoritos">Estabelecimentos favoritos</Link><Link href="/meus-agendamentos">Minhas reservas</Link>
-      <Link href="/minhas-compras">Minhas compras</Link><Link href="/cliente?aba=notificacoes">Notificações</Link>
-    </nav><form action={signOut}><button className="workspace-notices">Sair do sistema</button></form></aside>
+    <aside className="workspace-rail client-rail">
+      <Link className="client-rail-profile" href="/cliente?aba=perfil">
+        <span className="client-rail-avatar" aria-hidden="true">
+          {account?.avatar && links.get(account.avatar) ? <img src={links.get(account.avatar)} alt="" width={48} height={48} /> : accountName.slice(0, 2).toUpperCase()}
+        </span>
+        <span className="client-rail-identity">
+          <strong>{accountName}</strong>
+          {username && <small>@{username}</small>}
+        </span>
+      </Link>
+      <nav className="workspace-modules client-rail-nav" aria-label="Área do cliente">
+        <div className="client-rail-group">
+          <Link href="/cliente" aria-current={view === "feed" ? "page" : undefined}>Feed</Link>
+          <Link href="/cliente?aba=perfil" aria-current={view === "perfil" ? "page" : undefined}>Meu perfil</Link>
+          <Link href="/cliente?aba=notificacoes" aria-current={view === "notificacoes" ? "page" : undefined}>Notificações</Link>
+        </div>
+        <div className="client-rail-group">
+          <Link href="/cliente?aba=pessoas" aria-current={view === "pessoas" ? "page" : undefined}>Encontrar pessoas</Link>
+          <Link href="/estabelecimentos">Encontrar estabelecimentos</Link>
+          <Link href="/cliente?aba=lojas-seguidas" aria-current={view === "lojas-seguidas" ? "page" : undefined}>Estabelecimentos seguidos</Link>
+          <Link href="/cliente?aba=favoritos" aria-current={view === "favoritos" ? "page" : undefined}>Estabelecimentos favoritos</Link>
+        </div>
+        <div className="client-rail-group">
+          <Link href="/meus-agendamentos">Minhas reservas</Link>
+          <Link href="/minhas-compras">Minhas compras</Link>
+        </div>
+      </nav>
+      <form className="client-rail-exit" action={signOut}><button className="workspace-notices">Sair do sistema</button></form>
+    </aside>
     <section className="workspace-content section" data-social-theme={profile?.theme}>
       <h1>{title}</h1>
       {params.estado && <p role={params.estado==="salvo" ? "status" : "alert"} data-feedback={params.estado==="salvo" ? "success" : "warning"}>{params.estado==="salvo" ? "Alteração registrada." : "Não foi possível concluir. Confira os dados, a visibilidade e as permissões do perfil."}</p>}
