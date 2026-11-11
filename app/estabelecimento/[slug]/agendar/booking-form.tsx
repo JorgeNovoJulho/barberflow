@@ -105,6 +105,13 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
   const nameValid = !!name.trim();
   const phoneValid = /^[1-9]\d9\d{8}$/.test(phone.replace(/\D/g, ""));
   const activeStep = !service ? 0 : !person ? 1 : !timeValid ? 2 : 3;
+  const stepState = (index: number) => index === activeStep ? "current" : index < activeStep ? "done" : "next";
+  const guidance = !service ? "Escolha um serviço."
+    : !person ? "Escolha quem vai atender você."
+    : !timeValid ? "Confira a data e escolha um horário livre."
+    : !nameValid ? "Preencha seu nome."
+    : !phoneValid ? "Informe seu WhatsApp com DDD."
+    : "Tudo pronto. Confira o resumo e confirme seu agendamento.";
   const price = service ? bookingCurrency.format(service.price_cents / 100) : "—";
   const suggested = !service && services.filter((entry) => entry.professionals.some(({ id }) => id === initialPerson));
   const listedServices = suggested && suggested.length ? suggested : services;
@@ -112,10 +119,14 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
   return <form className="booking-workspace" action={action}>
     <ol className="booking-steps" aria-label="Etapas do agendamento">
       {["Serviço", "Profissional", "Data e hora", "Confirmar"].map((label, index) =>
-        <li key={label} aria-current={index === activeStep ? "step" : undefined}><span aria-hidden="true">{index + 1}</span>{label}</li>)}
+        <li key={label} data-step={stepState(index)} aria-current={index === activeStep ? "step" : undefined}>
+          <span aria-hidden="true">{index < activeStep ? "✓" : index + 1}</span>
+          {label}{index < activeStep && <small>Concluído</small>}
+        </li>)}
     </ol>
+    <p className="booking-guidance" role="status"><strong>Passo {activeStep + 1} de 4</strong> {guidance}</p>
     <div className="booking-board">
-      <fieldset className="booking-column">
+      <fieldset className="booking-column" data-step={stepState(0)}>
         <legend>Escolha o serviço</legend>
         {!listedServices.length && <p>Nenhum serviço disponível para agendamento.</p>}
         {listedServices.map((entry) => <label className="booking-choice" key={entry.id}>
@@ -127,7 +138,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           <span><strong>{entry.name}</strong><small>{bookingCurrency.format(entry.price_cents / 100)} · {entry.duration_minutes} min</small></span>
         </label>)}
       </fieldset>
-      <fieldset className="booking-column">
+      <fieldset className="booking-column" data-step={stepState(1)}>
         <legend>Escolha o profissional</legend>
         {!service && <p>Escolha um serviço para ver a equipe disponível.</p>}
         {service?.professionals.map(({ id, name, photo_url }) => <label className="booking-choice" key={id}>
@@ -137,7 +148,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           <strong>{name}</strong>
         </label>)}
       </fieldset>
-      <fieldset className="booking-column" disabled={!person}>
+      <fieldset className="booking-column" data-step={stepState(2)} disabled={!person}>
         <legend>Escolha a data e o horário</legend>
         <input type="hidden" name="day" value={selectedDay} />
         <Calendar day={selectedDay} today={today} limit={limit} onChange={(value) => { setDay(value); setTime(""); }} />
@@ -156,7 +167,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           })}
         </fieldset>}
       </fieldset>
-      <div className="booking-column booking-review">
+      <div className="booking-column booking-review" data-step={stepState(3)}>
         <h2>Resumo do agendamento</h2>
         <dl className="order-totals">
           <div><dt>Serviço</dt><dd>{service?.name ?? "—"}</dd></div>
@@ -175,7 +186,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
             className={timeValid && nameValid && !phoneValid ? "booking-field-required" : undefined} /></label>
           <p role="status">{!timeValid ? "Selecione um horário para continuar." : !nameValid ? "Preencha seu nome."
             : !phoneValid ? "Informe seu WhatsApp com DDD e nove dígitos." : "Confira o resumo e confirme."}</p>
-          <SubmitButton disabled={!timeValid || !nameValid || !phoneValid}>Confirmar agendamento</SubmitButton>
+          <SubmitButton className="booking-confirm" disabled={!timeValid || !nameValid || !phoneValid}>Confirmar agendamento</SubmitButton>
         </div>
       </div>
     </div>

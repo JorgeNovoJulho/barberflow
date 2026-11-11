@@ -209,3 +209,14 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
   .booking-redesign .booking-steps li { flex-direction: row; align-items: center; }
   .booking-calendar-grid button { min-height: 2.5rem; }
 }
+
+.booking-redesign .booking-steps li { flex-wrap: wrap; }
+.booking-steps small { color: #14604d; font-size: .72rem; }
+.booking-redesign .booking-steps [data-step="done"] { background: #e8f7f1; border-color: #8bc5b4; color: #154f41; }
+.booking-redesign .booking-steps [data-step="done"] span { background: #176650; color: white; }
+.booking-guidance { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .75rem; margin: 0 0 1rem; padding: .65rem .85rem; background: var(--accent-soft); color: var(--accent-ink); border-radius: .65rem; }
+.booking-guidance strong { padding: .2rem .45rem; border-radius: .35rem; background: var(--accent-ink); color: white; }
+.booking-board .booking-column[data-step="current"] { border-color: var(--accent-ink); box-shadow: inset 0 .2rem 0 var(--accent); }
+.booking-board .booking-column[data-step="done"] { border-color: #8bc5b4; }
+.booking-board [data-step="current"] > :is(legend, h2) { color: var(--accent-ink); }
+.booking-review .booking-confirm:not(:disabled) { background: #176650; color: white; border-color: #176650; }
