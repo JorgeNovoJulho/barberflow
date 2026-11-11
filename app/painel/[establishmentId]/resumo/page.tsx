@@ -198,7 +198,10 @@ export default async function DashboardPage({ params, searchParams }: {
           <dt>{label === "Cancelados" && <Link className="dashboard-card-link" aria-label="Ver agendamentos cancelados no período" href={`/painel/${shop}/agenda?visao=cancelados&dia=${data.today}&periodo=${selected.days}`} />}
             {label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
           <dd>{value}</dd>
-          {label === "Agendamentos" && <p>{data.appointments - data.cancelled} sem cancelamento · {data.cancelled} cancelados</p>}
+          {label === "Agendamentos" && <>
+            <p>{data.appointments - data.cancelled} sem cancelamento</p>
+            <p>{data.cancelled} cancelados</p>
+          </>}
           {note && <p>{note}</p>}
           {[2, 5, 6].includes(index) && <details className="dashboard-metric-list">
             <summary className="secondary">Ver {index === 2 ? "horários" : "atendimentos"}</summary>
