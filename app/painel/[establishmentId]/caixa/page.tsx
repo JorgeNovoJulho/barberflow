@@ -21,6 +21,7 @@ const status:Record<string,string> = {
   pix_ready:"Conta Pix configurada. Clique em Gerar cobrança Pix para ver o QR Code e o Pix Copia e Cola.",
   timezone_saved:"Fuso horário atualizado.",
   changed:"A comanda mudou. Confira o estado atual antes de tentar de novo.",
+  contato:"Preencha o nome e o telefone do cliente antes de gerar a cobrança.",
   invalid:"Confira os itens, quantidades, telefone e dados do pagamento.",
   amount:"O valor recebido precisa ser igual ao total da comanda.",
   duplicate:"Este identificador de pagamento já foi registrado.",
@@ -81,7 +82,13 @@ export default async function Checkout({params,searchParams}:{
   const pix = sale?.state==="pending" && sale.method==="pix" && sale.pix ? showcasePix({ ...sale.pix,id:sale.id,total_cents:sale.service_cents+sale.product_cents }) : null;
   const reportUrl = (index:number)=>path+"?"+new URLSearchParams({aba:"fechamento",periodo:period,itens:filter,pagina:String(index)});
   return <section className={closing ? "container section checkout finance-report" : "container section checkout"}>
-    <nav className="account-links finance-print-hide"><Link href={`/painel/${shop}/resumo`}>Visão geral</Link><Link href={path}>Comandas abertas</Link><Link href={path+"?aba=fechadas"}>Comandas fechadas</Link><Link href={path+"?aba=nova"}>Criar comanda</Link><Link href={path+"?aba=fechamento"}>Fechamento</Link></nav>
+    <nav className="account-links finance-tabs finance-print-hide" aria-label="Comandas">
+      <Link className="secondary finance-tab" data-tone="blue" href={`/painel/${shop}/resumo`}>Visão geral</Link>
+      <Link className="secondary finance-tab" data-tone="green" href={path}>Comandas abertas</Link>
+      <Link className="secondary finance-tab" data-tone="purple" href={path+"?aba=fechadas"}>Comandas fechadas</Link>
+      <Link className="secondary finance-tab" data-tone="teal" href={path+"?aba=nova"}>Criar comanda</Link>
+      <Link className="secondary finance-tab" data-tone="amber" href={path+"?aba=fechamento"}>Fechamento</Link>
+    </nav>
     <p className="eyebrow">{business.data.name}</p>
     <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
     {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
@@ -123,11 +130,11 @@ export default async function Checkout({params,searchParams}:{
       </form>}
       {sale.state === "paid" && <Link className="secondary" href={path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
     </div>}
-    {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary>Cancelar comanda</summary>
+    {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary className="secondary action-cancel">Cancelar comanda</summary>
       <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision)}>
         <input type="hidden" name="operation" value="cancel" />
         <label><input type="checkbox" name="acknowledged" required /> Confirmo o cancelamento desta comanda. Se já houve pagamento, vou conferir a transação antes de cancelar.</label>
-        <button className="secondary">Confirmar cancelamento</button>
+        <button className="secondary action-cancel">Confirmar cancelamento</button>
       </form>
     </details>}
     {opens && <>

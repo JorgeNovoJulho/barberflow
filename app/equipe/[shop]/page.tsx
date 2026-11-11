@@ -105,7 +105,7 @@ export default async function TeamAgenda({ params, searchParams }: {
         {item.can_edit && <div className="account-links">
           {(item.state === "scheduled" ? [["completed", "Concluir"], ["no_show", "Marcar falta"], ["cancelled", "Cancelar"]]
             : item.state === "pending" ? [["scheduled", "Aprovar"], ["cancelled", "Recusar"]] : []).map(([state, label]) =>
-              <form key={state} action={setState.bind(null, shop, item.id, day, state)}><SubmitButton>{label}</SubmitButton></form>)}
+              <form key={state} action={setState.bind(null, shop, item.id, day, state)}><SubmitButton tone={state === "cancelled" && label === "Cancelar" ? "cancel" : undefined}>{label}</SubmitButton></form>)}
         </div>}
       </li>)}
     </ul> : <p>Nenhum registro disponível neste dia.</p>}

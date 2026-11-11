@@ -5,7 +5,7 @@ import { useState } from "react";
 import { bookingCurrency } from "../../../../lib/currency";
 import { SubmitButton } from "../../../auth/submit";
 import { saveSale } from "./actions";
-import type { CatalogItem, Item, Sale } from "./model";
+import { maxSaleItemsPerType, type CatalogItem, type Item, type Sale } from "./model";
 
 function options(catalog:CatalogItem[],saved:Item[]) {
   const prices = new Map(catalog.map(item=>[item.id,item]));
@@ -18,9 +18,11 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,p
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
   const productOptions = options(products,savedProducts);
-  const [serviceIds,setServiceIds] = useState(()=>Array.from({length:4},(_,i)=>savedServices[i]?.id ?? ""));
-  const [productIds,setProductIds] = useState(()=>Array.from({length:4},(_,i)=>savedProducts[i]?.id ?? ""));
-  const [units,setUnits] = useState(()=>Array.from({length:4},(_,i)=>savedProducts[i]?.units ?? 1));
+  const [customer,setCustomer] = useState(sale?.client_name ?? "");
+  const [phone,setPhone] = useState(sale?.phone ?? "");
+  const [serviceIds,setServiceIds] = useState(()=>Array.from({length:Math.max(1,savedServices.length)},(_,i)=>savedServices[i]?.id ?? ""));
+  const [productIds,setProductIds] = useState(()=>Array.from({length:Math.max(1,savedProducts.length)},(_,i)=>savedProducts[i]?.id ?? ""));
+  const [units,setUnits] = useState(()=>Array.from({length:Math.max(1,savedProducts.length)},(_,i)=>savedProducts[i]?.units ?? 1));
   const serviceTotal = serviceIds.reduce((sum,id)=>sum+(serviceOptions.get(id)?.price_cents ?? 0),0);
   const productTotal = productIds.reduce((sum,id,i)=>sum+(productOptions.get(id)?.price_cents ?? 0)*units[i],0);
   const money = (cents:number)=>bookingCurrency.format(cents/100);
@@ -28,29 +30,36 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,p
   return <form className="account-form card panel-form" action={saveSale.bind(null,shop,id,sale?.revision ?? 0)}>
     <h2>{sale ? "Comanda "+sale.number : "Nova comanda"}</h2>
     {!sale && <p>O número será gerado ao salvar a comanda.</p>}
-    <div className="form-columns"><label>Nome do cliente <input name="customer" maxLength={120} defaultValue={sale?.client_name} /></label>
-      <label>Telefone <input type="tel" name="phone" maxLength={30} defaultValue={sale?.phone} /></label></div>
+    <div className="form-columns"><label>Nome do cliente <input name="customer" required maxLength={120} value={customer} onChange={event=>setCustomer(event.target.value)} className={!customer.trim() ? "sale-required-field" : undefined} /></label>
+      <label>Telefone <input type="tel" name="phone" required maxLength={30} value={phone} onChange={event=>setPhone(event.target.value)} className={!/\d/.test(phone) ? "sale-required-field" : undefined} /></label></div>
     <fieldset><legend>Serviços</legend>{serviceIds.map((value,i)=><label key={i}>Serviço {i+1}
       <select name={"service"+i} value={value} onChange={event=>setServiceIds(update(serviceIds,i,event.target.value))}>
         <option value="">Nenhum</option>{[...serviceOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && serviceIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}
-      </select></label>)}</fieldset>
+      </select></label>)}
+      {serviceIds.length < maxSaleItemsPerType && <button type="button" className="secondary" onClick={()=>setServiceIds([...serviceIds,""])}>+ Serviços</button>}
+    </fieldset>
     <fieldset><legend>Produtos</legend>{productIds.map((value,i)=><div className="form-columns" key={i}><label>Produto {i+1}
       <select name={"product"+i} value={value} onChange={event=>setProductIds(update(productIds,i,event.target.value))}>
         <option value="">Nenhum</option>{[...productOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && productIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}
-      </select></label><label>Quantidade <input type="number" name={"units"+i} min={1} max={10000} required={!!value} disabled={!value} value={units[i] || ""} onChange={event=>setUnits(update(units,i,Number(event.target.value)))} /></label></div>)}</fieldset>
+      </select></label><label>Quantidade <input type="number" name={"units"+i} min={1} max={10000} required={!!value} disabled={!value} value={units[i] || ""} onChange={event=>setUnits(update(units,i,Number(event.target.value)))} /></label></div>)}
+      {productIds.length < maxSaleItemsPerType && <button type="button" className="secondary" onClick={()=>{
+        setProductIds([...productIds,""]);
+        setUnits([...units,1]);
+      }}>+ Produtos</button>}
+    </fieldset>
     <div aria-live="polite"><p>Serviços {money(serviceTotal)} · Produtos {money(productTotal)}</p><p><strong>Total {money(serviceTotal+productTotal)}</strong></p></div>
     <div id="cobranca">
       {feedback && <p role="status" data-feedback={pixReady ? "success" : "warning"}>{feedback}</p>}
       {pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
-      <label>Forma de pagamento ao cobrar <select name="method" defaultValue={pixReady || pixMissing ? "pix" : ""}>
+      <label>Forma de pagamento ao cobrar <select name="method" defaultValue={sale?.method ?? "pix"}>
         <option value="">Selecione a forma de pagamento</option>
         <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
       </select></label>
     </div>
     <div className="account-links">
       <SubmitButton name="operation" value="charge">{pixReady ? "Gerar cobrança Pix" : "Fechar e cobrar"}</SubmitButton>
-      <SubmitButton name="operation" value="save">Manter aberta</SubmitButton>
-      {!sale && <a className="secondary" href={`/painel/${shop}/resumo`}>Cancelar</a>}
+      <SubmitButton name="operation" value="save" tone="keep">Manter aberta</SubmitButton>
+      {!sale && <a className="secondary action-cancel" href={`/painel/${shop}/resumo`}>Cancelar</a>}
     </div>
   </form>;
 }

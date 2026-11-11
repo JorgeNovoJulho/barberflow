@@ -204,7 +204,7 @@ export default async function Agenda({ params, searchParams }: {
               <form action={updateEntry.bind(null, shop, day, entry.id, "no_show")}><SubmitButton>Marcar falta</SubmitButton></form>
             </>}
             <form action={updateEntry.bind(null, shop, day, entry.id, "cancelled")}>
-              <SubmitButton>{entry.kind === "block" ? "Desbloquear" : "Cancelar atendimento"}</SubmitButton>
+              <SubmitButton tone={entry.kind === "block" ? undefined : "cancel"}>{entry.kind === "block" ? "Desbloquear" : "Cancelar atendimento"}</SubmitButton>
             </form>
           </div>}
         </li>)}

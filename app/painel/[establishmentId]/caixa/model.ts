@@ -1,3 +1,5 @@
+export const maxSaleItemsPerType = 10;
+
 export type Item = { kind:"service"|"product"; id:string; units:number; name:string; price:number };
 export type Sale = {
   id:string; number:string; client_name:string; phone:string; items:Item[]; service_cents:number; product_cents:number;

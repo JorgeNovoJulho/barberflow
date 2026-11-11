@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isUuid,parsePrice } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
-import type { Sale } from "./model";
+import { maxSaleItemsPerType, type Sale } from "./model";
 
 export async function saveSale(shop:string,id:string,revision:number,form:FormData) {
   if (!isUuid(shop) || !isUuid(id)) redirect("/painel");
@@ -28,8 +28,9 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
       redirect(chargePath + "&estado=changed#cobranca");
     }
   }
+  if (saved && (!saved.client_name.trim() || !/\d/.test(saved.phone))) redirect(path+"&estado=contato");
   const selections = [];
-  for (let index=0; index<4; index++) {
+  for (let index=0; index<maxSaleItemsPerType; index++) {
     const service = value("service"+index);
     const product = value("product"+index);
     const units = value("units"+index);

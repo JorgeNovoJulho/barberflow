@@ -435,3 +435,7 @@ main [data-feedback=info], .action-feedback-toast[data-feedback=info] { border-c
 .purchase-notice-card[data-order-status="collected"] { background: #f3faf6; }
 .purchase-notice-card .order-card-body { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; }
 .purchase-notice-card .order-card-body p { margin: 0; }
+
+.checkout .sale-required-field { border: 2px solid #c2384e; background: #fff0f2; }
+:is(button,a,summary).action-keep { background: #17664d; border-color: #17664d; color: #fff; }
+:is(button,a,summary).action-cancel { background: #ffe095; border-color: #d9a83b; color: #593707; }

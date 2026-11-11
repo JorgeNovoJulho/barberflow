@@ -86,9 +86,9 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
             </form> : <p>Nenhum horário disponível nessa data.</p>)}
         </details>}
         {booking.can_cancel && <details>
-          <summary>Cancelar reserva</summary>
+          <summary className="secondary action-cancel">Cancelar reserva</summary>
           <form className="account-links" action={changeBooking.bind(null, booking.id, null)}>
-            <SubmitButton>Confirmar cancelamento</SubmitButton>
+            <SubmitButton tone="cancel">Confirmar cancelamento</SubmitButton>
           </form>
         </details>}
       </li>; })}</ul> : <p>Você ainda não fez reservas online.</p>}
