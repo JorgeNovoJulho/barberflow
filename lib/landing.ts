@@ -40,7 +40,7 @@ export const landingDefaults = {
   headerText: "Entrar", headerUrl: "/login",
   segmentsTitle: "Encontre o seu segmento", featuresTitle: "Da reserva ao fechamento do dia",
   stockTitle: "Estoque e comanda", faqTitle: "Perguntas frequentes",
-  discoveryTitle: "Encontre seu próximo atendimento", discoveryText: "Busque por cidade ou segmento e agende na página do estabelecimento.",
+  discoveryTitle: "Faça seu primeiro Agendamento", discoveryText: "Busque por cidade ou segmento e agende na página do estabelecimento.",
   discoveryButton: "Buscar estabelecimentos", footerText: "Gestão para beleza e bem-estar.",
   contactText: "", contactUrl: "", accent: "#a89afb", overlay: "76", photoFocus: "right",
   navSegments: "Segmentos", navFeatures: "Funcionalidades", navStock: "Estoque", navFaq: "Dúvidas",
@@ -77,6 +77,7 @@ export function parseLandingSettings(raw: unknown): LandingSettings {
     if (key === "accent" && (!/^#[a-f\d]{6}$/i.test(value) || value.toLowerCase() === "#d9a965")) continue;
     if (key === "overlay" && !/^(?:[5-8]\d|9[0-5])$/.test(value)) continue;
     if (key === "photoFocus" && !["left", "center", "right"].includes(value)) continue;
+    if (key === "discoveryTitle" && value === "Encontre seu próximo atendimento") continue;
     result[key] = value;
   }
   for (const key of Object.keys(landingDefaults) as (keyof typeof landingDefaults)[]) {

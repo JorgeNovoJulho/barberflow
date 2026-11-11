@@ -3,9 +3,9 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { offsetDay, saoPauloToday, validDay } from "../../../../lib/agenda";
-import { bookingCurrency, publicProfile } from "../../../../lib/public-booking";
+import { publicProfile } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
-import { BookingDate } from "./booking-form";
+import { BookingForm } from "./booking-form";
 import { bookOnline } from "./actions";
 
 const feedback: Record<string, string> = {
@@ -50,48 +50,18 @@ export default async function Booking({ params, searchParams }: {
     profile_slug: slug, professional: person.id, service: service.id, booking_day: day,
   }) : null;
   const slots = (result?.data ?? []) as { slot: string }[];
-  const path = `/estabelecimento/${slug}/agendar`;
-  const availableServices = profile.services.filter((entry) => entry.professionals.some((provider) => !profissional || provider.id === profissional));
-  const step = !service ? 0 : !person || !slots.length ? 1 : 2;
-
-  return <section className="container section public-booking">
+  return <section className="container section public-booking booking-redesign">
     <Link href={`/estabelecimento/${slug}`}>Voltar para {profile.name}</Link>
     <header className="public-intro">
       <p className="eyebrow">{profile.name}</p>
-      <h1>Agendar atendimento</h1>
+      <h1>Agende seu horário</h1>
     </header>
-    <ol className="booking-steps" aria-label="Etapas do agendamento">
-      {["Serviço", "Profissional e data", "Horário e confirmação"].map((label, index) =>
-        <li key={label} aria-current={step === index ? "step" : undefined}><span aria-hidden="true">{index + 1}</span>{label}</li>)}
-    </ol>
-    {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
-    <div className={service ? "booking-layout" : undefined}>
-    <div>
-    {!service ? availableServices.length ? <ul className="cards">
-      {availableServices.map((entry) => <li className="card booking-service-card" key={entry.id}>
-        <h2>{entry.name}</h2>
-        <p><strong className="public-service-price">{bookingCurrency.format(entry.price_cents / 100)}</strong> · {entry.duration_minutes} min</p>
-        {entry.description && <p>{entry.description}</p>}
-        <Link className="primary" href={path + "?" + new URLSearchParams({ servico: entry.id, ...(profissional ? { profissional } : {}) })}>Escolher serviço</Link>
-      </li>)}
-    </ul> : <p className="card">Nenhum serviço com profissional disponível para agendamento.</p>
-    : <BookingDate slug={slug} service={service.id} professionals={service.professionals}
-      day={day} professional={person?.id ?? ""} today={today} limit={limit}
-      initialSlots={result && !result.error ? slots : null}
-      contact={{ initialName: typeof user?.user_metadata.full_name === "string" ? user.user_metadata.full_name : "",
-        requestId: randomUUID(), action: bookOnline.bind(null, slug, service.id, person?.id ?? "", day) }} />}
-    </div>
-    {service && <aside className="card booking-summary" aria-label="Resumo do agendamento">
-      <h2>Seu agendamento</h2>
-      <dl className="order-totals">
-        <div><dt>Serviço</dt><dd>{service.name}</dd></div>
-        <div><dt>Duração</dt><dd>{service.duration_minutes} min</dd></div>
-        {person && <div><dt>Profissional</dt><dd>{person.name}</dd></div>}
-        <div><dt>Data</dt><dd>{day.split("-").reverse().join("/")}</dd></div>
-        <div><dt>Valor</dt><dd className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</dd></div>
-      </dl>
-      <Link href={path}>Escolher outro serviço</Link>
-    </aside>}
-    </div>
+    {estado && Object.hasOwn(feedback, estado) && <p role="status" data-feedback="error">{feedback[estado]}</p>}
+    <BookingForm key={JSON.stringify([servico, profissional, dia, estado])}
+      slug={slug} services={profile.services.filter((entry) => entry.professionals.length)}
+      initialService={service?.id ?? ""} initialPerson={person?.id ?? (!service ? profissional ?? "" : "")}
+      day={day} today={today} limit={limit} initialSlots={result && !result.error ? slots : null}
+      initialName={typeof user?.user_metadata.full_name === "string" ? user.user_metadata.full_name : ""}
+      requestId={randomUUID()} action={bookOnline.bind(null, slug)} />
   </section>;
 }

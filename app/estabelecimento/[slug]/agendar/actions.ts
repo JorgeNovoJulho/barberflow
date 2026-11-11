@@ -7,7 +7,10 @@ import { isUuid } from "../../../../lib/establishments";
 import { slugPattern } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 
-export async function bookOnline(slug: string, service: string, professional: string, day: string, data: FormData) {
+export async function bookOnline(slug: string, data: FormData) {
+  const service = String(data.get("service") ?? "");
+  const professional = String(data.get("professional") ?? "");
+  const day = String(data.get("day") ?? "");
   if (!slugPattern.test(slug) || !isUuid(service) || !isUuid(professional) || !validDay(day)) redirect("/estabelecimentos");
   const query = new URLSearchParams({ servico: service, profissional: professional, dia: day });
   const path = `/estabelecimento/${slug}/agendar`;
