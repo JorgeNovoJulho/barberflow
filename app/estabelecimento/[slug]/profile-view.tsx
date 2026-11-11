@@ -36,7 +36,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
   const mapEmbed = mapUrl?.hostname === "www.google.com" && mapUrl.pathname === "/maps/embed"
     ? mapUrl.href
     : details.address ? "https://www.google.com/maps?" + new URLSearchParams({ q: address, output: "embed" }) : null;
-  const whatsapp = whatsappUrl(details.whatsapp);
+  const whatsapp = whatsappUrl(details.whatsapp, `Olá ${profile.name}, vim pelo Top BarberFlow, vi sua pagina lá e tenho uma dúvida, pode me ajudar ?`);
   const instagram = details.instagram && /^@?[\w.]{1,30}$/.test(details.instagram)
     ? `https://www.instagram.com/${details.instagram.replace(/^@/, "")}/` : undefined;
   const gallery = (details.gallery ?? []).map(httpsUrl).filter((url): url is string => !!url);
