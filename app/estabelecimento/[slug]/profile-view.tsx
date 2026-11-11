@@ -70,11 +70,16 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
         {!previewShop && reviewResult?.data && <Link className="business-rating" href="#avaliacoes">
           <span aria-hidden="true">★</span> {rating === null ? "Sem avaliações" : `${rating.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} de 5 · ${reviews.length} ${reviews.length === 1 ? "avaliação recente" : "avaliações recentes"}`}
         </Link>}
+        {whatsapp && <a className="business-whatsapp" href={whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp: ${details.whatsapp}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M5 17 3 21l5-1a9 9 0 1 0-3-3Z"/><path d="M9 8c-3 1 4 8 6 6l1-1-2-1-1 1-3-3 1-1-1-2Z"/></svg>
+          {details.whatsapp}
+        </a>}
       </div>
       {profile.description && <p className="intro">{profile.description}</p>}
       {details.address && <p>{address}</p>}
       <div className="account-links">
         {previewShop ? <button type="button" className="primary" disabled>Agendar horário</button> : <Link className="primary" href={bookingPath}>Agendar horário</Link>}
+        {!previewShop && <Link className="secondary business-booking-lookup" href={`/estabelecimento/${slug}/consultar`}>Consultar meu agendamento</Link>}
         {map && <a className="secondary" href={map} target="_blank" rel="noopener noreferrer">Como chegar</a>}
         {whatsapp && <a className="secondary" href={whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
         {instagram && <a className="secondary" href={instagram} target="_blank" rel="noopener noreferrer">Instagram</a>}
@@ -92,11 +97,14 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
     </nav>
     <div className="profile-location-grid">
     {!!Object.keys(details.hours ?? {}).length && <section className="card panel-form">
-      <h2>Horário de funcionamento</h2>
+      <div className="business-hours-heading">
+        <h2>Horário de funcionamento</h2>
+        <strong className="business-hours-now" data-open={Boolean(open)}>{open ? "Aberto agora" : "Fechado agora"}</strong>
+      </div>
       <dl className="order-totals business-hours">
         {businessDays.map((label, day) => {
           const hours = details.hours?.[day];
-          return <div key={label}><dt>{label}</dt><dd>{hours ? <>
+          return <div key={label} data-today={day === weekday}><dt>{label}{day === weekday && <small>Hoje</small>}</dt><dd>{hours ? <>
             {hours.start}–{hours.end}{hours.breakStart && <small>Intervalo {hours.breakStart}–{hours.breakEnd}</small>}
           </> : "Fechado"}</dd></div>;
         })}

@@ -33,7 +33,7 @@ export async function bookOnline(slug: string, service: string, professional: st
   if (!user) {
     (await cookies()).set("barberflow-guest-" + slug, requestId, {
       httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax",
-      path: `/estabelecimento/${slug}`, maxAge: 60 * 60 * 24,
+      path: `/estabelecimento/${slug}`, maxAge: 60 * 60 * 24 * 90,
     });
     redirect(`/estabelecimento/${slug}?agendamento=registrado#agendamento-confirmado`);
   }

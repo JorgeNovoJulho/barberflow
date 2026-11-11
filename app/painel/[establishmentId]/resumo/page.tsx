@@ -1,4 +1,5 @@
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
+import { AgendaIcon } from "../agenda-icon";
 import { AppointmentReminder } from "./appointment-reminder";
 import { httpsUrl } from "../../../../lib/business-profile";
 import type { Closing, OpenSales } from "../caixa/model";
@@ -95,9 +96,16 @@ export default async function DashboardPage({ params, searchParams }: {
   const upcomingIds = data?.upcoming.map(({ id }) => id) ?? [];
   const upcomingEntries = upcomingIds.length ? await supabase.from("barberflow_schedule").select("id,booked_by").eq("establishment_id", shop).in("id", upcomingIds) : null;
   const avatars = await appointmentAvatars(supabase, upcomingEntries?.data ?? []);
+  const [freeTimes, flagged] = data ? await Promise.all([
+    supabase.rpc("barberflow_dashboard_free_times", { shop }),
+    supabase.from("barberflow_schedule").select("id,starts_at,service_name,client_name,state")
+      .eq("establishment_id", shop).eq("kind", "appointment").in("state", ["no_show", "pending"])
+      .gte("starts_at", data.first_day + "T00:00").lte("starts_at", data.today + "T23:59:59.999999")
+      .order("starts_at", { ascending: false }),
+  ]) : [];
   const notifications = notificationResult.data as BookingNotifications | null;
   const readNotices = guiaAviso === "lidas";
-  const visibleNotices = notifications?.items.filter((item) => Boolean(item.booking_read_at) === readNotices) ?? [];
+  const visibleNotices = notifications?.items.filter((item) => Boolean(item.booking_read_at) === readNotices).sort((a, b) => Date.parse(b.booking_created_at) - Date.parse(a.booking_created_at)) ?? [];
   const noticeLink = (guide: string) => `?periodo=${selected.days}&notificacoes=1&guiaAviso=${guide}#notificacoes`;
   const money = (cents: number) => bookingCurrency.format(cents / 100);
   const percentage = (part: number, total: number) => new Intl.NumberFormat("pt-BR", {
@@ -158,15 +166,15 @@ export default async function DashboardPage({ params, searchParams }: {
               <SubmitButton>Confirmar limpeza</SubmitButton>
             </form>
           </details>}
-          </div>
           {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, false)}>
-            <SubmitButton>Marcar todas como lidas</SubmitButton>
+            <SubmitButton tone="keep">Marcar todas como lidas</SubmitButton>
           </form>}
-          {visibleNotices.length ? <ul>{visibleNotices.map((item) => <li key={item.id}>
+          </div>
+          {visibleNotices.length ? <ul className="dashboard-notice-list">{visibleNotices.map((item) => <li key={item.id}>
             <strong>Novo agendamento{item.booking_read_at ? "" : " · Não lida"}</strong>
             <p>{item.client_name} · {item.service_name} · {formatDay(item.starts_at)} às {item.starts_at.slice(11, 16)}</p>
             <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
-            <Link href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir na agenda</Link>
+            <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir na agenda</Link>
           </li>)}</ul> : <p>Nenhuma notificação {readNotices ? "lida" : "não lida"}.</p>}
         </>}
     </details>
@@ -181,6 +189,20 @@ export default async function DashboardPage({ params, searchParams }: {
         {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric">
           <dt>{label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
           <dd>{value}</dd>{note && <p>{note}</p>}
+          {[2, 5, 6].includes(index) && <details className="dashboard-metric-list">
+            <summary className="secondary">Ver {index === 2 ? "horários" : "atendimentos"}</summary>
+            {index === 2 ? freeTimes?.error ? <p>Não foi possível carregar os horários.</p> : freeTimes?.data?.length
+              ? <ul>{freeTimes.data.map(({ slot }: { slot: string }) => <li key={slot}>{slot.slice(11, 16)}</li>)}</ul>
+              : <p>Nenhum horário livre para o serviço de referência.</p>
+              : flagged?.error ? <p>Não foi possível carregar os atendimentos.</p> : (() => {
+                const records = (flagged?.data ?? []).filter((entry) => entry.state === (index === 5 ? "no_show" : "pending"));
+                return records.length ? <ul>{records.map((entry) => <li key={entry.id}>
+                  <Link href={`/painel/${shop}/agenda?dia=${entry.starts_at.slice(0,10)}#registro-${entry.id}`}>
+                    {formatDay(entry.starts_at)} às {entry.starts_at.slice(11,16)} · {entry.client_name} · {entry.service_name}
+                  </Link>
+                </li>)}</ul> : <p>Nenhum atendimento no período.</p>;
+              })()}
+          </details>}
           {label === "Faturamento registrado" && <p className="account-links">
             <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
             <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos</Link>
@@ -203,8 +225,10 @@ export default async function DashboardPage({ params, searchParams }: {
               <span>{item.professional_name}</span>
             </p>
             <p className="booking-client"><ClientAvatar photo={avatars.get(item.id)} /><span>{item.client_name} · {item.state === "pending" ? "Aguardando aprovação" : "Agendado"}</span></p>
+            <div className="agenda-entry-actions">
             <CancelAppointmentForm shop={shop} day={item.starts_at.slice(0,10)} entry={item.id} overview />
-            <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0,10)}#registro-${item.id}`}>Abrir na agenda</Link>
+            <Link className="secondary agenda-card-button" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0,10)}#registro-${item.id}`}><AgendaIcon name="calendar" />Abrir na agenda</Link>
+            </div>
           </li>;
         })}
       </ul> : <p>Nenhum atendimento futuro na agenda.</p>}
