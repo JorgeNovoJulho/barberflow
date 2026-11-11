@@ -59,11 +59,11 @@ const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZo
 
 export default async function Finance({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string }>;
+  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string; comandas?: string; paginaComandas?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { estado, guia, comanda } = await searchParams;
+  const { estado, guia, comanda, comandas, paginaComandas } = await searchParams;
   const sale = comanda && isUuid(comanda) ? comanda : null;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/financeiro` }));
@@ -77,10 +77,15 @@ export default async function Finance({ params, searchParams }: {
   if (sale && access.data === "unlocked") redirect(`/painel/${shop}/financeiro/pagamentos?comanda=${sale}#conta-pix`);
   const emailReset = ["email-verificado", "recuperacao-email-invalid", "recuperacao-email-reused", "recuperacao-email-mfa"].includes(estado ?? "");
   const guide = financeGuide(guia);
+  const billView = comandas === "fechadas" ? "fechadas" : "abertas";
+  const billPage = typeof paginaComandas === "string" && /^\d{1,5}$/.test(paginaComandas)
+    ? Math.min(Number(paginaComandas), 10000) : 0;
+  const billLink = (view: string, page = 0) =>
+    "?" + new URLSearchParams({ guia: guide, comandas: view, paginaComandas: String(page) }) + "#comandas";
   const setup = access.data === "setup";
   const blocked = access.data === "blocked";
   const [result, entriesResult, controls] = access.data === "unlocked" ? await Promise.all([
-    supabase.rpc("barberflow_receivables", { shop }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
+    supabase.rpc("barberflow_receivables", { shop, bill_view: billView, page_number: billPage }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
     supabase.rpc("barberflow_card_controls", { shop }),
   ]) : [null, null, null];
   const ledger = result?.data as Ledger | null;
@@ -126,13 +131,13 @@ export default async function Finance({ params, searchParams }: {
         </details>}
       </div> : <>
         <form action={lockFinance.bind(null, shop)}><SubmitButton>Bloquear financeiro</SubmitButton></form>
-        <nav className="account-links" aria-label="Financeiro">
-          <Link className="secondary" href={'/painel/' + shop + '/financeiro/pagamentos'}>Configurar Pix e cartões</Link>
-          <Link className="secondary" href={`/painel/${shop}/financeiro/relatorios`}>Relatórios e fechamentos</Link>
-          <Link className="secondary" href={`/painel/${shop}/financeiro/desempenho`}>Desempenho</Link>
-          <Link href="?guia=fixed#lancamentos">Contas a pagar</Link>
-          <Link href="?guia=receivables#lancamentos">Outros recebimentos</Link>
-          <a href="#comandas">Contas a receber de comandas</a>
+        <nav className="account-links finance-tabs" aria-label="Guias do Financeiro">
+          <Link className="secondary finance-tab" data-tone="purple" href={`/painel/${shop}/financeiro/pagamentos`}>Configurar Pix e cartões</Link>
+          <Link className="secondary finance-tab" data-tone="blue" href={`/painel/${shop}/financeiro/relatorios`}>Relatórios e fechamentos</Link>
+          <Link className="secondary finance-tab" data-tone="teal" href={`/painel/${shop}/financeiro/desempenho`}>Desempenho</Link>
+          <Link className="secondary finance-tab" data-tone="amber" href="?guia=fixed#lancamentos">Contas a pagar</Link>
+          <Link className="secondary finance-tab" data-tone="green" href="?guia=receivables#lancamentos">Outros recebimentos</Link>
+          <Link className="secondary finance-tab" data-tone="rose" href={billLink(billView)}>Contas a receber de comandas</Link>
         </nav>
         <dl className="cards">
           <div className="card dashboard-metric"><dt>Total a receber em aberto</dt><dd>{money(ledger.open_cents + (entries?.receivable ?? 0))}</dd></div>
@@ -143,11 +148,14 @@ export default async function Finance({ params, searchParams }: {
         </dl>
         {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={saoPauloToday()} />}
         <h2 className="panel-form" id="comandas">Contas a receber de comandas</h2>
-        <p>Até 100 comandas, com pendências primeiro. Os totais consideram todas as comandas.</p>
+        <nav className="account-links finance-tabs" aria-label="Situação das comandas a receber">
+          <Link className="secondary finance-tab" data-tone="amber" aria-current={billView === "abertas" ? "page" : undefined} href={billLink("abertas")}>Em aberto</Link>
+          <Link className="secondary finance-tab" data-tone="green" aria-current={billView === "fechadas" ? "page" : undefined} href={billLink("fechadas")}>Fechadas</Link>
+        </nav>
         {controls?.error && <p role="alert">Não foi possível verificar as cobranças integradas. Atualize antes de alterar um recebimento.</p>}
-        {ledger.bills.length ? <ul className="cards">{ledger.bills.map((bill) => {
+        {ledger.bills.length ? <ul className="cards">{ledger.bills.slice(0,24).map((bill) => {
           const remaining = bill.total_cents - bill.received_cents;
-          return <li className="card" key={bill.appointment_id}>
+          return <li className="card finance-bill" data-state={billView} key={bill.appointment_id}>
             <h3>{bill.client_name}</h3><p>Fechada em {date(bill.closed_at)}</p>
             <dl className="order-totals">
               <div><dt>Valor da comanda</dt><dd>{money(bill.total_cents)}</dd></div>
@@ -181,7 +189,11 @@ export default async function Finance({ params, searchParams }: {
               </li>)}</ul>
             </details>}
           </li>;
-        })}</ul> : <p>Nenhuma comanda fechada neste estabelecimento.</p>}
+        })}</ul> : <p>{billView === "abertas" ? "Nenhuma comanda com saldo em aberto." : "Nenhuma comanda quitada."}</p>}
+        {(billPage > 0 || ledger.bills.length > 24) && <nav className="account-links" aria-label="Páginas de comandas">
+          {billPage > 0 && <Link className="secondary" href={billLink(billView,billPage-1)}>Anterior</Link>}
+          {ledger.bills.length > 24 && billPage < 10000 && <Link className="secondary" href={billLink(billView,billPage+1)}>Próxima</Link>}
+        </nav>}
       </>}
   </section>;
 }
