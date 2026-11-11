@@ -84,3 +84,12 @@ export async function linkCompletedClient(shop: string, day: string, entry: stri
   const { data, error } = await supabase.rpc("barberflow_link_appointment_client", { shop, entry, person });
   return finish(error || !data ? "falha" : "cliente-vinculado");
 }
+
+export async function archiveCancelled(shop: string, day: string, cutoff: string) {
+  if (!isUuid(shop) || !validDay(day)) redirect("/painel");
+  const path = `/painel/${shop}/agenda?dia=${day}&visao=cancelados`;
+  const supabase = await supabaseServer();
+  const result = await supabase?.rpc("barberflow_archive_cancelled_appointments", { shop, cutoff });
+  if (result?.data) revalidatePath(`/painel/${shop}/agenda`);
+  redirect(path + "&estado=" + (result?.data ? "arquivados" : "falha"));
+}

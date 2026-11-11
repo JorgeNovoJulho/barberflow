@@ -8,9 +8,10 @@ import { SubmitButton } from "../../../auth/submit";
 import { AgendaIcon } from "../agenda-icon";
 import { AppointmentFields } from "./appointment-fields";
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
-import { createEntry, linkCompletedClient, rescheduleEntry, updateEntry } from "./actions";
+import { archiveCancelled, createEntry, linkCompletedClient, rescheduleEntry, updateEntry } from "./actions";
 
 const messages: Record<string, string> = {
+  arquivados: "Agendamentos cancelados removidos da lista.",
   salvo: "Registro adicionado à agenda.",
   atualizado: "Agenda atualizada.",
   remarcado: "Atendimento remarcado.",
@@ -42,7 +43,8 @@ export default async function Agenda({ params, searchParams }: {
   const tomorrow = offsetDay(day, 1);
   const weekly = visao === "semana";
   const monthly = visao === "mes" || visao === "lista";
-  const view = weekly ? "semana" : monthly ? "mes" : "dia";
+  const cancelled = visao === "cancelados";
+  const view = cancelled ? "cancelados" : weekly ? "semana" : monthly ? "mes" : "dia";
   const monthStart = day.slice(0, 7) + "-01";
   const monthEnd = offsetDay(monthStart, 32).slice(0, 7) + "-01";
   const previousMonth = offsetDay(monthStart, -1).slice(0, 7) + "-01";
@@ -59,9 +61,13 @@ export default async function Agenda({ params, searchParams }: {
   if (establishmentError) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!establishment) notFound();
 
+  const cutoff = new Date().toISOString();
+  const schedule = supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes,booked_by")
+    .eq("establishment_id", shop);
   const [entries, professionals, services, assignments, clients] = await Promise.all([
-    supabase.from("barberflow_schedule").select("id,professional_id,kind,state,starts_at,ends_at,service_name,client_id,client_name,client_phone,notes,booked_by")
-      .eq("establishment_id", shop).lt("starts_at", rangeEnd + "T00:00").gt("ends_at", rangeStart + "T00:00").order("starts_at"),
+    cancelled
+      ? schedule.eq("kind", "appointment").eq("state", "cancelled").is("cancelled_card_archived_at", null).order("starts_at", { ascending: false }).order("id")
+      : schedule.neq("state", "cancelled").lt("starts_at", rangeEnd + "T00:00").gt("ends_at", rangeStart + "T00:00").order("starts_at"),
     supabase.from("barberflow_professionals").select("id,name,active,photo_url").eq("establishment_id", shop).order("name"),
     supabase.from("barberflow_services").select("id,name,duration_minutes").eq("establishment_id", shop).eq("active", true).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
@@ -112,8 +118,9 @@ export default async function Agenda({ params, searchParams }: {
       <Link className="secondary" aria-current={view === "dia" ? "page" : undefined} href={href(day, "dia")}>Dia</Link>
       <Link className="secondary" aria-current={weekly ? "page" : undefined} href={href(day, "semana")}>Semana</Link>
       <Link className="secondary" aria-current={monthly ? "page" : undefined} href={href(day, "mes")}>Mês</Link>
+      <Link className="secondary" aria-current={cancelled ? "page" : undefined} href={href(day, "cancelados")}>Cancelados</Link>
     </nav>
-    <div className="agenda-toolbar">
+    {!cancelled && <div className="agenda-toolbar">
       <Link className="secondary" href={href(monthly ? previousMonth : offsetDay(day, weekly ? -7 : -1))} data-agenda-tone="violet">Anterior</Link>
       <Link className="secondary" href={href(today)} data-agenda-tone="green">Hoje</Link>
       <Link className="secondary" href={href(monthly ? monthEnd : offsetDay(day, weekly ? 7 : 1))} data-agenda-tone="violet">Próximo</Link>
@@ -122,11 +129,11 @@ export default async function Agenda({ params, searchParams }: {
         <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
         <button type="submit" className="secondary" data-agenda-tone="blue">Abrir {monthly ? "mês" : view}</button>
       </form>
-    </div>
-    <p><Link className="primary" href={href(day, "dia") + "&novo=1#novo"}>+ Agendar para um cliente</Link></p>
+    </div>}
+    {!cancelled && <p><Link className="primary" href={href(day, "dia") + "&novo=1#novo"}>+ Agendar para um cliente</Link></p>}
     <CancellationFeedback state={cancelamento} />
     {estado && Object.hasOwn(messages, estado) && <p role="status">{messages[estado]}</p>}
-    <h2>{weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : monthly ? monthLabel : dateLabel}</h2>
+    <h2>{cancelled ? "Agendamentos cancelados" : weekly ? `Semana de ${monday.slice(5).split("-").reverse().join("/")}` : monthly ? monthLabel : dateLabel}</h2>
     {[entries, professionals, services, assignments, clients].some((response) => response.error)
       ? <p role="alert">Não foi possível carregar a agenda.</p> : weekly ? <div className="week-grid">
         {Array.from({ length: 7 }, (_, index) => {
@@ -159,7 +166,14 @@ export default async function Agenda({ params, searchParams }: {
           </section>;
         })}
       </div> : <>
-      <div className="agenda-forms">
+      {cancelled && !!entries.data?.length && <details className="card panel-form">
+        <summary className="secondary action-cancel">Limpar todos</summary>
+        <p>Remover todos os agendamentos cancelados desta lista?</p>
+        <form action={archiveCancelled.bind(null, shop, day, cutoff)}>
+          <SubmitButton tone="cancel">Confirmar limpeza</SubmitButton>
+        </form>
+      </details>}
+      {!cancelled && <div className="agenda-forms">
         <details className="card" id="novo" open={novo === "1"}>
           <summary data-agenda-tone="green">Novo agendamento manual</summary>
           {offerings.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", false)}>
@@ -191,7 +205,7 @@ export default async function Agenda({ params, searchParams }: {
             <SubmitButton>Bloquear horário</SubmitButton>
           </form> : <p>Cadastre um profissional ativo para bloquear horários.</p>}
         </details>
-      </div>
+      </div>}
       {entries.data?.length ? <ul className="cards">
         {entries.data.map((entry) => <li className="card agenda-entry" key={entry.id} id={`registro-${entry.id}`}>
           <p className="agenda-entry-time">{entry.starts_at.slice(0,10).split("-").reverse().join("/")} · {entryTime(entry.starts_at, day)}–{entryTime(entry.ends_at, day)}</p>
@@ -237,7 +251,7 @@ export default async function Agenda({ params, searchParams }: {
           </>}
           </div>
         </li>)}
-      </ul> : <p>Nenhum atendimento ou bloqueio neste dia.</p>}
+      </ul> : <p>{cancelled ? "Nenhum agendamento cancelado nesta lista." : "Nenhum atendimento ou bloqueio neste dia."}</p>}
     </>}
   </section>;
 }

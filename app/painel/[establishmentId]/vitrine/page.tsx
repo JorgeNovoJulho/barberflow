@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { pixTransactionId } from "../../../../lib/pix";
 import { orderProductPhotos } from "../../../../lib/order-photos";
-import { PurchaseUpdates } from "../../../minhas-compras/purchase-updates";
 import { OrderCardHeading } from "../../../minhas-compras/order-card-heading";
 import { formatShowcaseDate, showcaseStatus } from "../../../../lib/showcase";
 import { supabaseServer } from "../../../../lib/supabase";
@@ -127,7 +126,6 @@ export default async function ShowcaseOrders({ params, searchParams }: {
     </li>;
   }
   return <section className="section">
-    <PurchaseUpdates />
     <header className="operational-heading">
       <p className="eyebrow">{business.data.name}</p>
       <h1>Pedidos da vitrine</h1>

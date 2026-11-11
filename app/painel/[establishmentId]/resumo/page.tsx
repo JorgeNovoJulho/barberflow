@@ -4,7 +4,6 @@ import { AppointmentReminder } from "./appointment-reminder";
 import { httpsUrl } from "../../../../lib/business-profile";
 import type { Closing, OpenSales } from "../caixa/model";
 import Link from "next/link";
-import { PurchaseUpdates } from "../../../minhas-compras/purchase-updates";
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { bookingCurrency } from "../../../../lib/public-booking";
@@ -127,7 +126,6 @@ export default async function DashboardPage({ params, searchParams }: {
   ] : [];
 
   return <section className="container section">
-    <PurchaseUpdates interval={10_000} />
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link>
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>
@@ -174,7 +172,7 @@ export default async function DashboardPage({ params, searchParams }: {
             <strong>{item.kind === "cancellation" ? "Agendamento cancelado pelo cliente" : "Novo agendamento"}{item.booking_read_at ? "" : " · Não lida"}</strong>
             <p>{item.client_name} · {item.service_name} · {formatDay(item.starts_at)} às {item.starts_at.slice(11, 16)}</p>
             <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
-            <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}#registro-${item.id}`}>Abrir na agenda</Link>
+            <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}${item.kind === "cancellation" ? "&visao=cancelados" : ""}#registro-${item.id}`}>Abrir na agenda</Link>
           </li>)}</ul> : <p>Nenhuma notificação {readNotices ? "lida" : "não lida"}.</p>}
         </>}
     </details>
