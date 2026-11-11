@@ -1,3 +1,4 @@
+import { PurchaseUpdates } from "../../minhas-compras/purchase-updates";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { saoPauloToday, validDay } from "../../../lib/agenda";
@@ -34,7 +35,7 @@ export default async function TeamAgenda({ params, searchParams }: {
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
-  const [memberships, agenda, offerings, clientAccess, serviceAccess, professionalAccess, financeAccess] = await Promise.all([
+  const [memberships, agenda, offerings, clientAccess, serviceAccess, professionalAccess, financeAccess, bookingNotices] = await Promise.all([
     supabase.rpc("barberflow_my_team_shops"),
     supabase.rpc("barberflow_team_agenda", { shop, agenda_day: day }),
     supabase.rpc("barberflow_team_offerings", { shop }),
@@ -42,6 +43,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     supabase.rpc("barberflow_team_can_edit_services", { shop }),
     supabase.rpc("barberflow_team_can_edit_professionals", { shop }),
     supabase.rpc("barberflow_team_finance_status", { shop }),
+    supabase.rpc("barberflow_team_booking_notifications", { shop }),
   ]);
   if (memberships.error) throw new Error("Não foi possível consultar os acessos da equipe.");
   const business = (memberships.data as { id: string; name: string }[]).find((item) => item.id === shop);
@@ -54,12 +56,20 @@ export default async function TeamAgenda({ params, searchParams }: {
     providers.set(person.id, person);
   }
   return <section className="container section">
+    <PurchaseUpdates />
     <Link href="/painel">Voltar ao painel</Link>
     <p className="eyebrow">{business.name}</p><h1>Agenda da equipe</h1>
     {clientAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/clientes`}>Clientes da equipe</Link></p>}
     {serviceAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/servicos`}>Serviços e preços</Link></p>}
     {professionalAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/profissionais`}>Profissionais</Link></p>}
     {financeAccess.data && financeAccess.data !== "denied" && <p><Link className="secondary" href={`/equipe/${shop}/financeiro`}>Financeiro e relatórios</Link></p>}
+    {bookingNotices.error ? <p role="alert">Não foi possível carregar os avisos de agendamento.</p>
+      : bookingNotices.data?.length > 0 && <section className="card panel-form">
+        <h2>Novos agendamentos online nas últimas 24 horas</h2>
+        <ul>{bookingNotices.data.map((entry: { id: string; service_name: string; client_name: string; starts_at: string }) => <li key={entry.id}>
+          <Link href={`/equipe/${shop}?dia=${entry.starts_at.slice(0,10)}`}>{entry.service_name} · {entry.client_name} · {entry.starts_at.slice(0,10).split("-").reverse().join("/")} às {entry.starts_at.slice(11,16)}</Link>
+        </li>)}</ul>
+      </section>}
     <form className="agenda-date">
       <label>Data <input type="date" name="dia" defaultValue={day} required /></label>
       <button type="submit" className="secondary">Abrir dia</button>
