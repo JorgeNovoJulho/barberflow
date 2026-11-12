@@ -40,8 +40,8 @@ export function ProfileGallery({ images, title }: { images: string[]; title: str
   const [index, setIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   return <>
-    <CircularCarousel items={images.map((src, position) => ({ src, alt: `Foto ${position + 1} de ${title}` }))}
-      onSelect={(position) => {
+    <CircularCarousel items={images.map((src, position) => ({ src, title: "", subtitle: "", alt: `Foto ${position + 1} de ${title}` }))}
+      curve={undefined} tilt={undefined} perspective={undefined} onChange={undefined} preset="cylinder" intro="rise" cardWidth={220} aspectRatio={1} autoplay="off" focusOnClick={false} fadeColor="#141119" className="venue-carousel" style={{ height: "clamp(18rem, 40vw, 32rem)", background: "#141119", borderRadius: "1rem" }} onItemClick={(_item: unknown, position: number) => {
         setIndex(position);
         setExpanded(true);
         dialog.current?.showModal();
