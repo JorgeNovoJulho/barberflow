@@ -46,11 +46,12 @@ async function appointmentAction(shop: string, id: string, operation: "cancel" |
   redirect(`/equipe/${shop}/meu-painel?estado=${data && !error ? "salvo" : "falha"}#agenda-dia`);
 }
 
-async function checkIn(shop: string, id: string) {
+async function checkIn(shop: string, id: string, openOrder: boolean) {
   "use server";
   if (!isUuid(id)) notFound();
   const supabase = await client(shop);
   const { data, error } = await supabase.rpc("barberflow_professional_check_in", { shop_id: shop, entry_id: id });
+  if (openOrder && data && !error) redirect(`/equipe/${shop}/comanda/${id}`);
   revalidatePath(`/equipe/${shop}/meu-painel`);
   redirect(`/equipe/${shop}/meu-painel?estado=${data && !error ? "salvo" : "falha"}#agenda-dia`);
 }
@@ -119,7 +120,10 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>WhatsApp</a>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
             {entry.state === "scheduled" && (checkedIn.has(entry.id) ? <strong>Presença confirmada</strong>
-              : <form action={checkIn.bind(null, shop, entry.id)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
+              : <form action={checkIn.bind(null, shop, entry.id, false)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
+            {entry.state === "scheduled" && (checkedIn.has(entry.id)
+              ? <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>
+              : <form action={checkIn.bind(null, shop, entry.id, true)}><SubmitButton>Confirmar presença e abrir comanda</SubmitButton></form>)}
             <details><summary>Informar falta</summary><form action={appointmentAction.bind(null, shop, entry.id, "absence")}>
               <SubmitButton>Confirmar falta</SubmitButton></form></details>
             <details><summary>Cancelar agendamento</summary><form className="account-form" action={appointmentAction.bind(null, shop, entry.id, "cancel")}>
