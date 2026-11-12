@@ -8,6 +8,12 @@ export function accountKind(value: unknown) {
 
 export async function afterLogin(client: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>, user: User | null, next: string) {
   if (await isMasterAccount(client, user?.email)) return masterPath;
+  if (user?.app_metadata.barberflow_managed_professional === true) {
+    const { data } = await client.rpc("barberflow_managed_professional_destination");
+    if (typeof data === "string") return `/equipe/${data}/meu-painel`;
+    await client.auth.signOut({ scope: "local" });
+    return "/login?estado=credenciais";
+  }
   const role = await client.rpc("barberflow_account_kind");
   if (/^\/estabelecimento\/[a-z0-9-]+\/agendar(?:\?|$)/.test(next) || /^\/minhas-compras(?:\?|$)/.test(next)) return next;
   if (role.data === "cliente") return "/cliente";

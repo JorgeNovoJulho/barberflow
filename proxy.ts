@@ -18,6 +18,20 @@ export async function proxy(request: NextRequest) {
     },
   });
   const { data: session } = await supabase.auth.getClaims();
+  const metadata = session?.claims.app_metadata as Record<string, unknown> | undefined;
+  if (metadata?.barberflow_managed_professional === true) {
+    const { data: shop } = await supabase.rpc("barberflow_managed_professional_destination");
+    if (typeof shop !== "string") {
+      await supabase.auth.signOut({ scope: "local" });
+      if (request.nextUrl.pathname !== "/login") {
+        const target = new URL("/login?estado=credenciais", request.url);
+        const redirect = NextResponse.redirect(target, 303);
+        for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+        return redirect;
+      }
+      return response;
+    }
+  }
   const workspace = /^\/(painel|equipe)\/([a-f0-9-]{36})(?:\/([^/]+))?\/?/i.exec(request.nextUrl.pathname);
   if (session?.claims.sub && workspace && workspace[3] !== "assinatura") {
     const [, area, shop] = workspace;

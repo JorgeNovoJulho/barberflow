@@ -1,3 +1,4 @@
+import { ActiveProfessionals } from "./active-professionals";
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { AgendaIcon } from "../agenda-icon";
 import { AppointmentReminder } from "./appointment-reminder";
@@ -222,6 +223,7 @@ export default async function DashboardPage({ params, searchParams }: {
             <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos</Link>
           </p>}
         </div>)}
+        <ActiveProfessionals shop={shop} />
       </dl>
       <DashboardCharts data={data} />
       <h2 id="proximos-atendimentos">Próximos atendimentos</h2>

@@ -5,7 +5,7 @@ import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { PanelStatus } from "../../status";
-import { moveProfessional, saveAssignments, saveWorkingDay } from "./actions";
+import { moveProfessional, saveAssignments, saveWorkingDay, setManagedProfessionalBlock } from "./actions";
 import { httpsUrl } from "../../../../lib/business-profile";
 import { productImageTypes } from "../../../../lib/product-media";
 import { TeamInvite } from "./team-invite";
@@ -17,9 +17,19 @@ type Professional = { id: string; name: string; description: string; active: boo
   instagram: string; facebook: string; tiktok: string; youtube: string; whatsapp: string };
 type Hours = { professional_id: string; weekday: number; starts_at: string; ends_at: string; break_start: string | null; break_end: string | null };
 
-function ProfessionalForm({ shop, professional, delegated }: { shop: string; professional?: Professional; delegated: boolean }) {
+type ManagedAccess = { professional_id: string; login: string; blocked: boolean };
+
+function ProfessionalForm({ shop, professional, delegated, access }: { shop: string; professional?: Professional; delegated: boolean; access?: ManagedAccess }) {
   return <ProfessionalSubmission shop={shop} professional={professional?.id ?? null} delegated={delegated}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={professional?.name} /></label>
+    {!delegated && <fieldset>
+      <legend>Acesso ao painel profissional</legend>
+      {access && <p>Login atual <strong>{access.login}+{shop}@equipe.topbarberflow.com.br</strong></p>}
+      <label>Login <input name="professional_login" autoCapitalize="none" autoComplete="off" maxLength={32}
+        pattern="[a-z0-9][a-z0-9._\-]{2,31}" placeholder={access?.login ?? "nome.profissional"} /></label>
+      <label>{access ? "Nova senha" : "Senha"} <input name="professional_password" type="password" autoComplete="new-password" minLength={10} maxLength={72} /></label>
+      <p>Preencha os dois campos para {access ? "redefinir a senha" : "criar o acesso"}. O login completo inclui o identificador da loja.</p>
+    </fieldset>}
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={professional?.description} /></label>
     <fieldset>
       <legend>Foto do profissional</legend>
@@ -94,7 +104,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     if (!data) notFound();
     businessName = data.name;
   }
-  const [professionals, services, assignments, hours, team, closedToday] = await Promise.all([
+  const [professionals, services, assignments, hours, team, closedToday, managed] = await Promise.all([
     supabase.from("barberflow_professionals").select("id,name,description,active,photo_url,commission_bps,product_commission_bps,inherit_business_hours,instagram,facebook,tiktok,youtube,whatsapp")
       .eq("establishment_id", shop).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     delegated ? supabase.rpc("barberflow_team_assignment_services", { shop })
@@ -103,8 +113,10 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     supabase.from("barberflow_professional_hours").select("professional_id,weekday,starts_at,ends_at,break_start,break_end").eq("establishment_id", shop),
     delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members", { shop }),
     delegated ? null : supabase.rpc("barberflow_professional_closed_today", { shop_id: shop }),
+    delegated ? null : supabase.rpc("barberflow_managed_professional_roster", { shop_id: shop }),
   ]);
   const { estado } = await searchParams;
+  const accessByProfessional = new Map(((managed?.data ?? []) as ManagedAccess[]).map((row) => [row.professional_id, row]));
 
   return <section className="container section">
     <nav className="account-links" aria-label="Estabelecimento">
@@ -113,6 +125,9 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     </nav>
     <p className="eyebrow">{businessName}</p>
     <h1>Profissionais</h1>
+    {estado === "acesso-falhou" && <p role="alert">Os dados do profissional foram salvos. Confira a disponibilidade do login e tente criar o acesso na edição.</p>}
+    {estado === "acesso-bloqueado" && <p role="status">Acesso ao painel bloqueado.</p>}
+    {estado === "acesso-liberado" && <p role="status">Acesso ao painel liberado.</p>}
     {estado !== "profissional-incluido" && estado !== "profissional-salvo" && <PanelStatus status={estado} />}
     {[professionals, services, assignments, hours].some((response) => response.error) ? <p role="alert">Não foi possível carregar a equipe.</p> : <>
       <details className="card panel-form"><summary>Novo profissional</summary><p>Este cadastro vale apenas para <strong>{businessName}</strong>. Para a mesma pessoa atender em outra loja, abra a outra loja e crie um cadastro separado.</p><ProfessionalForm shop={shop} delegated={delegated} /></details>
@@ -139,7 +154,10 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               </form> : <button key={step} className="secondary" type="button" disabled>{label}</button>;
             })}
           </div>}
-          <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} /></details>
+          <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
+          {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
+            <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
+          </form>}
           <details><summary>Serviços vinculados · {selected.size}</summary>
             {available.length ? <form className="account-form" action={saveAssignments.bind(null, shop, professional.id, delegated)}>
               {available.map((service) => <label key={service.id}>

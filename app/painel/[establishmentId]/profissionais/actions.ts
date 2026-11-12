@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
+import { professionalAuthAdmin } from "../../../../lib/professional-auth";
 import { supabaseServer } from "../../../../lib/supabase";
 import { httpsUrl, socialUrl } from "../../../../lib/business-profile";
 import { productImageLimit, productImageTypes } from "../../../../lib/product-media";
@@ -28,7 +29,7 @@ async function context(shop: string, professional: string | undefined, delegated
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));
-  return { path, supabase };
+  return { path, supabase, user };
 }
 
 function optionalHttps(value: string) {
@@ -36,7 +37,26 @@ function optionalHttps(value: string) {
 }
 
 export async function saveProfessional(shop: string, professional: string | null, delegated: boolean, form: FormData) {
-  const { path, supabase } = await context(shop, professional ?? undefined, delegated);
+  const { path, supabase, user } = await context(shop, professional ?? undefined, delegated);
+  const alias = value(form, "professional_login").toLowerCase();
+  const password = String(form.get("professional_password") ?? "");
+  const wantsAccess = Boolean(alias || password);
+  const admin = wantsAccess ? professionalAuthAdmin() : null;
+  let existingLogin: { user_id: string; login: string } | null = null;
+  if (wantsAccess) {
+    if (delegated || !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(alias) || password.length < 10 || new TextEncoder().encode(password).length > 72) {
+      return "Informe um login de 3 a 32 caracteres e uma senha de 10 a 72 bytes.";
+    }
+    const { data: owner } = await supabase.from("barberflow_establishments").select("id").eq("id", shop).eq("owner_id", user.id).maybeSingle();
+    if (!owner) return "Somente o proprietário pode gerenciar credenciais.";
+    if (!admin) return "A criação de credenciais ainda não está habilitada no servidor.";
+    if (professional) {
+      const { data, error } = await admin.rpc("barberflow_managed_professional_access", { shop_id: shop, person: professional, actor: user.id }).maybeSingle();
+      if (error) return "Não foi possível consultar o acesso profissional.";
+      existingLogin = data as { user_id: string; login: string } | null;
+      if (existingLogin && existingLogin.login !== alias) return "Use o login existente para redefinir a senha.";
+    }
+  }
   const name = value(form, "name");
   const description = value(form, "description");
   const photo = form.get("photo_file");
@@ -81,6 +101,27 @@ export async function saveProfessional(shop: string, professional: string | null
     return error.code === "42501" ? "Sua conta não tem permissão para salvar este profissional." : "O banco recusou o cadastro. Confira os campos e tente novamente.";
   }
   if (!data) return "Não foi possível encontrar o profissional para salvar.";
+  if (admin && wantsAccess) {
+    const credential = { barberflow_managed_professional: true, barberflow_credential_revision: crypto.randomUUID() };
+    if (existingLogin) {
+      const { error } = await admin.auth.admin.updateUserById(existingLogin.user_id, { password, app_metadata: credential });
+      if (error) return { location: path + "?estado=acesso-falhou#equipe-profissionais" };
+    } else {
+      const email = `${alias}+${shop}@equipe.topbarberflow.com.br`;
+      const { data: account, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: credential });
+      if (error || !account.user) return { location: path + "?estado=acesso-falhou#equipe-profissionais" };
+      const { data: linked, error: linkError } = await admin.rpc("barberflow_managed_professional_binding", {
+        shop_id: shop, person: data.id, actor: user.id, account: account.user.id, alias,
+      });
+      if (linkError || !linked) {
+        const { data: current } = await admin.rpc("barberflow_managed_professional_access", {
+          shop_id: shop, person: data.id, actor: user.id,
+        }).maybeSingle();
+        if (!current) await admin.auth.admin.deleteUser(account.user.id);
+        return { location: path + "?estado=acesso-falhou#equipe-profissionais" };
+      }
+    }
+  }
   revalidatePath(path);
   return { location: path + (professional ? "?estado=profissional-salvo" : "?estado=profissional-incluido") + "#equipe-profissionais" };
 }
@@ -125,4 +166,12 @@ export async function saveWorkingDay(shop: string, professional: string, delegat
     pause_start: break_start || null, pause_end: break_end || null,
   });
   result(path, error ? "falha" : "horario-salvo");
+}
+
+export async function setManagedProfessionalBlock(shop: string, professional: string, blocked: boolean) {
+  const { path, supabase } = await context(shop, professional, false);
+  const { data, error } = await supabase.rpc("barberflow_set_managed_professional_block", {
+    shop_id: shop, person: professional, blocked,
+  });
+  result(path, error || !data ? "falha" : blocked ? "acesso-bloqueado" : "acesso-liberado");
 }
