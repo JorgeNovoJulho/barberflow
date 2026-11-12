@@ -119,6 +119,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     </nav>
     <p className="eyebrow">{businessName}</p>
     <h1>Profissionais</h1>
+    {estado === "acesso-criado" && <p role="status">Acesso profissional salvo. O login está no cartão do profissional.</p>}
     {estado === "acesso-falhou" && <p role="alert">Os dados do profissional foram salvos. Confira a disponibilidade do login e tente criar o acesso na edição.</p>}
     {estado === "acesso-bloqueado" && <p role="status">Acesso ao painel bloqueado.</p>}
     {estado === "acesso-liberado" && <p role="status">Acesso ao painel liberado.</p>}
@@ -132,7 +133,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
         const selected = new Set((assignments.data ?? []).filter((item) => item.professional_id === professional.id).map((item) => item.service_id));
         const schedule = new Map((hours.data ?? []).filter((item: Hours) => item.professional_id === professional.id).map((item: Hours) => [item.weekday, item]));
         const available = ((services.data ?? []) as { id: string; name: string; active: boolean }[]).filter((service) => service.active || selected.has(service.id));
-        return <article className="card panel-form team-professional-card" data-tone={index % 4} key={professional.id}>
+        return <article className="card panel-form team-professional-card" data-tone={index % 4} key={professional.id} id={`profissional-${professional.id}`}>
           {closedToday?.data?.some((row: { professional_id: string }) => row.professional_id === professional.id) && <p data-feedback="warning">Jornada fechada para reservas online de hoje.</p>}
           <div className="professional-card-identity">
             {httpsUrl(professional.photo_url) && <img className="professional-card-photo" src={professional.photo_url} alt="" width={56} height={56} loading="lazy" />}
@@ -148,6 +149,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               </form> : <button key={step} className="secondary" type="button" disabled>{label}</button>;
             })}
           </div>}
+          {accessByProfessional.has(professional.id) && <p>Login profissional <strong style={{ overflowWrap: "anywhere" }}>{accessByProfessional.get(professional.id)?.login}+{shop}@equipe.topbarberflow.com.br</strong></p>}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>

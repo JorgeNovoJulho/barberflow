@@ -125,6 +125,10 @@ export async function saveProfessional(shop: string, professional: string | null
       }
     }
   }
+  if (admin && wantsAccess) {
+    revalidatePath(path);
+    return { location: path + "?estado=acesso-criado#profissional-" + data.id };
+  }
   revalidatePath(path);
   return { location: path + (professional ? "?estado=profissional-salvo" : "?estado=profissional-incluido") + "#equipe-profissionais" };
 }
