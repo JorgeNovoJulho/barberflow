@@ -23,7 +23,7 @@ type ManagedAccess = { professional_id: string; login: string; blocked: boolean 
 function ProfessionalForm({ shop, professional, delegated, access }: { shop: string; professional?: Professional; delegated: boolean; access?: ManagedAccess }) {
   return <ProfessionalSubmission shop={shop} professional={professional?.id ?? null} delegated={delegated}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={professional?.name} /></label>
-    {!delegated && <ProfessionalCredentials login={access ? `${access.login}+${shop}@equipe.topbarberflow.com.br` : undefined} />}
+    {!delegated && <ProfessionalCredentials login={access?.login} />}
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={professional?.description} /></label>
     <fieldset>
       <legend>Foto do profissional</legend>
@@ -149,7 +149,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               </form> : <button key={step} className="secondary" type="button" disabled>{label}</button>;
             })}
           </div>}
-          {accessByProfessional.has(professional.id) && <p>Login profissional <strong style={{ overflowWrap: "anywhere" }}>{accessByProfessional.get(professional.id)?.login}+{shop}@equipe.topbarberflow.com.br</strong></p>}
+          {accessByProfessional.has(professional.id) && <p>Login profissional <strong style={{ overflowWrap: "anywhere" }}>{accessByProfessional.get(professional.id)?.login}</strong></p>}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>

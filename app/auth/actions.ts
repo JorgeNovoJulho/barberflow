@@ -1,4 +1,5 @@
 "use server";
+import { professionalAuthAdmin } from "../../lib/professional-auth";
 
 import { cookies } from "next/headers";
 import { accountKind, afterLogin } from "../../lib/account-role";
@@ -26,10 +27,18 @@ export async function signIn(data: FormData) {
   const supabase = await supabaseServer();
   if (!supabase) login(next, "indisponivel");
   const email = value(data, "email").trim();
+  let authEmail = email;
+  if (/^[a-z0-9]+@[a-z0-9]+\.topbarberflow\.com\.br$/i.test(email)) {
+    const admin = professionalAuthAdmin();
+    if (!admin) login(next, "indisponivel");
+    const { data: address, error } = await admin.rpc("barberflow_resolve_professional_login", { address: email });
+    if (error) login(next, "indisponivel");
+    if (typeof address === "string") authEmail = address;
+  }
   const jar = await cookies();
   jar.delete("bf_pending_email");
   const { data: result, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: authEmail,
     password: value(data, "password"),
   });
   if (error?.code === "email_not_confirmed") {
