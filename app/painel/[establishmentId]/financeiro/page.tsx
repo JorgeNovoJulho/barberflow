@@ -49,6 +49,10 @@ const feedback: Record<string, string> = {
   estornado: "Estorno registrado. O valor em aberto foi atualizado.",
   lancado: "Lançamento cadastrado.",
   baixado: "Baixa registrada no caixa.",
+  editado: "Conta atualizada.",
+  excluido: "Conta excluída.",
+  "edicao-bloqueada": "Confira se o novo valor cobre as baixas já registradas.",
+  "exclusao-bloqueada": "Contas com histórico de baixas precisam ser preservadas.",
   classificado: "Classificação da conta atualizada.",
 };
 
@@ -92,7 +96,7 @@ export default async function Finance({ params, searchParams }: {
     ? periodoComissao as CommissionPeriod : "mes";
   const reference = typeof dataComissao === "string" && validDay(dataComissao) ? dataComissao : "";
   const professional = typeof profissionalComissao === "string" && isUuid(profissionalComissao) ? profissionalComissao : "";
-  const [result, entriesResult, controls, performance, monthlyCosts, monthlyCommission, commissionFilter] = access.data === "unlocked" ? await Promise.all([
+  const [result, entriesResult, controls, performance, monthlyCosts, monthlyCommission, commissionFilter, dueNotices] = access.data === "unlocked" ? await Promise.all([
     supabase.rpc("barberflow_receivables", { shop, bill_view: billView, page_number: billPage }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
     supabase.rpc("barberflow_card_controls", { shop }),
     supabase.rpc("barberflow_performance_report", { shop, first_day: today.slice(0, 7) + "-01", last_day: today, professional: null }),
@@ -101,10 +105,14 @@ export default async function Finance({ params, searchParams }: {
     reference || period !== "mes" ? supabase.rpc("barberflow_commission_report", {
       shop_id: shop, period, reference_day: reference || null,
     }) : null,
-  ]) : [null, null, null, null, null, null, null];
+    supabase.rpc("barberflow_due_expense_notices", { shop }),
+  ]) : [null, null, null, null, null, null, null, null];
   const costs = monthlyCosts?.data as MonthlyCosts | null;
   const ledger = result?.data as Ledger | null;
   const entries = entriesResult?.data as FinanceEntries | null;
+  const expenseBalances = entries?.payable_by_type;
+  const openExpenses = (expenseBalances?.fixed ?? 0) + (expenseBalances?.variable ?? 0) + (expenseBalances?.reinvestment ?? 0);
+  const reminders = (dueNotices?.data ?? []) as { id: string; description: string; due_on: string; expense_type: string }[];
   const cardControls = (controls?.data ?? []) as { receipt_id: string; payment_id: string | null }[];
   const openCardCharges = new Set(cardControls.filter((row) => !row.payment_id).map((row) => row.receipt_id));
   const integratedPayments = new Set(cardControls.map((row) => row.payment_id));
@@ -114,7 +122,7 @@ export default async function Finance({ params, searchParams }: {
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>
     </nav>
     <p className="eyebrow">{business.data.name}</p><h1>Financeiro</h1>
-    {estado && Object.hasOwn(feedback, estado) && <p role="status" data-feedback={["senha-email-alterada","desbloqueado","recuperacao-email-enviado","recebido","lancado","baixado","classificado"].includes(estado) ? "success" : "warning"}>{feedback[estado]}</p>}
+    {estado && Object.hasOwn(feedback, estado) && <p role="status" data-feedback={["senha-email-alterada","desbloqueado","recuperacao-email-enviado","recebido","lancado","baixado","classificado","editado","excluido"].includes(estado) ? "success" : "warning"}>{feedback[estado]}</p>}
     {blocked && estado !== "bloqueado" && estado !== "senha-bloqueada" && <p role="status">{feedback.bloqueado}</p>}
     {result?.error || entriesResult?.error ? <p role="alert">Não foi possível carregar os lançamentos financeiros.</p>
       : !ledger ? <div className="card panel-form">
@@ -156,6 +164,13 @@ export default async function Finance({ params, searchParams }: {
           <Link className="secondary finance-tab" data-tone="green" href="?guia=receivables#lancamentos">Outros recebimentos</Link>
           <Link className="secondary finance-tab" data-tone="rose" href={billLink(billView)}>Contas a receber de comandas</Link>
         </nav>
+        {reminders.length > 0 && <section className="card" data-feedback="warning" aria-labelledby="expense-notices">
+          <h2 id="expense-notices">Notificações de vencimento</h2>
+          <ul>{reminders.map((item) => <li key={item.id}>
+            <Link href={`?guia=${item.expense_type}#lancamentos`}>{item.description}</Link>
+            {" · Vence em "}{item.due_on.split("-").reverse().join("/")}
+          </li>)}</ul>
+        </section>}
         <dl className="cards">
           <div className="card dashboard-metric"><dt>Total a receber em aberto</dt><dd>{money(ledger.open_cents + (entries?.receivable ?? 0))}</dd></div>
           {([["fixed", "Contas a pagar"], ["variable", "Despesas variáveis"], ["reinvestment", "Reinvestimentos"]] as const).map(([key, title]) =>
@@ -164,7 +179,7 @@ export default async function Finance({ params, searchParams }: {
           <div className="card dashboard-metric"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
           {costs && <FinanceCostCards costs={costs} monthly={monthlyCommission?.data as CommissionReport | null}
             filtered={(commissionFilter ?? monthlyCommission)?.data as CommissionReport | null} period={period}
-            reference={reference} professional={professional} guide={guide} />}
+            reference={reference} professional={professional} guide={guide} openExpenses={openExpenses} />}
         </dl>
         {monthlyCosts?.error && <p role="status">Não foi possível carregar os custos deste mês.</p>}
         {performance?.data && <section aria-labelledby="finance-month-summary">

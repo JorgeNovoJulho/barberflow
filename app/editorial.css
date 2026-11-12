@@ -394,3 +394,16 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 }
 .finance-cost-detail summary { cursor: pointer; font-weight: 650; }
 .finance-cost-detail ul { padding-inline-start: 1.15rem; }
+
+.finance-entry-list { display: grid; gap: .6rem; list-style: none; padding: 0; }
+.finance-entry-row { min-width: 0; margin: 0; }
+.finance-entry-summary { display: grid; grid-template-columns: minmax(8rem, 1.4fr) repeat(3, minmax(0, 1fr)) minmax(9rem, 1.5fr); gap: .65rem; align-items: center; }
+.finance-entry-summary :is(h3, p, dl) { margin: 0; overflow-wrap: anywhere; }
+.finance-entry-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .65rem; margin-top: .7rem; }
+.finance-entry-actions > details { margin: 0; min-width: 0; max-width: 100%; }
+.finance-entry-actions > details[open] { flex-basis: 100%; }
+.finance-entry-actions > details > summary { width: fit-content; cursor: pointer; border: 1px solid var(--border); padding: .6rem .75rem; border-radius: .6rem; }
+@media (max-width: 52rem) {
+  .finance-entry-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finance-entry-summary :is(h3, dl) { grid-column: 1 / -1; }
+}

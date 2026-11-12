@@ -171,3 +171,23 @@ export async function reverseFinanceEntry(shop: string, settlement: string, guid
   const { data, error } = await supabase.rpc("barberflow_reverse_finance_entry", { shop, settlement, reason });
   return finish(error || !data ? "falha" : "estornado", guide);
 }
+
+export async function editExpense(shop: string, entry: string, guide: FinanceGuide, form: FormData) {
+  const { supabase, finish } = await context(shop);
+  const entry_description = String(form.get("description") ?? "").trim();
+  const entry_category = String(form.get("category") ?? "").trim();
+  const due_date = String(form.get("due") ?? "");
+  const cents = parsePrice(String(form.get("amount") ?? ""));
+  const expense_class = form.get("expense_type");
+  if (!isUuid(entry) || !entry_description || entry_description.length > 160 || !entry_category || entry_category.length > 80 ||
+    !validDay(due_date) || !cents || !isExpenseGuide(expense_class)) return finish("dados", guide);
+  const { data, error } = await supabase.rpc("barberflow_edit_expense", { shop, entry, entry_description, entry_category, due_date, cents, expense_class });
+  return finish(error ? "falha" : data ? "editado" : "edicao-bloqueada", guide);
+}
+
+export async function deleteExpense(shop: string, entry: string, guide: FinanceGuide) {
+  const { supabase, finish } = await context(shop);
+  if (!isUuid(entry)) return finish("dados", guide);
+  const { data, error } = await supabase.rpc("barberflow_delete_expense", { shop, entry });
+  return finish(error ? "falha" : data ? "excluido" : "exclusao-bloqueada", guide);
+}

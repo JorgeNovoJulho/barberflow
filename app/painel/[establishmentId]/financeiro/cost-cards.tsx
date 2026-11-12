@@ -13,14 +13,13 @@ const money = (cents: number) => bookingCurrency.format(cents / 100);
 const date = (day: string) => day.split("-").reverse().join("/");
 const commission = (order: CommissionReport["orders"][number]) => (order.service_commission ?? 0) + (order.product_commission ?? 0);
 
-export function FinanceCostCards({ costs, monthly, filtered, period, reference, professional, guide }: {
+export function FinanceCostCards({ costs, monthly, filtered, period, reference, professional, guide, openExpenses }: {
   costs: MonthlyCosts; monthly: CommissionReport | null; filtered: CommissionReport | null;
-  period: CommissionPeriod; reference: string; professional: string; guide: string;
+  period: CommissionPeriod; reference: string; professional: string; guide: string; openExpenses: number;
 }) {
   const professionals = filtered?.professionals ?? monthly?.professionals ?? [];
   const selected = professionals.find(({ id }) => id === professional);
   const pending = monthly?.orders.filter(({ receipt_id }) => !receipt_id).reduce((sum, order) => sum + commission(order), 0);
-  const accrued = monthly?.orders.reduce((sum, order) => sum + commission(order), 0);
   const replacement = costs.products.reduce((sum, product) => sum + (product.replacement ?? 0), 0);
   const missingCost = costs.products.some((product) => product.replacement === null);
   const filteredTotals = new Map<string, number>();
@@ -29,7 +28,7 @@ export function FinanceCostCards({ costs, monthly, filtered, period, reference, 
     filteredTotals.set(order.professional_id, (filteredTotals.get(order.professional_id) ?? 0) + commission(order));
   }
   const rows = (selected ? [selected] : professionals).filter(({ id }) => (filteredTotals.get(id) ?? 0) > 0);
-  const daily = accrued === undefined ? null : Math.ceil((costs.expenses + accrued + replacement) / costs.days);
+  const daily = Math.round((openExpenses + replacement) / costs.days);
   return <>
     <div className="card dashboard-metric" id="comissoes">
       <dt>Comissões a pagar</dt><dd>{pending === undefined ? "—" : money(pending)}</dd>
@@ -55,8 +54,8 @@ export function FinanceCostCards({ costs, monthly, filtered, period, reference, 
       </details></dd>
     </div>
     <div className="card dashboard-metric">
-      <dt>Custo diário</dt><dd>{daily === null ? "—" : money(daily)}</dd>
-      <dd className="finance-cost-detail">{date(costs.today)} · Despesas, comissões geradas e reposição divididas por {costs.days} dias.</dd>
+      <dt>Custo diário</dt><dd>{money(daily)}</dd>
+      <dd className="finance-cost-detail">{date(costs.today)} · Despesas fixas, variáveis e reinvestimentos em aberto, mais reposição, divididos por {costs.days} dias.</dd>
       {missingCost && <dd className="finance-cost-detail">Estimativa parcial. Há produtos vendidos sem custo cadastrado.</dd>}
     </div>
     <div className="card dashboard-metric">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { SubmitButton } from "../../../auth/submit";
-import { addFinanceEntry, classifyExpense, settleFinanceEntry, reverseFinanceEntry } from "./actions";
+import { addFinanceEntry, classifyExpense, editExpense, deleteExpense, settleFinanceEntry, reverseFinanceEntry } from "./actions";
 import { expenseGuides, type ExpenseGuide, type FinanceGuide } from "./guias";
 
 type Settlement = { id: string; amount_cents: number; recorded_at: string; reversed_at: string | null; reversal_reason: string | null };
@@ -37,17 +37,21 @@ export function FinanceEntriesPanel({ shop, data, today, guide }: { shop: string
       </form>
     </details>}
     <p>Até 100 lançamentos, com pendências primeiro.</p>
-    {data.entries.length ? <ul className="cards">{data.entries.map((entry) => {
+    {data.entries.length ? <ul className="finance-entry-list">{data.entries.map((entry) => {
       const remaining = entry.amount_cents - entry.settled_cents;
-      return <li key={entry.id} className="card">
+      return <li key={entry.id} className="card finance-entry-row">
+        <div className="finance-entry-summary">
         <h3>{entry.description}</h3>
         <p>{entry.direction === "out" ? "A pagar" : "A receber"} · {entry.category}</p>
         <p>Vencimento {entry.due_on.split("-").reverse().join("/")}{remaining > 0 && entry.due_on < today ? " · Vencido" : ""}</p>
+        <p><strong>{remaining > 0 ? "Aberta" : "Liquidada"}</strong></p>
         <dl className="order-totals">
           <div><dt>Valor</dt><dd>{money(entry.amount_cents)}</dd></div>
           <div><dt>Liquidado</dt><dd>{money(entry.settled_cents)}</dd></div>
           <div><dt>Em aberto</dt><dd>{money(remaining)}</dd></div>
         </dl>
+        </div>
+        <div className="finance-entry-actions">
         {remaining > 0 && <details><summary>{entry.direction === "out" ? "Registrar pagamento" : "Registrar recebimento"}</summary>
           <form className="account-form" action={settleFinanceEntry.bind(null, shop, entry.id, crypto.randomUUID(), guide)}>
             <label>Valor da baixa (R$) <input name="amount" inputMode="decimal" required defaultValue={(remaining / 100).toFixed(2).replace(".", ",")} /></label>
@@ -66,7 +70,28 @@ export function FinanceEntriesPanel({ shop, data, today, guide }: { shop: string
               </details>}
           </li>)}</ul>
         </details>}
-        {entry.direction === "out" && <details open={unclassified}>
+        {entry.direction === "out" && !unclassified && <>
+          <details><summary>Editar</summary>
+            <form className="account-form" action={editExpense.bind(null, shop, entry.id, guide)}>
+              <label>Descrição <input name="description" required maxLength={160} defaultValue={entry.description} /></label>
+              <label>Categoria <input name="category" required maxLength={80} defaultValue={entry.category} /></label>
+              <label>Vencimento <input name="due" type="date" required defaultValue={entry.due_on} /></label>
+              <label>Valor (R$) <input name="amount" inputMode="decimal" required defaultValue={(entry.amount_cents / 100).toFixed(2).replace(".", ",")} /></label>
+              <label>Guia <select name="expense_type" defaultValue={entry.expense_type ?? ""} required>
+                {Object.entries(expenseGuides).map(([key, title]) => <option key={key} value={key}>{title}</option>)}
+              </select></label>
+              <SubmitButton>Salvar alterações</SubmitButton>
+            </form>
+          </details>
+          <details><summary>Excluir</summary>
+            {entry.settlements.length ? <p>Esta conta tem histórico de baixas e precisa ser preservada.</p>
+              : <form action={deleteExpense.bind(null, shop, entry.id, guide)}>
+                <p>Confirma a exclusão desta conta?</p>
+                <SubmitButton>Confirmar exclusão</SubmitButton>
+              </form>}
+          </details>
+        </>}
+        {entry.direction === "out" && unclassified && <details open>
           <summary>{unclassified ? "Classificar conta" : "Alterar guia"}</summary>
           <form className="account-form" action={classifyExpense.bind(null, shop, entry.id, guide)}>
             <label>Guia <select name="expense_type" required defaultValue={entry.expense_type ?? ""}>
@@ -76,6 +101,7 @@ export function FinanceEntriesPanel({ shop, data, today, guide }: { shop: string
             <SubmitButton>Salvar classificação</SubmitButton>
           </form>
         </details>}
+        </div>
       </li>;
     })}</ul> : <p>Nenhum lançamento nesta guia.</p>}
   </section>;
