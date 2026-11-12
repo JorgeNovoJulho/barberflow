@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid, parsePrice } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
-import { bundleSizes, marginTypes } from "../../../../lib/stock-pricing";
+import { bundleSizes, markedUp, parseMarkup } from "../../../../lib/stock-pricing";
 import { validDay } from "../../../../lib/agenda";
 
 function get(form: FormData, key: string) {
@@ -30,24 +30,25 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const barcode = get(form, "barcode");
   const description = get(form, "description");
   const showcase = product === null || form.has("showcase");
-  const tier = get(form, "margin_tier") || null;
+  const rawMarkup = get(form, "markup");
+  const markup = parseMarkup(rawMarkup);
   const price = parsePrice(get(form, "price"));
   const rawCost = get(form, "cost");
   const cost = rawCost ? parsePrice(rawCost) : null;
   const minimum = Number(get(form, "minimum"));
   const initial = Number(get(form, "initial"));
   const expiry = get(form, "expiry");
-  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || (!tier && price === null) || (product && !isUuid(product))) finish("invalido");
+  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || (!rawMarkup && price === null) || (product && !isUuid(product))) finish("invalido");
   if ((rawCost && cost === null) || !Number.isInteger(minimum) || minimum < 0 || minimum > 1000000
     || (!product && (!Number.isInteger(initial) || initial < 0 || initial > 1000000))
     || (expiry && !validDay(expiry))) finish("invalido");
-  if (tier && (!marginTypes.some(({ id }) => id === tier) || !cost)) finish("margem-invalida");
-  const fields = { margin_tier: tier, name, sku, barcode, description, showcase, price_cents: price ?? 0, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
+  if (rawMarkup && (markup === null || !cost || markedUp(cost, markup) > 99999999)) finish("margem-invalida");
+  const fields = { margin_tier: null, markup_percent: markup, name, sku, barcode, description, showcase, price_cents: price ?? 0, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
     ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
-    : await supabase.rpc("barberflow_create_priced_product", { shop, product_name: name, product_sku: sku,
-      tier, sale_price: price ?? 0, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
+    : await supabase.rpc("barberflow_create_markup_product", { shop, product_name: name, product_sku: sku,
+      markup, sale_price: price ?? 0, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);

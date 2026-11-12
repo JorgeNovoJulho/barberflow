@@ -14,7 +14,7 @@ import { ProductGallery, type ProductMedia } from "./product-gallery";
 
 type Product = { id: string; name: string; sku: string; barcode: string; price_cents: number; stock: number; active: boolean;
   description: string; showcase: boolean; cost_cents: number | null; minimum_stock: number; expires_on: string | null; promo_units: number | null;
-  margin_tier: MarginTier | null; promo_cents: number | null; promo_until: string | null };
+  margin_tier: MarginTier | null; markup_percent: number | null; promo_cents: number | null; promo_until: string | null };
 
 function alerts(product: Product, today: string, cutoff: string) {
   if (!product.active) return [];
@@ -33,7 +33,7 @@ function ProductForm({ shop, product, margins }: { shop: string; product?: Produ
     <label>Nome <input name="name" maxLength={120} required defaultValue={product?.name} /></label>
     <label>Código do produto (SKU) <input name="sku" maxLength={60} defaultValue={product?.sku} /></label>
     <label>Código de barras <input name="barcode" inputMode="numeric" pattern="[0-9]{1,32}" maxLength={32} defaultValue={product?.barcode} /></label>
-    <StockPricingFields margins={margins} tier={product?.margin_tier} cost={product?.cost_cents} price={product?.price_cents} />
+    <StockPricingFields margins={margins} tier={product?.margin_tier} markup={product?.markup_percent} cost={product?.cost_cents} price={product?.price_cents} />
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
     <label>Estoque mínimo <input name="minimum" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required /></label>
     <label>Data de validade <input name="expiry" type="date" defaultValue={product?.expires_on ?? ""} /></label>
@@ -59,7 +59,7 @@ export default async function Stock({ params, searchParams }: {
   const { estado, busca } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [products, movements, searchResult, marginResult] = await Promise.all([
-    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase,margin_tier")
+    supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase,margin_tier,markup_percent")
       .eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_stock_movements").select("id,product_id,delta,reason,created_at,barberflow_products(name)")
       .eq("establishment_id", shop).order("created_at", { ascending: false }).limit(30),

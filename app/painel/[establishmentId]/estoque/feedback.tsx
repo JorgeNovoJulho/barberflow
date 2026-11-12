@@ -6,7 +6,7 @@ const messages: Record<string, string> = {
   barcode: "Já existe um produto com esse código de barras.",
   "promocao-salva": "Promoção salva.",
   "promocao-removida": "Promoção removida.",
-  "margem-invalida": "Informe um custo unitário maior que zero para calcular o preço com margem.",
+  "margem-invalida": "Use uma margem de 0% a 400%, um custo maior que zero e um preço calculado de até R$ 999.999,99.",
   "promocao-invalida": "Informe um custo válido, escolha 3, 5 ou 10 unidades em estoque e use até 20% de acréscimo. A oferta deve ficar abaixo do preço normal e terminar até a validade do produto, dentro dos próximos 30 dias.",
   "promocao-vencida": "Uma promoção venceu. Atualize a quantidade do item, mesmo que ela continue igual, para recalcular antes de fechar.",
   salvo: "Produto salvo.",

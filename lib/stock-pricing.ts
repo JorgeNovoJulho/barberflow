@@ -10,3 +10,11 @@ export const bundleSizes = [3, 5, 10] as const;
 export const markedUp = (cents: number, rate: number) => Math.round(cents * (100 + rate) / 100);
 export const priceInput = (cents: number | null | undefined) => cents == null ? "" : (cents / 100).toFixed(2).replace(".", ",");
 export const formatStockPrice = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+
+export function parseMarkup(value: string) {
+  return /^\d{1,3}$/.test(value) && Number(value) <= 400 ? Number(value) : null;
+}
+
+export function markupTier(rate: number): MarginTier {
+  return rate >= 100 ? "alta" : rate >= 50 ? "media" : "baixa";
+}

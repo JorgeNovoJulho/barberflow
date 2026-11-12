@@ -372,3 +372,16 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
     padding-inline: .15rem;
   }
 }
+
+.finance-heatmap { grid-column: 1 / -1; min-width: 0; }
+.finance-heatmap-scroll { max-width: 100%; overflow-x: auto; }
+.finance-heatmap table { border-spacing: .2rem; font-size: .75rem; text-align: center; }
+.finance-heatmap th { padding: .2rem; white-space: nowrap; }
+.finance-heatmap td[data-level] { min-width: 1.65rem; height: 1.65rem; border-radius: .25rem; background: #e8edf5; color: #43516a; }
+.finance-heatmap td[data-level="1"] { background: #d9c9fb; color: #312052; }
+.finance-heatmap td[data-level="2"] { background: #764bbb; color: white; }
+.finance-heatmap td[data-level="3"] { background: #49247f; color: white; }
+.stock-margin-profile { display: inline-block; padding: .35rem .65rem; border-radius: .55rem; }
+.stock-margin-profile[data-tier="baixa"] { background: #ffe0e4; color: #91162a; }
+.stock-margin-profile[data-tier="media"] { background: #fff0b3; color: #684600; }
+.stock-margin-profile[data-tier="alta"] { background: #d8f4e4; color: #14543c; }

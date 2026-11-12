@@ -2,23 +2,31 @@
 
 import { useState } from "react";
 import { parsePrice } from "../../../../lib/establishments";
-import { bundleSizes, formatStockPrice, marginTypes, markedUp, priceInput, type Margins, type MarginTier } from "../../../../lib/stock-pricing";
+import { bundleSizes, formatStockPrice, markupTier, markedUp, parseMarkup, priceInput, type Margins, type MarginTier } from "../../../../lib/stock-pricing";
 
-export function StockPricingFields({ margins, tier, cost, price }: { margins: Margins; tier?: MarginTier | null; cost?: number | null; price?: number }) {
-  const [choice, setChoice] = useState<MarginTier | "">(tier ?? "");
+export function StockPricingFields({ margins, tier, markup, cost, price }: {
+  margins: Margins; tier?: MarginTier | null; markup?: number | null; cost?: number | null; price?: number;
+}) {
+  const [rate, setRate] = useState(String(markup ?? (tier ? margins[tier] : "")));
   const [input, setInput] = useState(priceInput(cost));
   const [manual, setManual] = useState(priceInput(price));
   const cents = parsePrice(input);
-  const calculated = choice && cents && markedUp(cents, margins[choice]);
+  const percent = parseMarkup(rate);
+  const automatic = rate !== "";
+  const profile = percent === null ? null : markupTier(percent);
+  const sale = automatic ? (percent !== null && cents !== null ? markedUp(cents, percent) : null) : parsePrice(manual);
+  const profit = cents !== null && sale !== null ? sale - cents : null;
+
   return <>
-    <label>Margem sobre o custo <select name="margin_tier" value={choice} onChange={(event) => setChoice(event.target.value as MarginTier | "")}>
-      <option value="">Preço manual</option>
-      {marginTypes.map(({ id, label }) => <option key={id} value={id}>{label} · {margins[id]}%</option>)}
-    </select></label>
-    <label>Custo unitário (R$) <input name="cost" inputMode="decimal" required={Boolean(choice)} value={input} onChange={(event) => setInput(event.target.value)} /></label>
-    <label>Preço de venda (R$) <input name="price" inputMode="decimal" required={!choice} readOnly={Boolean(choice)}
-      value={choice ? priceInput(calculated || null) : manual} onChange={(event) => setManual(event.target.value)} /></label>
-    {Boolean(calculated) && <p>Preço de venda calculado sobre o custo unitário.</p>}
+    <label>Margem sobre o custo (%) <input name="markup" type="number" min={0} max={400} step={1}
+      placeholder="Em branco para preço manual" value={rate} onChange={(event) => setRate(event.target.value)} /></label>
+    <p aria-live="polite">{profile ? <strong className="stock-margin-profile" data-tier={profile}>
+      {profile === "alta" ? "Alta" : profile === "media" ? "Média" : "Baixa"} · {percent}%
+    </strong> : "Informe de 0% a 400% para calcular o preço automaticamente."}</p>
+    <label>Custo unitário (R$) <input name="cost" inputMode="decimal" required={automatic} value={input} onChange={(event) => setInput(event.target.value)} /></label>
+    <label>Preço de venda (R$) <input name="price" inputMode="decimal" required={!automatic} readOnly={automatic}
+      value={automatic ? priceInput(sale) : manual} onChange={(event) => setManual(event.target.value)} /></label>
+    <label>Lucro bruto por unidade <output aria-live="polite">{profit === null ? "—" : formatStockPrice(profit)}</output></label>
   </>;
 }
 

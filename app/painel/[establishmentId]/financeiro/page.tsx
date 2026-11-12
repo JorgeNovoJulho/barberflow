@@ -9,6 +9,7 @@ import { PasswordField } from "./password-field";
 import { FinanceEmailResetForm } from "./email-reset-form";
 import { FinanceEntriesPanel, type FinanceEntries } from "./lancamentos";
 import { saoPauloToday } from "../../../../lib/agenda";
+import { PerformanceCards, type PerformanceSummary } from "./performance-cards";
 import { financeGuide } from "./guias";
 
 const methods = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Transferência", other: "Outro" };
@@ -85,10 +86,12 @@ export default async function Finance({ params, searchParams }: {
     "?" + new URLSearchParams({ guia: guide, comandas: view, paginaComandas: String(page) }) + "#comandas";
   const setup = access.data === "setup";
   const blocked = access.data === "blocked";
-  const [result, entriesResult, controls] = access.data === "unlocked" ? await Promise.all([
+  const today = saoPauloToday();
+  const [result, entriesResult, controls, performance] = access.data === "unlocked" ? await Promise.all([
     supabase.rpc("barberflow_receivables", { shop, bill_view: billView, page_number: billPage }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
     supabase.rpc("barberflow_card_controls", { shop }),
-  ]) : [null, null, null];
+    supabase.rpc("barberflow_performance_report", { shop, first_day: today.slice(0, 7) + "-01", last_day: today, professional: null }),
+  ]) : [null, null, null, null];
   const ledger = result?.data as Ledger | null;
   const entries = entriesResult?.data as FinanceEntries | null;
   const cardControls = (controls?.data ?? []) as { receipt_id: string; payment_id: string | null }[];
@@ -149,7 +152,12 @@ export default async function Finance({ params, searchParams }: {
           {!!entries?.payable_by_type?.unclassified && <div className="card dashboard-metric"><dt>Contas sem classificação</dt><dd>{money(entries.payable_by_type.unclassified)}</dd></div>}
           <div className="card dashboard-metric"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
         </dl>
-        {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={saoPauloToday()} />}
+        {performance?.data && <section aria-labelledby="finance-month-summary">
+          <h2 id="finance-month-summary">Desempenho deste mês</h2>
+          <PerformanceCards report={performance.data as PerformanceSummary} />
+        </section>}
+        {performance?.error && <p role="status">Não foi possível carregar os indicadores do mês.</p>}
+        {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={today} />}
         <h2 className="panel-form" id="comandas">Contas a receber de comandas</h2>
         <nav className="account-links finance-tabs" aria-label="Situação das comandas a receber">
           <Link className="secondary finance-tab" data-tone="amber" aria-current={billView === "abertas" ? "page" : undefined} href={billLink("abertas")}>Em aberto</Link>
