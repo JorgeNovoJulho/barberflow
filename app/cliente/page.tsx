@@ -131,10 +131,12 @@ export default async function ClientPage({ searchParams }: {
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
   if ((target && !profile && !profileResult.error) || (shop && !shopInfo && !shopResult?.error) || (photo && !postsResult?.data?.length && !postsResult?.error)) notFound();
   const posts = (postsResult?.data ?? []) as Photo[];
-  const [publicBusiness, engagement] = await Promise.all([
+  const [publicBusiness, engagement, shopAuthors] = await Promise.all([
     shopInfo?.slug ? publicProfile(shopInfo.slug).catch(() => null) : null,
     !photo && posts.length ? supabase.rpc("barberflow_feed_engagement", { post_ids: posts.slice(0, 12).map(({ id }) => id) }) : null,
+    posts.some((post) => post.shop) ? supabase.rpc("barberflow_feed_shop_names", { post_ids: posts.slice(0, 12).map(({ id }) => id) }) : null,
   ]);
+  const shopNames = new Map<string, string>((shopAuthors?.data ?? []).map(({ id, name }: { id: string; name: string }) => [id, name]));
   const reactions = (engagement?.data ?? {}) as Record<string, {
     liked: boolean; likes: number; comments: number;
     people: { id: string; name: string }[]; messages: { id: string; name: string; body: string }[];
@@ -270,9 +272,11 @@ export default async function ClientPage({ searchParams }: {
           {Object.entries(socials).map(([label,hosts])=> {
             const link = socialUrl(profile.links?.[label],hosts);
             return link && <Link key={label} className="secondary finance-tab" data-tone="green" href={link} rel="noreferrer"><SocialIcon name={label} />{label}</Link>;
-          })}</div>
-          {target && target!==user.id && <form action={changeFollow.bind(null,path,target,false,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir"}</button></form>}
-          {target && target!==user.id && <form action={blockSocialProfile.bind(null,target,true)}><button className="secondary">Bloquear usuário</button></form>}
+          })}
+          {target && target!==user.id && <form action={changeFollow.bind(null,path,target,false,!!followingResult?.data)}><button className="secondary finance-tab" data-tone="amber">{followingResult?.data ? "Deixar de seguir" : "Seguir"}</button></form>}
+          {target && target!==user.id && <form action={blockSocialProfile.bind(null,target,true)}><button className="secondary finance-tab" data-tone="rose">Bloquear usuário</button></form>}
+          </div>
+
           </div>
         </div>}
         {view==="perfil" && <>
@@ -394,7 +398,7 @@ export default async function ClientPage({ searchParams }: {
           const url = links.get(object);
           return url ? [{url, kind:"photo" as const, slot:"photo-"+(index+1)}] : [];
         })} />
-        {post.shop ? <Link href={feedLink("/cliente?loja="+post.shop)}>{post.promotion ? "Promoção do estabelecimento" : "Ver estabelecimento"}</Link> :
+        {post.shop ? <Link href={feedLink("/cliente?loja="+post.shop)}>{shopNames.get(post.shop) ?? names.get(post.author) ?? "Estabelecimento"}</Link> :
           names.has(post.author) && <Link href={feedLink("/cliente?perfil="+post.author)}>{names.get(post.author)}</Link>}
         <p className="social-post-text">{post.caption}</p>
         {!photo && <>

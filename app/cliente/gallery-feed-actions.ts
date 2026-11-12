@@ -1,5 +1,6 @@
 "use server";
 
+import { httpsUrl } from "../../lib/business-profile";
 import { isUuid } from "../../lib/establishments";
 import { mediaLinks, socialSession } from "./social";
 
@@ -11,10 +12,10 @@ export async function loadGalleryFeed(post: string): Promise<GalleryFeed | null>
   const { supabase } = await socialSession();
   const { data, error } = await supabase.rpc("barberflow_gallery_feed", { post_id: post });
   if (error || !data) return null;
-  const feed = data as GalleryFeed;
+  const feed = data as Omit<GalleryFeed, "comments"> & { comments: (GalleryComment & { logo?: string })[] };
   const images = await mediaLinks(supabase, feed.comments.flatMap(({ avatar }) => avatar ? [avatar] : []));
-  return { ...feed, comments: feed.comments.map((comment) => ({
-    ...comment, avatar: comment.avatar ? images.get(comment.avatar) : undefined,
+  return { ...feed, comments: feed.comments.map(({ logo, ...comment }) => ({
+    ...comment, avatar: (comment.avatar && images.get(comment.avatar)) || httpsUrl(logo),
   })) };
 }
 

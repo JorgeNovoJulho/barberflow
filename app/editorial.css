@@ -325,3 +325,11 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .feed-directory-card p { margin: 0; }
 .feed-directory-totals { display: flex; flex-wrap: wrap; gap: .4rem; }
 .feed-directory-totals span { background: var(--accent-soft); color: var(--accent-ink); padding: .2rem .45rem; border-radius: .4rem; }
+
+.gallery-feed-layout .account-links { gap: .35rem; }
+.gallery-feed-layout .account-links .secondary, .gallery-feed-controls .primary,
+.gallery-feed-comment form .secondary { min-height: 2.1rem; padding: .3rem .55rem; font-size: .78rem; }
+.gallery-feed-comment .subscription-business > :is(img, span) { width: 2rem; height: 2rem; border-radius: .45rem; }
+.gallery-feed-comment details > summary { font-size: .8rem; }
+.gallery-feed-controls .account-form { gap: .4rem; }
+.feed-profile-actions form { display: inline-flex; margin: 0; }
