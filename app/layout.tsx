@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandLogo } from "./brand-logo";
 import { ActionFeedback } from "./action-feedback";
 import type { ReactNode } from "react";
 import { hasMasterSession, masterPath } from "../lib/master";
@@ -19,6 +20,7 @@ import "./app-polish.css";
 
 export const metadata: Metadata = {
   title: { default: "TOP BARBER", template: "%s | TOP BARBER" },
+  icons: { icon: "/media/top-barber-icon.png" },
   description: "Agendamento online e gestão para profissionais e negócios de beleza e bem-estar.",
 };
 
@@ -54,11 +56,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
         <header className="site-header">
           <div className="container navigation">
             <Link className="wordmark" href="/" aria-label="TOP BARBER, início">
-              <svg className="brand-mark" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                <rect width="32" height="32" rx="9" fill="currentColor" />
-                <path d="M8 21.5h6.5l4-11h5.5M8 16h4m8 0h4" stroke="#191517" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="brand-name">TOP <span>BARBER</span></span>
+              <BrandLogo />
             </Link>
             <nav className="desktop-nav" aria-label="Principal">{navigation}</nav>
             {master && <Link className="header-action master-header-link" href={masterPath}>Administrador</Link>}
@@ -69,7 +67,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
         <ActionFeedback />
         <footer className="footer">
           <div className="container footer-content">
-            <div><strong className="brand-name">TOP <span>BARBER</span></strong><p>Gestão para beleza e bem-estar.</p></div>
+            <div><Link href="/" aria-label="TOP BARBER, início"><BrandLogo /></Link><p>Gestão para beleza e bem-estar.</p></div>
             <nav aria-label="Rodapé"><Link href="/estabelecimentos">Encontrar serviços</Link><Link href="/planos">Planos</Link>{policies && <><a href={policies.terms}>Termos de Uso</a><a href={policies.privacy}>Política de Privacidade</a></>}</nav>
           </div>
         </footer>

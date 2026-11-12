@@ -1,3 +1,4 @@
+import { BrandLogo } from "./brand-logo";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { segments as catalogSegments } from "../lib/establishments";
@@ -63,8 +64,9 @@ export default async function Home() {
     "--landing-accent": settings.accent, "--landing-overlay": Number(settings.overlay) / 100,
     "--landing-focus": settings.photoFocus === "right" ? "72%" : settings.photoFocus === "left" ? "25%" : "50%",
   } as CSSProperties;
-  const brand = <>{settings.logoUrl ? <img src={settings.logoUrl} alt="" width={32} height={32} />
-    : <span aria-hidden="true">✦</span>}{settings.brand === "TOP BARBER" ? <strong className="landing-brand-name">TOP <span>BARBER</span></strong> : settings.brand}</>;
+  const brand = settings.logoUrl
+    ? <><img src={settings.logoUrl} alt="" width={32} height={32} />{settings.brand}</>
+    : <BrandLogo />;
 
   return <div className="landing editorial-landing" style={style} data-motion={settings.motion ? "on" : "off"}>
     <header className="editorial-top">
