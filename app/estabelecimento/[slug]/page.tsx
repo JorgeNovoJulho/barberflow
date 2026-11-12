@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabaseServer } from "../../../lib/supabase";
 import { notFound } from "next/navigation";
 import { publicProfile } from "../../../lib/public-booking";
+import { mediaLinks } from "../../cliente/social";
 import { ProfilePresence } from "../../cliente/profile-presence";
 import { ProfileView } from "./profile-view";
 
@@ -23,6 +24,10 @@ export default async function Establishment({ params, searchParams }: {
   const booking = confirmation?.data?.slug === slug ? confirmation.data : null;
   const claims = await supabase?.auth.getClaims();
   const social = claims?.data?.claims.sub ? await supabase?.rpc("barberflow_social_shop_by_slug",{ shop_slug:slug }) : null;
+  const feed = await supabase?.rpc("barberflow_public_shop_feed", { shop_slug: slug });
+  const posts = (feed?.data ?? []) as { id: string; caption: string; object_path: string; extra_photos: string[]; created_at: string }[];
+  const photos = supabase && posts.length ? await mediaLinks(supabase,
+    posts.flatMap((post) => [post.object_path, ...post.extra_photos])) : new Map<string, string>();
   const presence = social?.data ? await supabase?.rpc("barberflow_profile_presence", { profile: null, shop_id: social.data }) : null;
   return <>
     {booking && <div className="container" id="agendamento-confirmado">
@@ -38,6 +43,18 @@ export default async function Establishment({ params, searchParams }: {
       </section>
     </div>}
     <ProfileView profile={profile} denuncia={denuncia} vitrine={vitrine} produtos={produtos} />
+    {posts.length > 0 && <section className="container section" id="feed">
+      <h2>Feed de {profile.name}</h2>
+      <ul className="cards social-post-grid">{posts.map((post) => <li className="card" key={post.id}>
+        <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</time>
+        {post.caption && <p className="social-post-text">{post.caption}</p>}
+        <div className="public-feed-photos">{[post.object_path, ...post.extra_photos].flatMap((object, index) => {
+          const image = photos.get(object);
+          return image ? [<img key={object} src={image} alt={`Foto ${index + 1} da publicação`} loading="lazy" />] : [];
+        })}</div>
+        {claims?.data?.claims.sub && <Link href={"/cliente?foto=" + post.id}>Abrir publicação</Link>}
+      </li>)}</ul>
+    </section>}
     {social?.data && <div className="container section">{presence?.data && <ProfilePresence initial={presence.data} profile={null} shop={social.data} />}<Link className="secondary" href={"/cliente?loja="+social.data}>Seguir, ver publicações e avaliar</Link></div>}</>;
 
 }

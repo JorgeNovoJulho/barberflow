@@ -45,11 +45,15 @@ function SocialCollectionCard({ name, href, image, detail, followers, children }
 }
 
 export default async function ClientPage({ searchParams }: {
-  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string }>;
+  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string; estabelecimento?:string }>;
 }) {
   const { supabase,user } = await socialSession();
   const params = await searchParams;
   const page = pageIndex(params.pagina);
+  const ownedShopId = isUuid(params.estabelecimento ?? "") ? params.estabelecimento! : null;
+  const ownedShop = ownedShopId ? await supabase.from("barberflow_establishments").select("id,name")
+    .eq("id", ownedShopId).eq("owner_id", user.id).maybeSingle() : null;
+  const publisher = ownedShop?.data ?? null;
   const target = params.perfil && isUuid(params.perfil) ? params.perfil : null;
   const shop = params.loja && isUuid(params.loja) ? params.loja : null;
   const photo = params.foto && isUuid(params.foto) ? params.foto : null;
@@ -58,6 +62,7 @@ export default async function ClientPage({ searchParams }: {
   const cancellations = view === "notificacoes" ? await supabase.rpc("barberflow_my_cancellation_notices") : null;
   const deniedPurchases = params.compras === "negados";
   const query = new URLSearchParams();
+  if (publisher) query.set("estabelecimento", publisher.id);
   if (params.compras) query.set("compras", deniedPurchases ? "negados" : "confirmados");
   if (params.aba) query.set("aba",params.aba);
   if (target) query.set("perfil",target);
@@ -186,7 +191,9 @@ export default async function ClientPage({ searchParams }: {
         {!profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para publicar e interagir.</Link></p>}
         <form className="account-form card panel-form" action="/estabelecimentos"><label>Busque estabelecimentos por nome, cidade ou serviço <input name="busca" maxLength={120} required /></label><button className="primary">Buscar</button></form>
         {generalResult?.data?.length ? <section><h2>Novidades do TOP BARBER</h2>{generalResult.data.map((item)=><article key={item.id} className="card"><h3>{item.title}</h3><p>{item.body}</p></article>)}</section> : null}
-        {profile && !profile.frozen && <PhotoForm path={path} shop={null} />}
+        {publisher && <p><Link href={`/painel/${publisher.id}/resumo`}>Voltar ao painel de {publisher.name}</Link></p>}
+        {publisher ? <PhotoForm path={path} shop={publisher.id} />
+          : profile && !profile.frozen && <PhotoForm path={path} shop={null} />}
         <h2>Publicações</h2>{!posts.length && <p>Nenhuma publicação disponível no momento.</p>}
       </>}
       {["perfil","perfil-publico"].includes(view) && <>

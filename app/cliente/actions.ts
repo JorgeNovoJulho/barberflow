@@ -133,12 +133,63 @@ export async function requestDeletion(form: FormData) {
   finish("/cliente?aba=perfil", !error || error.code === "23505");
 }
 
+export async function publishSocialPost(shop: string | null, requestId: string, form: FormData) {
+  const { supabase, user } = await socialSession();
+  const caption = String(form.get("caption") ?? "").trim();
+  const audience = String(form.get("audience") ?? "");
+  if (!isUuid(requestId) || (shop && !isUuid(shop)) || caption.length > 500 ||
+    !(["public", "followers", "private"].includes(audience) || (shop && audience === "web"))) {
+    return { error: "Confira o texto e a visibilidade da publicação." };
+  }
+  const files = form.getAll("photo").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  if (!caption && !files.length) return { error: "Escreva um texto ou selecione uma foto." };
+  if (files.length > 3 || files.some((file) => file.size > 5 * 1024 * 1024)) {
+    return { error: "Selecione até três fotos de 5 MB cada." };
+  }
+  if (shop) {
+    const [business, access] = await Promise.all([
+      supabase.from("barberflow_establishments").select("id").eq("id", shop).eq("owner_id", user.id).maybeSingle(),
+      supabase.rpc("barberflow_shop_access_state", { shop }),
+    ]);
+    if (!business.data || access.data !== "normal") return { error: "Este estabelecimento não está disponível para publicar." };
+  }
+  const posts = supabase.from("barberflow_social_photos");
+  const existing = await posts.select("id").eq("author", user.id).eq("request_id", requestId).maybeSingle();
+  if (existing.error) return { error: "Não foi possível conferir o envio. Tente novamente." };
+  if (existing.data) return { published: true };
+
+  const uploaded: string[] = [];
+  const bucket = supabase.storage.from(socialBucket);
+  try {
+    for (const file of files) {
+      const pixels = await optimizeProfileImage(Buffer.from(await file.arrayBuffer()), "banner");
+      const object = user.id + "/" + crypto.randomUUID();
+      const { error } = await bucket.upload(object, pixels, { contentType: "image/webp" });
+      if (error) throw error;
+      uploaded.push(object);
+    }
+  } catch (error) {
+    if (uploaded.length) await bucket.remove(uploaded);
+    return { error: error instanceof Error ? error.message : "Não foi possível carregar as fotos." };
+  }
+
+  const { error } = await posts.insert({ shop, request_id: requestId, object_path: uploaded[0] ?? "",
+    extra_photos: uploaded.slice(1), caption, audience, promotion: !!shop && form.get("promotion") === "on" });
+  if (error) {
+    const found = await posts.select("id").eq("author", user.id).eq("request_id", requestId).maybeSingle();
+    if (uploaded.length && (error.code === "23505" || /^[0-9A-Z]{5}$/.test(error.code ?? ""))) await bucket.remove(uploaded);
+    if (!found.data) return { error: "Não foi possível publicar. Tente novamente sem fechar o formulário." };
+  }
+  revalidatePath("/cliente");
+  return { published: true };
+}
+
 export async function saveSocialPhoto(path: string, shop: string | null, photo: string | null, form: FormData) {
   const session = await socialSession();
   const { supabase, user } = session;
   const caption = String(form.get("caption") ?? "").trim();
   const audience = String(form.get("audience") ?? "");
-  if ((shop && !isUuid(shop)) || (photo && !isUuid(photo)) || caption.length > 500 || !["public","followers","private"].includes(audience)) finish(path, false);
+  if ((shop && !isUuid(shop)) || (photo && !isUuid(photo)) || caption.length > 500 || !["public","followers","private",...(shop ? ["web"] : [])].includes(audience)) finish(path, false);
   const files = form.getAll("photo").filter((entry): entry is File => entry instanceof File && entry.size > 0);
   if (files.length > 3 || files.some(file => file.size > 5 * 1024 * 1024)) finish(path,false);
   const table = supabase.from("barberflow_social_photos");
@@ -182,6 +233,7 @@ export async function deleteSocialPhoto(path: string, photo: string, form: FormD
   const { data,error } = await supabase.from("barberflow_social_photos").delete().eq("id",photo).eq("author",user.id).select("object_path,extra_photos").maybeSingle();
   const objects = data ? [data.object_path,...data.extra_photos].filter(Boolean) : [];
   if (objects.length) await supabase.storage.from(socialBucket).remove(objects);
+  if (!error && data) revalidatePath("/cliente");
   finish(path,!error && !!data);
 }
 

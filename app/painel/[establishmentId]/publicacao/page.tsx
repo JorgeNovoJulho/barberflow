@@ -1,4 +1,3 @@
-import { PhotoForm } from "../../../cliente/photo-form";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { authOrigin } from "../../../../lib/auth-path";
@@ -137,7 +136,7 @@ export default async function Publication({ params, searchParams }: {
     <section className="panel-form"><h2>Publicações para o feed</h2>
       <p>Publique uma foto ou promoção para quem acompanha o estabelecimento.</p>
       {data.published && <Link href={"/cliente?loja="+shop}>Ver publicações e responder comentários</Link>}
-      <div id="publicar-no-feed"><PhotoForm path={`/painel/${shop}/publicacao`} shop={shop} /></div>
+      <div id="publicar-no-feed"><Link className="primary" href={`/cliente?estabelecimento=${shop}`}>Abrir Feed do estabelecimento</Link></div>
     </section>
   </section>;
 }

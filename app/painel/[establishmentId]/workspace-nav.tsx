@@ -50,7 +50,7 @@ export function WorkspaceNav({ shop, name, image, unread, pendingOrders, plan, e
         {label}
       </Link>)}
     </nav>
-    {pendingOrders !== undefined && <Link className="workspace-notices" href={base + "/publicacao#publicar-no-feed"}>Publicar no feed</Link>}
+    {pendingOrders !== undefined && <Link className="workspace-notices" href={"/cliente?estabelecimento=" + shop}>Feed</Link>}
     {pendingOrders !== undefined && <Link className={`workspace-notices${pendingOrders > 0 ? " notice-unread" : ""}`} href={base + "/vitrine"} aria-current={current(base + "/vitrine") ? "page" : undefined}>
       Pedidos da vitrine{pendingOrders > 0 && <span aria-label={pendingOrders + " pedidos pendentes de aprovação ou retirada"}>{pendingOrders}</span>}
     </Link>}

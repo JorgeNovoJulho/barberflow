@@ -290,3 +290,7 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 @media (max-width: 38rem) {
   .checkout.checkout-columns.overview-shortcuts { grid-template-columns: minmax(0, 1fr); }
 }
+
+.post-composer-fields { padding: 0; border: 0; margin: 0; min-width: 0; }
+.public-feed-photos { display: grid; gap: .5rem; }
+.public-feed-photos img { width: 100%; height: auto; border-radius: .65rem; }
