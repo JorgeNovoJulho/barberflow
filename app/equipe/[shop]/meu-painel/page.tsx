@@ -46,6 +46,15 @@ async function appointmentAction(shop: string, id: string, operation: "cancel" |
   redirect(`/equipe/${shop}/meu-painel?estado=${data && !error ? "salvo" : "falha"}#agenda-dia`);
 }
 
+async function checkIn(shop: string, id: string) {
+  "use server";
+  if (!isUuid(id)) notFound();
+  const supabase = await client(shop);
+  const { data, error } = await supabase.rpc("barberflow_professional_check_in", { shop_id: shop, entry_id: id });
+  revalidatePath(`/equipe/${shop}/meu-painel`);
+  redirect(`/equipe/${shop}/meu-painel?estado=${data && !error ? "salvo" : "falha"}#agenda-dia`);
+}
+
 function media(value: string | null) {
   return value?.startsWith("https://") ? value : undefined;
 }
@@ -58,10 +67,20 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const supabase = await client(shop);
   const { periodo, estado, pagina } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
-  const { data, error } = await supabase.rpc("barberflow_professional_panel", { shop_id: shop, period });
+  const [{ data, error }, counterResult] = await Promise.all([
+    supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
+    supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
+  ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
   const panel = data as Panel;
+  const counter = counterResult.data as (Pick<Panel, "paid_services" | "sold_products" | "daily"> & { checked_in: string[]; attended_open: number }) | null;
+  const checkedIn = new Set(counter?.checked_in ?? []);
+  if (counter) {
+    panel.paid_services += counter.paid_services;
+    panel.sold_products += counter.sold_products;
+    for (const key of Object.keys(panel.daily) as (keyof Panel["daily"])[]) panel.daily[key] += counter.daily[key];
+  }
   const base = `/equipe/${shop}/meu-painel`;
   const active = panel.appointments.filter((entry) => entry.state === "scheduled" || entry.state === "pending");
   const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(panel.appointments.length / 12) - 1)) : 0;
@@ -83,6 +102,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton>Iniciar Dia</SubmitButton></form>}
     </header>
     {estado && <p role={estado === "salvo" ? "status" : "alert"}>{estado === "salvo" ? "Alteração salva." : "Não foi possível concluir a operação."}</p>}
+    {counterResult.error && <p role="status">Não foi possível incluir as vendas de balcão nos totais.</p>}
     <div className="professional-daily">
       <section className="card"><h2>Serviços hoje</h2><p>{panel.daily.service_units} · {money(panel.daily.services)}</p>
         <strong>A receber {money(panel.daily.service_commission)}</strong></section>
@@ -98,6 +118,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           <h3>{entry.client}</h3><p>{entry.service}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>WhatsApp</a>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
+            {entry.state === "scheduled" && (checkedIn.has(entry.id) ? <strong>Presença confirmada</strong>
+              : <form action={checkIn.bind(null, shop, entry.id)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
             <details><summary>Informar falta</summary><form action={appointmentAction.bind(null, shop, entry.id, "absence")}>
               <SubmitButton>Confirmar falta</SubmitButton></form></details>
             <details><summary>Cancelar agendamento</summary><form className="account-form" action={appointmentAction.bind(null, shop, entry.id, "cancel")}>
@@ -115,7 +137,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <Link key={key} className="secondary" aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}#desempenho`}>{label}</Link>)}</nav>
       <dl>
         <dt>Serviços fechados e pagos</dt><dd>{panel.paid_services}</dd>
-        <dt>Atendimentos concluídos</dt><dd>{panel.attended}</dd>
+        <dt>Comparecimentos</dt><dd>{panel.attended + (counter?.attended_open ?? 0)}</dd>
         <dt>Faltas</dt><dd>{panel.absent}</dd>
         <dt>Produtos vendidos</dt><dd>{panel.sold_products}</dd>
       </dl>

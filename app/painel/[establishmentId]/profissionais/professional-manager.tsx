@@ -1,3 +1,4 @@
+import { ProfessionalCredentials } from "./professional-credentials";
 import { ProfessionalSubmission } from "./professional-form";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -22,14 +23,7 @@ type ManagedAccess = { professional_id: string; login: string; blocked: boolean 
 function ProfessionalForm({ shop, professional, delegated, access }: { shop: string; professional?: Professional; delegated: boolean; access?: ManagedAccess }) {
   return <ProfessionalSubmission shop={shop} professional={professional?.id ?? null} delegated={delegated}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={professional?.name} /></label>
-    {!delegated && <fieldset>
-      <legend>Acesso ao painel profissional</legend>
-      {access && <p>Login atual <strong>{access.login}+{shop}@equipe.topbarberflow.com.br</strong></p>}
-      <label>Login <input name="professional_login" autoCapitalize="none" autoComplete="off" maxLength={32}
-        pattern="[a-z0-9][a-z0-9._\-]{2,31}" placeholder={access?.login ?? "nome.profissional"} /></label>
-      <label>{access ? "Nova senha" : "Senha"} <input name="professional_password" type="password" autoComplete="new-password" minLength={10} maxLength={72} /></label>
-      <p>Preencha os dois campos para {access ? "redefinir a senha" : "criar o acesso"}. O login completo inclui o identificador da loja.</p>
-    </fieldset>}
+    {!delegated && <ProfessionalCredentials login={access ? `${access.login}+${shop}@equipe.topbarberflow.com.br` : undefined} />}
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={professional?.description} /></label>
     <fieldset>
       <legend>Foto do profissional</legend>

@@ -38,14 +38,15 @@ function optionalHttps(value: string) {
 
 export async function saveProfessional(shop: string, professional: string | null, delegated: boolean, form: FormData) {
   const { path, supabase, user } = await context(shop, professional ?? undefined, delegated);
-  const alias = value(form, "professional_login").toLowerCase();
   const password = String(form.get("professional_password") ?? "");
-  const wantsAccess = Boolean(alias || password);
+  const confirmation = String(form.get("professional_password_confirmation") ?? "");
+  const wantsAccess = Boolean(password || confirmation);
   const admin = wantsAccess ? professionalAuthAdmin() : null;
   let existingLogin: { user_id: string; login: string } | null = null;
   if (wantsAccess) {
-    if (delegated || !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(alias) || password.length < 10 || new TextEncoder().encode(password).length > 72) {
-      return "Informe um login de 3 a 32 caracteres e uma senha de 10 a 72 bytes.";
+    if (password !== confirmation) return "As senhas precisam ser iguais.";
+    if (delegated || password.length < 10 || new TextEncoder().encode(password).length > 72) {
+      return "Informe uma senha com pelo menos 10 caracteres e até 72 bytes.";
     }
     const { data: owner } = await supabase.from("barberflow_establishments").select("id").eq("id", shop).eq("owner_id", user.id).maybeSingle();
     if (!owner) return "Somente o proprietário pode gerenciar credenciais.";
@@ -54,7 +55,6 @@ export async function saveProfessional(shop: string, professional: string | null
       const { data, error } = await admin.rpc("barberflow_managed_professional_access", { shop_id: shop, person: professional, actor: user.id }).maybeSingle();
       if (error) return "Não foi possível consultar o acesso profissional.";
       existingLogin = data as { user_id: string; login: string } | null;
-      if (existingLogin && existingLogin.login !== alias) return "Use o login existente para redefinir a senha.";
     }
   }
   const name = value(form, "name");
@@ -107,6 +107,9 @@ export async function saveProfessional(shop: string, professional: string | null
       const { error } = await admin.auth.admin.updateUserById(existingLogin.user_id, { password, app_metadata: credential });
       if (error) return { location: path + "?estado=acesso-falhou#equipe-profissionais" };
     } else {
+      const prefix = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        .replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "").slice(0, 14).replace(/\.$/, "") || "profissional";
+      const alias = `${prefix}.${data.id.replaceAll("-", "").slice(0, 12)}`;
       const email = `${alias}+${shop}@equipe.topbarberflow.com.br`;
       const { data: account, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: credential });
       if (error || !account.user) return { location: path + "?estado=acesso-falhou#equipe-profissionais" };
