@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
+import { offsetDay } from "../../../lib/agenda";
+import { SubscriptionBusiness, SubscriptionProofPreview } from "../../subscription-review-ui";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { showcasePix } from "../../../lib/pix";
+import { pixTransactionId, showcasePix } from "../../../lib/pix";
 import { CopyPix } from "../../painel/[establishmentId]/assinatura/copy-pix";
-import { MasterCards, MasterTabs } from "../master-ui";
+import { MasterCards, MasterTabs, masterDate } from "../master-ui";
 import { requireMaster } from "../../../lib/master";
 import { bookingCurrency } from "../../../lib/public-booking";
-import { subscriptionProofLinks } from "../../../lib/subscription-checkout";
+import { subscriptionProofLinks, subscriptionProofPreviews } from "../../../lib/subscription-checkout";
 import { planNames, tierLabel, type PlanPeriod } from "../../../lib/subscriptions";
 import { SubmitButton } from "../../auth/submit";
 import { confirmSubscriptionPayment, reviewSubscriptionPix, savePlanSettings } from "./actions";
@@ -30,7 +32,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const [settings, businesses, pending] = await Promise.all([
     supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,pix_merchant,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
     search ? supabase.rpc("barberflow_billing_businesses", { search_text: search }) : Promise.resolve({ data: [], error: null }),
-    supabase.from("barberflow_subscription_charges").select("*,barberflow_establishments(name)")
+    supabase.from("barberflow_subscription_charges").select("id,establishment_id,period,plan,amount_cents,receipt_path,submitted_at")
       .eq("status", "submitted").order("submitted_at").limit(100),
   ]);
   const config = settings.data;
@@ -48,9 +50,15 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       .eq("establishment_id", selected.id).eq("status", "confirmed"),
   ]) : [null, null, null];
   const receipts = new Map((archived?.data ?? []).map((charge) => [charge.payment_id, charge.receipt_path]));
-  const proofLinks = await subscriptionProofLinks(supabase, [
-    ...receipts.values(), ...(pending.data ?? []).map((charge) => charge.receipt_path),
+  const pendingPaths = (pending.data ?? []).map((charge) => charge.receipt_path);
+  const [proofLinks, previews, detailsResult] = await Promise.all([
+    subscriptionProofLinks(supabase, [...receipts.values(), ...pendingPaths]),
+    subscriptionProofPreviews(supabase, pendingPaths),
+    pending.data?.length ? supabase.rpc("barberflow_subscription_review_details", {
+      charge_ids: pending.data.map((charge) => charge.id),
+    }) : null,
   ]);
+  const reviewDetails = detailsResult?.data as Record<string, { name: string; logo: string | null; ends_before: string }> | undefined;
   const preferred = subscription?.data?.preferred_period as PlanPeriod | undefined;
 
   return <section className="container section">
@@ -94,19 +102,25 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
         <CopyPix value={testCode} code />
       </>}
     </section>
-    <h2 className="panel-form">Comprovantes em análise</h2>
+    <h2 id="comprovantes" className="panel-form">Comprovantes em análise</h2>
     {pending.error ? <p role="alert">Não foi possível carregar os comprovantes.</p>
       : !pending.data?.length ? <p>Nenhum comprovante aguardando análise.</p>
       : pending.data.map((charge) => {
         const proof = charge.receipt_path && proofLinks.get(charge.receipt_path);
-        return <section className="card panel-form" key={charge.id}>
-          <h3><Link href={`?busca=${charge.establishment_id}`}>{charge.barberflow_establishments?.name ?? charge.establishment_id}</Link></h3>
+        const preview = charge.receipt_path && previews.get(charge.receipt_path);
+        const details = reviewDetails?.[charge.id];
+        return <section className="card panel-form subscription-admin-card" data-tier={charge.plan} key={charge.id}>
+          <h3><Link href={`?busca=${charge.establishment_id}`}><SubscriptionBusiness
+            name={details?.name ?? "Estabelecimento"} logo={details?.logo} /></Link></h3>
           <p>{tierLabel(charge.plan)} · {planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</p>
+          {details && <p className="subscription-expiry">Vencimento previsto {masterDate(offsetDay(details.ends_before, -1))}</p>}
+          {preview && <SubscriptionProofPreview src={preview} pdf={charge.receipt_path?.endsWith(".pdf") === true} />}
           <p>Confira o recebimento no extrato da conta Pix antes de confirmar.</p>
           {proof ? <a href={proof}>Baixar comprovante</a> : <p role="alert">Comprovante indisponível no momento.</p>}
           <form className="account-form" action={reviewSubscriptionPix.bind(null, charge.establishment_id, charge.id, false)}>
             <label>Valor recebido (R$) <input name="amount" inputMode="decimal" required /></label>
-            <label>Identificador bancário da transferência Pix <input name="reference" maxLength={160} required /></label>
+            <label>Identificador da cobrança (TxID) <input readOnly value={pixTransactionId(charge.id)} /></label>
+            <label>Identificador bancário da transferência (EndToEnd) <input name="reference" maxLength={160} required /></label>
             <SubmitButton disabled={!proof}>Confirmar recebimento e liberar período</SubmitButton>
           </form>
           <details><summary>Recusar comprovante</summary>

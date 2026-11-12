@@ -241,3 +241,19 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .workspace-identity .workspace-plan[data-tier="premium"] { color: #ffd46e; }
 .workspace-identity .workspace-plan small { display: block; font-weight: 500; }
 .workspace-renewal { margin-block: .6rem 0; }
+
+.subscription-proof-preview { display: block; width: min(100%, 22rem); height: 14rem; margin-block: .6rem; object-fit: contain; object-position: left center; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); }
+.subscription-proof-attention { padding: .65rem; border: 2px solid #be243f; border-radius: .65rem; background: #fff1f3; color: #8c1830; }
+@media (prefers-reduced-motion: no-preference) {
+  .subscription-proof-attention { animation: subscription-proof-pulse 1s ease-in-out 5; }
+}
+@keyframes subscription-proof-pulse { 50% { box-shadow: 0 0 0 .25rem #e64b6345; background: #ffdce2; } }
+.subscription-business { display: inline-flex; align-items: center; gap: .65rem; }
+.subscription-business > :is(img, span) { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; flex: none; border-radius: .6rem; object-fit: cover; background: #dce6fb; color: #2e4b83; }
+.subscription-admin-card { background: #f1f5ff; border-color: #c4d4f0; }
+.subscription-admin-card:nth-child(even) { background: #eff9f6; border-color: #badfd4; }
+.subscription-admin-card[data-tier="premium"] { background: #fff8e5; border-color: #dcc180; }
+.subscription-admin-card[data-tier="pro"] { border-color: #98b7e4; }
+.subscription-tier-label, .subscription-expiry { display: inline-block; padding: .3rem .6rem; border-radius: .45rem; background: #e0e9fc; color: #254378; font-weight: 750; }
+.subscription-admin-card[data-tier="premium"] .subscription-tier-label { background: #f8e5ac; color: #674407; }
+.master-proof-count { display: inline-grid; place-items: center; min-width: 1.35rem; padding-inline: .3rem; margin-inline-start: .45rem; border-radius: 1rem; background: #a31b37; color: white; font-size: .75rem; }

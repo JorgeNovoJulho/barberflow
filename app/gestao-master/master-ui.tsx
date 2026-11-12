@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { supabaseServer } from "../../lib/supabase";
 
 const tabs = [
   ["/gestao-master", "Landing Page"], ["/gestao-master/assinaturas", "Assinaturas"],
@@ -6,9 +7,15 @@ const tabs = [
   ["/gestao-master/financeiro", "Financeiro"],
 ];
 
-export function MasterTabs({ current }: { current: string }) {
+export async function MasterTabs({ current }: { current: string }) {
+  const supabase = await supabaseServer();
+  const pending = await supabase?.from("barberflow_subscription_charges")
+    .select("id", { count: "exact", head: true }).eq("status", "submitted");
   return <nav className="master-tabs" aria-label="Administração master">
-    {tabs.map(([url, label]) => <Link key={url} href={url} aria-current={current === url ? "page" : undefined}>{label}</Link>)}
+    {tabs.map(([url, label]) => <Link key={url} href={url} aria-current={current === url ? "page" : undefined}>{label}
+      {url.endsWith("/assinaturas") && !!pending?.count && <span className="master-proof-count"
+        aria-label={pending.count + " comprovantes em análise"}>{pending.count}</span>}
+    </Link>)}
   </nav>;
 }
 

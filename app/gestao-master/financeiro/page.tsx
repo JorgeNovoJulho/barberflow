@@ -1,16 +1,18 @@
 import Link from "next/link";
+import { offsetDay } from "../../../lib/agenda";
+import { SubscriptionBusiness } from "../../subscription-review-ui";
 import { requireMaster } from "../../../lib/master";
 import { bookingCurrency } from "../../../lib/public-booking";
-import { planNames, type PlanPeriod } from "../../../lib/subscriptions";
+import { planNames, subscriptionPlanLabel, tierLabel, type PlanPeriod, type SubscriptionStatus } from "../../../lib/subscriptions";
 import { SubmitButton } from "../../auth/submit";
 import { MasterCards, MasterPagination, MasterTabs, masterDate, reportPage } from "../master-ui";
 import { controlSubscription } from "./actions";
 
 const path = "/gestao-master/financeiro";
 const states = { normal: "Normal", frozen: "Congelado", blocked: "Bloqueado", expired: "Vencido", bonus: "Bônus" };
-type Shop = { id: string; name: string; city: string; status: keyof typeof states; bonus_until: string | null;
+type Shop = { id: string; name: string; city: string; logo: string | null; plan: SubscriptionStatus["plan"]; status: keyof typeof states; bonus_until: string | null;
   trial_until: string | null; paid_until: string | null; valid_until: string | null };
-type Payment = { id: string; name: string; period: PlanPeriod; amount_cents: number; reference: string;
+type Payment = { id: string; name: string; logo: string | null; plan: string | null; period: PlanPeriod; amount_cents: number; reference: string;
   confirmed_at: string; starts_on: string; ends_before: string; renewal: boolean };
 type History = { id: number; name: string; operation: keyof typeof states; reason: string; created_at: string; bonus_until: string | null };
 type Report = { total: number; payments_total: number; paid: number; restricted: number; valid: number;
@@ -37,8 +39,9 @@ export default async function FinanceAdmin({ searchParams }: { searchParams: Pro
       </form>
       <h2>Vigência e controle de acesso</h2>
       <p>Congelar pausa novos agendamentos públicos e compras. Bloquear também restringe o acesso ao painel do estabelecimento. A vigência paga continua seguindo as datas registradas.</p>
-      <ul className="cards">{report.shops.map((shop) => <li className="card" key={shop.id}>
-        <h3>{shop.name}</h3><p>{shop.city} · {states[shop.status]}</p>
+      <ul className="cards">{report.shops.map((shop) => <li className="card subscription-admin-card" data-tier={shop.plan ?? "none"} key={shop.id}>
+        <h3><SubscriptionBusiness name={shop.name} logo={shop.logo} /></h3>
+        <strong className="subscription-tier-label">{shop.plan ? subscriptionPlanLabel(shop.plan) : "Sem plano ativo"}</strong><p>{shop.city} · {states[shop.status]}</p>
         <dl className="order-totals">
           <div><dt>Fim da vigência (data exclusiva)</dt><dd>{masterDate(shop.valid_until)}</dd></div>
           <div><dt>Fim do período pago</dt><dd>{masterDate(shop.paid_until)}</dd></div>
@@ -59,8 +62,10 @@ export default async function FinanceAdmin({ searchParams }: { searchParams: Pro
         </details>
       </li>)}</ul>
       <h2>Assinaturas e renovações confirmadas</h2>
-      {report.payments.length ? <ul className="cards">{report.payments.map(payment => <li className="card" key={payment.id}>
-        <h3>{payment.name}</h3>
+      {report.payments.length ? <ul className="cards">{report.payments.map(payment => <li className="card subscription-admin-card" data-tier={payment.plan ?? "legacy"} key={payment.id}>
+        <h3><SubscriptionBusiness name={payment.name} logo={payment.logo} /></h3>
+        <strong className="subscription-tier-label">{tierLabel(payment.plan)}</strong>
+        <p className="subscription-expiry">Vencimento do período {masterDate(offsetDay(payment.ends_before, -1))}</p>
         <p>{payment.renewal ? "Renovação" : "Nova assinatura"} · {planNames[payment.period]} · {bookingCurrency.format(payment.amount_cents / 100)}</p>
         <p>De {masterDate(payment.starts_on)} até {masterDate(payment.ends_before)} (data final exclusiva).</p>
         <p>Confirmado em {masterDate(payment.confirmed_at)} · Ref. {payment.reference}</p>

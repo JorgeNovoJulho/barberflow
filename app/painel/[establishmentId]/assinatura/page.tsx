@@ -4,12 +4,14 @@ import { notFound, redirect } from "next/navigation";
 import { offsetDay, saoPauloToday } from "../../../../lib/agenda";
 import { isUuid } from "../../../../lib/establishments";
 import { showcasePix } from "../../../../lib/pix";
-import { subscriptionLines, subscriptionProofLinks } from "../../../../lib/subscription-checkout";
+import { subscriptionLines, subscriptionProofLinks, subscriptionProofPreviews } from "../../../../lib/subscription-checkout";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { isPlanTier, periods, planNames, planPrice, planTiers, subscriptionPlanLabel, subscriptionSupportMessage, subscriptionSupportNumber, tierLabel, tiers, type PlanPeriod, type SubscriptionStatus } from "../../../../lib/subscriptions";
 import { supabaseServer } from "../../../../lib/supabase";
+import { SubscriptionProofPreview } from "../../../subscription-review-ui";
 import { SubmitButton } from "../../../auth/submit";
 import { issueSubscriptionPix, sendSubscriptionProof } from "./actions";
+import { ProofUpload } from "./proof-upload";
 import { CopyPix } from "./copy-pix";
 
 const dateLabel = (day: string) => day.split("-").reverse().join("/");
@@ -43,8 +45,10 @@ export default async function Subscription({ params, searchParams }: {
   const archived = paymentIds.length ? await supabase.from("barberflow_subscription_charges")
     .select("payment_id,receipt_path").in("payment_id", paymentIds) : null;
   const receipts = new Map((archived?.data ?? []).map((charge) => [charge.payment_id, charge.receipt_path]));
-  const proofLinks = await subscriptionProofLinks(supabase, [
-    ...receipts.values(), ...(openCharges.data ?? []).map((charge) => charge.receipt_path),
+  const proofPaths = (openCharges.data ?? []).map((charge) => charge.receipt_path);
+  const [proofLinks, previews] = await Promise.all([
+    subscriptionProofLinks(supabase, [...receipts.values(), ...proofPaths]),
+    subscriptionProofPreviews(supabase, proofPaths),
   ]);
   const checkout = await Promise.all((openCharges.data ?? []).map(async (charge) => {
     const code = charge.status === "pending" ? showcasePix({ ...charge, total_cents: charge.amount_cents }) : null;
@@ -60,13 +64,16 @@ export default async function Subscription({ params, searchParams }: {
   const supportNumber = prices?.support_whatsapp || subscriptionSupportNumber;
   const supportLink = "https://wa.me/" + supportNumber + "?" + new URLSearchParams({ text: subscriptionSupportMessage });
 
+  const proofSupport = (plan: string, period: string, cents: number) => "https://wa.me/" + supportNumber + "?" +
+    new URLSearchParams({ text: "Olá Top Barber, acabei de enviar o comprovante do pagamento da minha assinatura, pode liberar por favor ?" +
+      `\nEstabelecimento: ${businessName}\nPlano: ${tierLabel(plan)} · ${planNames[period as PlanPeriod]}\nValor pago via Pix: ${bookingCurrency.format(cents / 100)}` });
   const pixReady = Boolean(prices?.pix_key && prices.pix_city && prices.pix_merchant);
   const feedback: Record<string, string> = {
     "acesso-expired": "Sua assinatura venceu. Envie um comprovante para renovar o acesso ao painel.",
     "acesso-blocked": "O estabelecimento está bloqueado pela administração. Fale com o suporte para regularizar.",
     "acesso-frozen": "O estabelecimento está congelado pela administração. Fale com o suporte para regularizar.",
     "pix-falha": "Não foi possível gerar o Pix. Confira se o pagamento Pix está disponível ou tente novamente.",
-    "arquivo-invalido": "Selecione um PDF, JPG, PNG ou WebP de até 5 MB.",
+    "arquivo-invalido": "Selecione um PDF, JPG, JPEG, PNG, BMP ou WebP de até 5 MB.",
     "envio-falha": "Não foi possível enviar o comprovante. Confira a situação da cobrança e tente novamente.",
     enviado: "Comprovante recebido e arquivado. A administração vai conferir o pagamento.",
   };
@@ -127,10 +134,18 @@ export default async function Subscription({ params, searchParams }: {
       {!!checkout.length && <h2 className="panel-form">Cobranças e comprovantes</h2>}
       {checkout.map(({ charge, code, qr }) => {
         const proof = charge.receipt_path && proofLinks.get(charge.receipt_path);
+        const preview = charge.receipt_path && previews.get(charge.receipt_path);
         return <section className="card panel-form" id={"pix-" + charge.id} key={charge.id}>
           <h3>Pix · {tierLabel(charge.plan)} · {planNames[charge.period as PlanPeriod]} · {bookingCurrency.format(charge.amount_cents / 100)}</h3>
-          {charge.status === "submitted" && <p role="status">Comprovante em análise.</p>}
+          {charge.status === "submitted" && <>
+            <p role="status" data-feedback="info">Comprovante em análise.</p>
+            <div className="subscription-actions"><a className="secondary subscription-whatsapp"
+              href={proofSupport(charge.plan, charge.period, charge.amount_cents)} target="_blank" rel="noopener noreferrer">
+              Pedir liberação pelo WhatsApp
+            </a></div>
+          </>}
           {charge.status === "rejected" && <p>Comprovante recusado. {charge.rejection_reason} Se precisar, fale com o suporte antes de fazer outro Pix.</p>}
+          {preview && <SubscriptionProofPreview src={preview} pdf={charge.receipt_path?.endsWith(".pdf") === true} />}
           {proof && <a href={proof}>Baixar comprovante enviado</a>}
           {qr && code && <>
             <img src={qr} width={240} height={240} alt="QR Code para pagamento da assinatura via Pix" style={{ maxWidth: "100%", height: "auto" }} />
@@ -138,12 +153,8 @@ export default async function Subscription({ params, searchParams }: {
             <CopyPix value={code} code />
             <details id={"comprovante-" + charge.id} open={comprovante === charge.id || cobranca === charge.id}>
               <summary>Anexar comprovante · {planNames[charge.period as PlanPeriod]}</summary>
-            <form className="account-form" action={sendSubscriptionProof.bind(null, shop, charge.id)}>
-              <label>Comprovante do pagamento (PDF, JPG, PNG ou WebP, até 5 MB)
-                <input name="proof" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
-              </label>
-              <SubmitButton>Enviar comprovante</SubmitButton>
-            </form>
+              <ProofUpload action={sendSubscriptionProof.bind(null, shop, charge.id)}
+                highlight={cobranca === charge.id || comprovante === charge.id} />
             </details>
           </>}
         </section>;
@@ -157,7 +168,7 @@ export default async function Subscription({ params, searchParams }: {
         {prices.plan_benefits.trim() && <><h3>O que está incluído</h3>
           <ul className="form-columns">{subscriptionLines(prices.plan_benefits).map((benefit, index) => <li key={index}>{benefit}</li>)}</ul></>}
       </section>
-      <h2 className="panel-form">Histórico de pagamentos</h2>
+      <h2 className="panel-form" id="historico-pagamentos">Histórico de pagamentos</h2>
       {history.data?.length ? <ul className="cards">{history.data.map((payment) => {
         const receipt = receipts.get(payment.id);
         const proof = receipt && proofLinks.get(receipt);

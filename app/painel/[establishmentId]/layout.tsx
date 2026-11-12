@@ -1,7 +1,7 @@
 import { NotificationSound } from "./notification-sound";
 import { PurchaseUpdates } from "../../minhas-compras/purchase-updates";
 import Link from "next/link";
-import { subscriptionPlanLabel, type SubscriptionStatus } from "../../../lib/subscriptions";
+import { subscriptionPlanLabel, tierLabel, type SubscriptionStatus } from "../../../lib/subscriptions";
 import { offsetDay } from "../../../lib/agenda";
 import type { ReactNode } from "react";
 import { httpsUrl } from "../../../lib/business-profile";
@@ -22,7 +22,7 @@ export default async function EstablishmentLayout({ children, params }: {
   const plan = planData as SubscriptionStatus | null;
   const expiry = plan?.ends_before ? offsetDay(plan.ends_before, -1).split("-").reverse().join("/") : null;
   const user = (await supabase.auth.getUser()).data.user;
-  const [bookings, orders, notices] = await Promise.all([
+  const [bookings, orders, notices, payment] = await Promise.all([
     supabase.from("barberflow_schedule").select("id", { count: "exact", head: true })
       .eq("establishment_id", shop).or("booked_by.not.is.null,guest_online.eq.true").not("booking_created_at", "is", null).is("booking_read_at", null).is("booking_cleared_at", null),
     user?.id === business.data.owner_id
@@ -30,6 +30,10 @@ export default async function EstablishmentLayout({ children, params }: {
         .eq("establishment_id", shop).in("status", ["pending", "paid", "ready"])
       : null,
     user?.id === business.data.owner_id ? supabase.rpc("barberflow_booking_notifications", { shop }) : null,
+    user?.id === business.data.owner_id ? supabase.from("barberflow_subscription_payments")
+      .select("plan,starts_on,ends_before").eq("establishment_id", shop)
+      .gte("confirmed_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+      .order("confirmed_at", { ascending: false }).limit(1).maybeSingle() : null,
   ]);
   const notificationBatch = Array.isArray(notices?.data?.items) ? {
     asOf: notices.data.as_of as string,
@@ -56,6 +60,11 @@ export default async function EstablishmentLayout({ children, params }: {
             : `O plano ${subscriptionPlanLabel(plan.plan)} vence ${plan.days_left === 1 ? "hoje" : `em ${plan.days_left} dias`}.`}
           {" "}<Link href={`/painel/${shop}/assinatura`}>Ver assinatura</Link>
         </p>}
+      {payment?.data && <p role="status" data-feedback="success" className="workspace-renewal">
+        Pagamento do {tierLabel(payment.data.plan)} confirmado. Vigência de {payment.data.starts_on.split("-").reverse().join("/")}
+        {" até "}{offsetDay(payment.data.ends_before, -1).split("-").reverse().join("/")}.
+        {" "}<Link href={`/painel/${shop}/assinatura#historico-pagamentos`}>Ver assinatura</Link>
+      </p>}
       {children}
     </div>
   </div>;
