@@ -94,7 +94,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     if (!data) notFound();
     businessName = data.name;
   }
-  const [professionals, services, assignments, hours, team] = await Promise.all([
+  const [professionals, services, assignments, hours, team, closedToday] = await Promise.all([
     supabase.from("barberflow_professionals").select("id,name,description,active,photo_url,commission_bps,product_commission_bps,inherit_business_hours,instagram,facebook,tiktok,youtube,whatsapp")
       .eq("establishment_id", shop).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     delegated ? supabase.rpc("barberflow_team_assignment_services", { shop })
@@ -102,6 +102,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_professional_hours").select("professional_id,weekday,starts_at,ends_at,break_start,break_end").eq("establishment_id", shop),
     delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members", { shop }),
+    delegated ? null : supabase.rpc("barberflow_professional_closed_today", { shop_id: shop }),
   ]);
   const { estado } = await searchParams;
 
@@ -123,6 +124,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
         const schedule = new Map((hours.data ?? []).filter((item: Hours) => item.professional_id === professional.id).map((item: Hours) => [item.weekday, item]));
         const available = ((services.data ?? []) as { id: string; name: string; active: boolean }[]).filter((service) => service.active || selected.has(service.id));
         return <article className="card panel-form team-professional-card" data-tone={index % 4} key={professional.id}>
+          {closedToday?.data?.some((row: { professional_id: string }) => row.professional_id === professional.id) && <p data-feedback="warning">Jornada fechada para reservas online de hoje.</p>}
           <div className="professional-card-identity">
             {httpsUrl(professional.photo_url) && <img className="professional-card-photo" src={professional.photo_url} alt="" width={56} height={56} loading="lazy" />}
             <div><h3>{professional.name}</h3><p>{professional.active ? "Ativo" : "Inativo"} · Serviços {professional.commission_bps / 100}% · Produtos {professional.product_commission_bps / 100}%</p></div>

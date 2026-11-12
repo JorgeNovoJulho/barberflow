@@ -407,3 +407,17 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
   .finance-entry-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .finance-entry-summary :is(h3, dl) { grid-column: 1 / -1; }
 }
+
+.professional-workspace { max-width: 58rem; }
+.professional-workspace .card { min-width: 0; overflow-wrap: anywhere; }
+.professional-identity { margin-block: 1rem; }
+.professional-cover { height: clamp(6rem, 24vw, 12rem); border-radius: .8rem; background: linear-gradient(115deg, #172044, #5942a3); overflow: hidden; }
+.professional-cover img { width: 100%; height: 100%; object-fit: cover; }
+.professional-photo { display: block; object-fit: cover; border: 3px solid white; border-radius: 50%; margin: -2.25rem 0 .5rem .65rem; position: relative; }
+.professional-daily { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
+.professional-daily .card { background: #f1eaff; }
+.professional-daily .card + .card { background: #e2f5ed; }
+.professional-daily h2 { font-size: clamp(1rem, 3.5vw, 1.25rem); }
+.professional-peaks { padding: 0; list-style: none; display: grid; gap: .55rem; }
+.professional-peaks li { display: grid; grid-template-columns: 6rem minmax(0,1fr) 3ch; gap: .5rem; align-items: center; }
+.professional-peaks meter { width: 100%; }
