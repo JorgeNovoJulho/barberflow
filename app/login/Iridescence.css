@@ -1,0 +1,22 @@
+.iridescence-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.iridescence-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+
+
+.login-scene { position: relative; isolation: isolate; background: #e7e9fb; }
+.login-scene > .login-iridescence { position: absolute; inset: 0; z-index: -1; }
+@media (prefers-reduced-motion: reduce) {
+  .login-scene > .login-iridescence { display: none; }
+}
