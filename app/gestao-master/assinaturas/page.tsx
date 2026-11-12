@@ -11,9 +11,10 @@ import { bookingCurrency } from "../../../lib/public-booking";
 import { subscriptionProofLinks, subscriptionProofPreviews } from "../../../lib/subscription-checkout";
 import { planNames, tierLabel, type PlanPeriod } from "../../../lib/subscriptions";
 import { SubmitButton } from "../../auth/submit";
-import { confirmSubscriptionPayment, reviewSubscriptionPix, savePlanSettings } from "./actions";
+import { confirmSubscriptionPayment, reviewSubscriptionPix, savePlanSettings, setPaymentControl } from "./actions";
 
 const feedback: Record<string, string> = {
+  "controle-atualizado": "Controle de pagamentos atualizado.",
   "pix-invalido": "Informe uma chave Pix válida, o favorecido e a cidade para habilitar a geração de Pix.",
   "revisao-falhou": "Confira se o valor recebido é exatamente o da cobrança, se a referência é inédita e se o comprovante ainda está em análise.",
   recusado: "Comprovante recusado. O motivo ficará disponível para o estabelecimento.",
@@ -29,14 +30,24 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   const supabase = await requireMaster("/gestao-master/assinaturas");
   const { busca, estado, teste } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
-  const [settings, businesses, pending] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,pix_beneficiary,pix_merchant,support_whatsapp,pix_city,grace_days,billing_rules,plan_benefits").single(),
+  const [settings, businesses, pending, paymentSecurity] = await Promise.all([
+    supabase.rpc("barberflow_master_plan_settings"),
     search ? supabase.rpc("barberflow_billing_businesses", { search_text: search }) : Promise.resolve({ data: [], error: null }),
     supabase.from("barberflow_subscription_charges").select("id,establishment_id,period,plan,amount_cents,receipt_path,submitted_at")
       .eq("status", "submitted").order("submitted_at").limit(100),
+    supabase.rpc("barberflow_payment_security_status"),
   ]);
+  const security = paymentSecurity.data as {
+    enabled: boolean;
+    events: { id: number; created_at: string; shop: string | null; event: string }[];
+  } | null;
+  const securityLabels: Record<string, string> = {
+    payments_paused: "Movimentações suspensas",
+    payments_resumed: "Movimentações retomadas",
+    pix_destination_changed: "Dados de recebimento Pix alterados",
+  };
   const config = settings.data;
-  const testCode = teste === "pix" && config?.pix_key && config.pix_merchant && config.pix_city
+  const testCode = security?.enabled && teste === "pix" && config?.pix_key && config.pix_merchant && config.pix_city
     ? showcasePix({ id: randomUUID(), pix_key: config.pix_key, merchant: config.pix_merchant, city: config.pix_city, total_cents: 1 })
     : null;
   const qr = testCode ? await QRCode.toDataURL(testCode, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null;
@@ -64,6 +75,24 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
   return <section className="container section">
     <MasterTabs current="/gestao-master/assinaturas" />
     <h1>Gestão de assinaturas</h1>
+    <section className="card" aria-labelledby="payment-security">
+      <h2 id="payment-security">Segurança dos pagamentos</h2>
+      {security ? <>
+        <p role="status">{security.enabled ? "Movimentações habilitadas" : "Movimentações suspensas"}</p>
+        <form action={setPaymentControl}>
+          <button className="button" name="payment-control" value={security.enabled ? "pause" : "resume"}>
+            {security.enabled ? "Suspender movimentações" : "Retomar movimentações"}
+          </button>
+        </form>
+        <h3>Alertas recentes</h3>
+        {security.events.length ? <ul>{security.events.map((entry) => (
+          <li key={entry.id}>
+            {securityLabels[entry.event] ?? entry.event} · {masterDate(entry.created_at)}
+            {entry.shop ? <> · <Link href={`/gestao-master/assinaturas?busca=${entry.shop}`}>Ver estabelecimento</Link></> : null}
+          </li>
+        ))}</ul> : <p>Nenhum alerta registrado.</p>}
+      </> : <p role="alert">Controle de pagamentos indisponível.</p>}
+    </section>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     {config && <MasterCards items={[["Pro mensal",bookingCurrency.format(config.monthly_cents / 100)],
       ["Pro anual",bookingCurrency.format(config.yearly_cents / 100)],["Premium mensal",bookingCurrency.format(config.premium_monthly_cents / 100)],["Premium anual",bookingCurrency.format(config.premium_yearly_cents / 100)],["Dias de teste",config.trial_days],

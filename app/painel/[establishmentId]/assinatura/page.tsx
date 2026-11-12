@@ -30,8 +30,8 @@ export default async function Subscription({ params, searchParams }: {
   if (!business.data) notFound();
   const businessName = business.data.name;
   const today = saoPauloToday();
-  const [settings, subscription, current, history, openCharges, access] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,pix_key,instructions,support_whatsapp,pix_city,pix_merchant,grace_days,billing_rules,plan_benefits").single(),
+  const [settings, subscription, current, history, openCharges, access, pixAvailability] = await Promise.all([
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,instructions,support_whatsapp,grace_days,billing_rules,plan_benefits").single(),
     supabase.from("barberflow_subscriptions").select("trial_until,preferred_period,preferred_plan").eq("establishment_id", shop).maybeSingle(),
     supabase.from("barberflow_subscription_payments").select("plan,period,ends_before").eq("establishment_id", shop)
       .lte("starts_on", today).gt("ends_before", today).maybeSingle(),
@@ -40,6 +40,7 @@ export default async function Subscription({ params, searchParams }: {
     supabase.from("barberflow_subscription_charges").select("*").eq("establishment_id", shop)
       .neq("status", "confirmed").order("created_at", { ascending: false }).limit(20),
     supabase.rpc("barberflow_subscription_status", { shop }),
+    supabase.rpc("barberflow_subscription_pix_ready"),
   ]);
   const paymentIds = (history.data ?? []).map((payment) => payment.id);
   const archived = paymentIds.length ? await supabase.from("barberflow_subscription_charges")
@@ -67,7 +68,7 @@ export default async function Subscription({ params, searchParams }: {
   const proofSupport = (plan: string, period: string, cents: number) => "https://wa.me/" + supportNumber + "?" +
     new URLSearchParams({ text: "Olá Top Barber, acabei de enviar o comprovante do pagamento da minha assinatura, pode liberar por favor ?" +
       `\nEstabelecimento: ${businessName}\nPlano: ${tierLabel(plan)} · ${planNames[period as PlanPeriod]}\nValor pago via Pix: ${bookingCurrency.format(cents / 100)}` });
-  const pixReady = Boolean(prices?.pix_key && prices.pix_city && prices.pix_merchant);
+  const pixReady = pixAvailability.data === true;
   const feedback: Record<string, string> = {
     "acesso-expired": "Sua assinatura venceu. Envie um comprovante para renovar o acesso ao painel.",
     "acesso-blocked": "O estabelecimento está bloqueado pela administração. Fale com o suporte para regularizar.",
@@ -84,7 +85,7 @@ export default async function Subscription({ params, searchParams }: {
     </nav>
     <p className="eyebrow">{businessName}</p><h1>Assinatura</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role={estado === "enviado" ? "status" : "alert"}>{feedback[estado]}</p>}
-    {!prices || archived?.error || [subscription, current, history, openCharges, access].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
+    {!prices || archived?.error || [subscription, current, history, openCharges, access, pixAvailability].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
       <section className="card panel-form subscription-status-card" data-tier={accessStatus?.plan ?? "none"}>
         <h2>Situação da assinatura</h2>
         {accessStatus?.plan && <p className="subscription-current" data-tier={accessStatus.plan}>
@@ -111,7 +112,7 @@ export default async function Subscription({ params, searchParams }: {
         <h2 id="subscription-options">Escolha seu plano</h2>
         <p>Selecione o plano e o período para gerar o Pix. Envie o comprovante da cobrança para análise. A vigência começa na data indicada após a confirmação do recebimento.</p>
         {prices.instructions && <p style={{ whiteSpace: "pre-wrap" }}>{prices.instructions}</p>}
-        {!pixReady && <p role="status">O recebimento via Pix aguarda configuração da administração.</p>}
+        {!pixReady && <p role="status">O Pix está temporariamente indisponível. Entre em contato com o suporte se precisar de ajuda.</p>}
         <form className="account-form" action={issueSubscriptionPix.bind(null, shop)}>
           <div className="subscription-plans">
             {tiers.map((tier) => <fieldset key={tier} className="card subscription-plan" data-tier={tier}>

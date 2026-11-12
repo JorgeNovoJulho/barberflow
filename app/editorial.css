@@ -340,3 +340,35 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .feed-reaction-identity > :is(img, span) { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; object-fit: cover; background: var(--accent-soft); color: var(--accent-ink); font-size: .68rem; }
 .feed-comment-preview { padding-block: .35rem; }
 .feed-comment-preview p { margin: .2rem 0 .2rem 2.2rem; }
+
+/* Keep intrinsic control and media widths inside narrow cards. */
+@media (max-width: 48rem) {
+  .workspace-content, .card, fieldset, .cards > *, .checkout-columns > * {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+  main :is(input, select, textarea, iframe, video, canvas, pre) {
+    max-inline-size: 100%;
+  }
+  main :is(input[type="file"], input[type="date"], input[type="time"], input[type="datetime-local"]) {
+    min-inline-size: 0;
+  }
+  main :is(input, select, textarea):not([type="checkbox"], [type="radio"]) {
+    font-size: max(1rem, 16px);
+  }
+  .card :is(.primary, .secondary, .button), .gallery-feed-layout button {
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+  .order-card-heading {
+    grid-template-columns: 3rem minmax(0, 1fr);
+  }
+  .order-card-heading > :last-child:nth-child(3) {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .agenda-month-day {
+    min-height: 2.75rem;
+    padding-inline: .15rem;
+  }
+}

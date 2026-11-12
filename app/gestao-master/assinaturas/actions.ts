@@ -72,3 +72,15 @@ export async function reviewSubscriptionPix(shop: string, charge: string, reject
   revalidatePath(`/painel/${shop}/assinatura`);
   finish(error || !data ? "revisao-falhou" : reject ? "recusado" : "confirmado", shop);
 }
+
+export async function setPaymentControl(form: FormData) {
+  const supabase = await requireMaster();
+  const setting = form.get("payment-control");
+  if (setting !== "pause" && setting !== "resume") finish("invalido");
+  const { data, error } = await supabase.rpc("barberflow_set_payment_control", {
+    allow_payments: setting === "resume",
+  });
+  if (error || !data) finish("falha");
+  revalidatePath(path);
+  finish("controle-atualizado");
+}
