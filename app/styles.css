@@ -518,3 +518,51 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 .collection-options { display: grid; gap: 1rem; }
 .collection-options form + form { margin-block-start: .65rem; }
 .payment-qr { display: block; max-width: 100%; height: auto; border-radius: .5rem; }
+
+.local-photo-carousel {
+  --photo-size: clamp(8.5rem, 36vw, 13.75rem);
+  --photo-radius: clamp(5.75rem, 24vw, 9.5rem);
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+.local-photo-stage {
+  display: grid;
+  place-items: center;
+  min-height: calc(var(--photo-size) + 4.5rem);
+  perspective: 900px;
+  perspective-origin: center;
+}
+.local-photo-ring {
+  width: var(--photo-size);
+  aspect-ratio: 1;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform .6s ease;
+}
+.local-photo-slide {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  width: 100%;
+  border-radius: .9rem;
+  border: 1px solid var(--line, #dedfed);
+  background: #161b31;
+  box-shadow: 0 .65rem 1.4rem rgb(15 22 48 / 22%);
+  backface-visibility: hidden;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.local-photo-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.local-photo-navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  padding: 0 .75rem 1rem;
+}
+.profile-gallery-dialog { margin: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .local-photo-ring { transition: none; }
+}

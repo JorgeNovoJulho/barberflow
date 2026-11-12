@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import CircularCarousel from "./CircularCarousel";
 
 export function ShareProfile({ title, path, showLink = false }: { title: string; path?: string; showLink?: boolean }) {
   const [message, setMessage] = useState("");
@@ -37,14 +38,17 @@ export function ShareProfile({ title, path, showLink = false }: { title: string;
 export function ProfileGallery({ images, title }: { images: string[]; title: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [index, setIndex] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   return <>
-    <div className="cards">{images.map((image, position) => <button key={position} type="button" className="secondary"
-      onClick={() => { setIndex(position); dialog.current?.showModal(); }}>
-      <img className="landing-card-photo" src={image} alt={`Ampliar foto ${position + 1} de ${title}`} loading="lazy" />
-    </button>)}</div>
-    <dialog ref={dialog} className="profile-gallery-dialog" aria-label={`Fotos de ${title}`}>
+    <CircularCarousel items={images.map((src, position) => ({ src, alt: `Foto ${position + 1} de ${title}` }))}
+      onSelect={(position) => {
+        setIndex(position);
+        setExpanded(true);
+        dialog.current?.showModal();
+      }} />
+    <dialog ref={dialog} onClose={() => setExpanded(false)} className="profile-gallery-dialog" aria-label={`Fotos de ${title}`}>
       <button type="button" className="secondary" autoFocus onClick={() => dialog.current?.close()}>Fechar</button>
-      <img src={images[index]} alt={`Foto ${index + 1} de ${title}`} />
+      <img src={expanded ? images[index] : undefined} alt={`Foto ${index + 1} de ${title}`} />
       {images.length > 1 && <div className="account-links">
         <button type="button" className="secondary" onClick={() => setIndex((index + images.length - 1) % images.length)}>Anterior</button>
         <span aria-live="polite">{index + 1} de {images.length}</span>
