@@ -1,10 +1,10 @@
-import type { CSSProperties } from "react";
+import { BusinessHeader } from "./business-header";
 import { serviceMediaUrls } from "../../../lib/service-media";
 import { ServiceMedia } from "../../service-media";
 import Link from "next/link";
 import { Showcase } from "./showcase";
 import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
-import { businessDays, httpsUrl, publicProfileColor, readBusinessProfile, socialUrl, whatsappUrl } from "../../../lib/business-profile";
+import { businessDays, httpsUrl, readBusinessProfile, socialUrl, whatsappUrl } from "../../../lib/business-profile";
 import { supabaseServer } from "../../../lib/supabase";
 import { ShareProfile, ProfileGallery } from "./profile-controls";
 import { saoPauloToday } from "../../../lib/agenda";
@@ -26,10 +26,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
     .map(({ professional_id, slot }) => [professional_id, slot]));
   const mediaUrls = await serviceMediaUrls(profile.services);
   const details = readBusinessProfile(profile.details);
-  const color = publicProfileColor(details.color);
-  const cover = httpsUrl(details.cover);
   const rating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
-  const logo = httpsUrl(details.logo);
   const address = [details.address, details.number, details.complement, details.neighborhood, profile.city, details.region, details.postalCode].filter(Boolean).join(", ");
   const map = httpsUrl(details.map) ?? (details.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined);
   const mapUrl = map ? new URL(map) : null;
@@ -59,12 +56,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
       <Link href={'/painel/' + previewShop + '/publicacao'}>Voltar à Página pública</Link>
       <p>Prévia da última versão salva. Agendamentos e compras ficam desativados aqui.</p>
     </div> : <Link href="/estabelecimentos">Ver estabelecimentos</Link>}
-    <header className={`public-business-profile${cover ? " has-cover" : ""}`} style={{ borderBlockStartColor: color, "--profile-color": color } as CSSProperties}>
-      {cover && <img className="business-cover" src={cover} alt="" decoding="async" />}
-      <div className="business-heading">
-      {logo && <img className="business-logo" src={logo} alt={`Logotipo de ${profile.name}`} />}
-      <p className="eyebrow">{profile.city}</p>
-      <h1>{profile.name}</h1>
+    <BusinessHeader name={profile.name} city={profile.city} details={profile.details}>
       <div className="business-heading-badges">
         {!!Object.keys(details.hours ?? {}).length && <strong className={`business-status${open ? " is-open" : ""}`}>{open ? "Aberto agora" : "Fechado agora"}</strong>}
         {!previewShop && reviewResult?.data && <Link className="business-rating" href="#avaliacoes">
@@ -86,8 +78,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
         {socials.map(([label, url]) => url && <a key={label} className="secondary" href={url} target="_blank" rel="noopener noreferrer">{label}</a>)}
         {!previewShop && <ShareProfile title={profile.name} />}
       </div>
-      </div>
-    </header>
+    </BusinessHeader>
     <nav className="account-links profile-sections" aria-label="Nesta página">
       <Link className="secondary profile-tab profile-tab-servicos" href="#servicos">Serviços</Link>
       {!!professionals.length && <Link className="secondary profile-tab profile-tab-profissionais" href="#profissionais">Profissionais</Link>}

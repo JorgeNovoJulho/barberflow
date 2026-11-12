@@ -1,3 +1,5 @@
+import { BusinessHeader } from "../estabelecimento/[slug]/business-header";
+import { publicProfile } from "../../lib/public-booking";
 import { FeedIcon } from "./feed-icon";
 import { offsetDay } from "../../lib/agenda";
 import { subscriptionPlanLabel, type SubscriptionStatus } from "../../lib/subscriptions";
@@ -48,7 +50,7 @@ function SocialCollectionCard({ name, href, image, detail, followers, children }
 }
 
 export default async function ClientPage({ searchParams }: {
-  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string; estabelecimento?:string }>;
+  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string; estabelecimento?:string; comentarios?:string }>;
 }) {
   const { supabase,user } = await socialSession();
   const params = await searchParams;
@@ -124,6 +126,14 @@ export default async function ClientPage({ searchParams }: {
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
   if ((target && !profile && !profileResult.error) || (shop && !shopInfo && !shopResult?.error) || (photo && !postsResult?.data?.length && !postsResult?.error)) notFound();
   const posts = (postsResult?.data ?? []) as Photo[];
+  const [publicBusiness, engagement] = await Promise.all([
+    shopInfo?.slug ? publicProfile(shopInfo.slug).catch(() => null) : null,
+    !photo && posts.length ? supabase.rpc("barberflow_feed_engagement", { post_ids: posts.slice(0, 12).map(({ id }) => id) }) : null,
+  ]);
+  const reactions = (engagement?.data ?? {}) as Record<string, {
+    liked: boolean; likes: number; comments: number;
+    people: { id: string; name: string }[]; messages: { id: string; name: string; body: string }[];
+  }>;
   const setup = !publisher && view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
   const people: Person[] = connections?.data?.rows ?? directoryResult?.data ?? [];
   const shops: Shop[] = savedShops?.data ?? [];
@@ -167,7 +177,7 @@ export default async function ClientPage({ searchParams }: {
         </span>
         <span className="client-rail-identity">
           <strong>{identityName}</strong>
-          {identityUsername && <small>@{identityUsername}</small>}
+          {!publisher && identityUsername && <small>@{identityUsername}</small>}
           {ownPlan?.plan && <small className="client-rail-plan" data-tier={ownPlan.plan}>
             {ownPlan.plan === "premium" && "♛ "}{subscriptionPlanLabel(ownPlan.plan)}
             {expiry && <span> · Vencimento {expiry}</span>}
@@ -195,7 +205,8 @@ export default async function ClientPage({ searchParams }: {
       <form className="client-rail-exit" action={signOut}><button className="workspace-notices"><FeedIcon name="exit" />Sair do sistema</button></form>
     </aside>
     <section className="workspace-content section" data-social-theme={profile?.theme}>
-      <h1>{title}</h1>
+      {publicBusiness ? <div className="public-profile"><BusinessHeader name={publicBusiness.name} city={publicBusiness.city}
+        details={publicBusiness.details} /></div> : <h1>{title}</h1>}
       {params.estado && <p role={params.estado==="salvo" ? "status" : "alert"} data-feedback={params.estado==="salvo" ? "success" : "warning"}>{params.estado==="salvo" ? "Alteração registrada." : "Não foi possível concluir. Confira os dados, a visibilidade e as permissões do perfil."}</p>}
       {failed && <p role="alert">Parte do conteúdo não pôde ser carregada.</p>}
       {setup && <>
@@ -348,7 +359,7 @@ export default async function ClientPage({ searchParams }: {
       {view==="notificacoes" && (notices.length ? <ul className="cards">{notices.slice(0,25).map((item,index)=><li className="card" key={item.photo+item.occurred+index}>
         <Link href={feedLink("/cliente?foto="+item.photo)}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação social.</p>)}
       {["perfil","perfil-publico"].includes(view) && !businessProfile && <h2>Galeria</h2>}
-      {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" key={post.id}>
+      {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" id={"post-" + post.id} key={post.id}>
         <ProductGallery name="Fotos da publicação" compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {
           const url = links.get(object);
           return url ? [{url, kind:"photo" as const, slot:"photo-"+(index+1)}] : [];
@@ -356,7 +367,25 @@ export default async function ClientPage({ searchParams }: {
         {post.shop ? <Link href={feedLink("/cliente?loja="+post.shop)}>{post.promotion ? "Promoção do estabelecimento" : "Ver estabelecimento"}</Link> :
           names.has(post.author) && <Link href={feedLink("/cliente?perfil="+post.author)}>{names.get(post.author)}</Link>}
         <p className="social-post-text">{post.caption}</p>
-        {!photo && <Link href={feedLink("/cliente?foto="+post.id)}>Abrir publicação</Link>}
+        {!photo && <>
+          <div className="account-links feed-reactions">
+            <form action={changeLike.bind(null, path + "#post-" + post.id, post.id, !!reactions[post.id]?.liked)}>
+              <button className="secondary" aria-pressed={!!reactions[post.id]?.liked}>{reactions[post.id]?.liked ? "♥ Curtido" : "♡ Curtir"}</button>
+            </form>
+            <Link href={feedLink("/cliente?foto="+post.id)}>Abrir publicação</Link>
+          </div>
+          <details><summary>Quem curtiu{reactions[post.id] ? ` · ${reactions[post.id].likes}` : ""}</summary>
+            {reactions[post.id]?.people.length ? <ul>{reactions[post.id].people.map((person) =>
+              <li key={person.id}>{person.name}</li>)}</ul> : <p>Nenhuma curtida visível.</p>}
+            {(reactions[post.id]?.likes ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todas as curtidas</Link>}
+          </details>
+          <details open={params.comentarios === post.id}>
+            <summary>Comentar e ver comentários{reactions[post.id] ? ` · ${reactions[post.id].comments}` : ""}</summary>
+            {reactions[post.id]?.messages.map((comment) => <p key={comment.id}><strong>{comment.name}</strong> · {comment.body}</p>)}
+            {(reactions[post.id]?.comments ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todos os comentários</Link>}
+            <CommentForm path={path + "&comentarios=" + post.id + "#post-" + post.id} photo={post.id} parent={null} />
+          </details>
+        </>}
         {post.author===user.id && <details><summary>Editar ou excluir publicação</summary>
           <PhotoForm path={path} shop={post.shop} photo={post} />
           <form action={deleteSocialPhoto.bind(null,photo ? (post.shop ? "/cliente?loja="+post.shop : "/cliente?aba=perfil") : path,post.id)}><label><input name="confirm" type="checkbox" required /> Confirmar exclusão</label> <button className="secondary">Excluir publicação</button></form>
