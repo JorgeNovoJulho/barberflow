@@ -97,7 +97,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     {estado === "indisponivel" && <p role="alert">Confira o expediente e os serviços do profissional.</p>}
     {estado === "conflito" && <p role="alert">Este horário já está ocupado ou bloqueado.</p>}
     {bookingContext.error ? <p role="alert">Não foi possível consultar os serviços disponíveis.</p> : wizard &&
-      <details className="card panel-form" id="novo-atendimento" open={novo === "1"}><summary>Novo atendimento</summary>
+      <details className="card team-booking" id="novo-atendimento" open={novo === "1"}><summary>Novo atendimento</summary>
         <BookingForm teamShop={shop} slug={wizard.slug ?? ""} services={wizard.services}
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
