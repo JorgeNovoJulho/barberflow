@@ -7,7 +7,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 
 const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Mensal" };
-type Appointment = { id: string; client: string; phone: string | null; service: string; starts: string; state: string };
+type Appointment = { id: string; client: string; phone: string | null; service: string; starts: string; state: string; checked_in?: boolean };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
   available: boolean; services: string[]; service_rate: number; product_rate: number;
@@ -62,15 +62,17 @@ function media(value: string | null) {
 
 export default async function ProfessionalPanel({ params, searchParams }: {
   params: Promise<{ shop: string }>;
-  searchParams: Promise<{ periodo?: string; estado?: string; pagina?: string }>;
+  searchParams: Promise<{ periodo?: string; agenda?: string; estado?: string; pagina?: string }>;
 }) {
   const { shop } = await params;
   const supabase = await client(shop);
-  const { periodo, estado, pagina } = await searchParams;
+  const { periodo, agenda, estado, pagina } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
-  const [{ data, error }, counterResult] = await Promise.all([
+  const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
+  const [{ data, error }, counterResult, agendaResult] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
+    supabase.rpc("barberflow_professional_agenda_period", { shop_id: shop, agenda_period: agendaPeriod }),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
@@ -83,8 +85,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     for (const key of Object.keys(panel.daily) as (keyof Panel["daily"])[]) panel.daily[key] += counter.daily[key];
   }
   const base = `/equipe/${shop}/meu-painel`;
-  const active = panel.appointments.filter((entry) => entry.state === "scheduled" || entry.state === "pending");
-  const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(panel.appointments.length / 12) - 1)) : 0;
+  const appointments = (agendaResult.data ?? []) as Appointment[];
+  const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(appointments.length / 12) - 1)) : 0;
   return <section className="container section professional-workspace">
     <Link href={`/equipe/${shop}`}>Agenda da equipe</Link>
     <header className="card professional-identity">
@@ -95,6 +97,10 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <p>{panel.services.length ? panel.services.join(" · ") : "Sem serviços vinculados."}</p>
       <p>Comissão de serviços {panel.service_rate / 100}% · Comissão de produtos {panel.product_rate / 100}%</p>
       <p><strong>{panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>
+      <nav className="account-links" aria-label="Ações do profissional">
+        <Link className="primary" href={`${base}?agenda=dia#agenda-dia`}>Abrir comanda</Link>
+        <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Agendar cliente</Link>
+      </nav>
       {panel.available ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
           <p>Fechar a disponibilidade para novos agendamentos online de hoje?</p>
@@ -110,18 +116,23 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <section className="card"><h2>Produtos hoje</h2><p>{panel.daily.product_units} · {money(panel.daily.products)}</p>
         <strong>A receber {money(panel.daily.product_commission)}</strong></section>
     </div>
-    <details className="card" id="agenda-dia" open={Boolean(estado || page)}>
-      <summary>Agendamentos do dia · {panel.appointments.length}{active[0] ? ` · Primeiro às ${active[0].starts.slice(11,16)}` : ""}</summary>
-      <ul className="finance-entry-list">{panel.appointments.slice(page * 12, page * 12 + 12).map((entry) => {
+    <details className="card" id="agenda-dia" open={Boolean(agenda || estado || page)}>
+      <summary>Agendamentos · {appointments.length}</summary>
+      <nav className="account-links" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
+        <Link key={key} className="secondary" aria-current={agendaPeriod === key ? "page" : undefined}
+          href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
+      {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
+        : !appointments.length && <p>Nenhum agendamento neste período.</p>}
+      <ul className="finance-entry-list">{appointments.slice(page * 12, page * 12 + 12).map((entry) => {
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card" key={entry.id}>
           <strong>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</strong>
           <h3>{entry.client}</h3><p>{entry.service}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>WhatsApp</a>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
-            {entry.state === "scheduled" && (checkedIn.has(entry.id) ? <strong>Presença confirmada</strong>
+            {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id)) ? <strong>Presença confirmada</strong>
               : <form action={checkIn.bind(null, shop, entry.id, false)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
-            {entry.state === "scheduled" && (checkedIn.has(entry.id)
+            {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id))
               ? <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>
               : <form action={checkIn.bind(null, shop, entry.id, true)}><SubmitButton>Confirmar presença e abrir comanda</SubmitButton></form>)}
             <details><summary>Informar falta</summary><form action={appointmentAction.bind(null, shop, entry.id, "absence")}>
@@ -132,13 +143,13 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           </div>}
         </li>;
       })}</ul>
-      {page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
-      {(page + 1) * 12 < panel.appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
+      {page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
+      {(page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
     </details>
     <section className="card" id="desempenho">
       <h2>Desempenho</h2>
       <nav className="account-links" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
-        <Link key={key} className="secondary" aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}#desempenho`}>{label}</Link>)}</nav>
+        <Link key={key} className="secondary" aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}&agenda=${agendaPeriod}#desempenho`}>{label}</Link>)}</nav>
       <dl>
         <dt>Serviços fechados e pagos</dt><dd>{panel.paid_services}</dd>
         <dt>Comparecimentos</dt><dd>{panel.attended + (counter?.attended_open ?? 0)}</dd>

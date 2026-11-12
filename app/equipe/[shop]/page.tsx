@@ -27,11 +27,11 @@ type Entry = { id: string; professional_name: string; kind: string; state: strin
 type Offering = { professional_id: string; professional_name: string; service_id: string; service_name: string; duration_minutes: number };
 
 export default async function TeamAgenda({ params, searchParams }: {
-  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string }>;
+  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string; novo?: string }>;
 }) {
   const { shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { dia, estado } = await searchParams;
+  const { dia, estado, novo } = await searchParams;
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
@@ -82,7 +82,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     {estado === "indisponivel" && <p role="alert">Confira o expediente e os serviços do profissional.</p>}
     {estado === "conflito" && <p role="alert">Este horário já está ocupado ou bloqueado.</p>}
     {offerings.error ? <p role="alert">Não foi possível consultar os serviços disponíveis.</p> : providers.size > 0 &&
-      <details className="card panel-form"><summary>Novo atendimento</summary>
+      <details className="card panel-form" id="novo-atendimento" open={novo === "1"}><summary>Novo atendimento</summary>
         <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", true)}>
           <AppointmentFields providers={[...providers.values()]} />
           <label>Horário <input type="time" name="start" required /></label>
