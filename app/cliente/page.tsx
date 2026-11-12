@@ -1,3 +1,6 @@
+import { FeedIcon } from "./feed-icon";
+import { offsetDay } from "../../lib/agenda";
+import { subscriptionPlanLabel, type SubscriptionStatus } from "../../lib/subscriptions";
 import { orderProductPhotos } from "../../lib/order-photos";
 import { formatShowcaseDate } from "../../lib/showcase";
 import { OrderCardHeading } from "../minhas-compras/order-card-heading";
@@ -5,7 +8,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "../../lib/establishments";
-import { httpsUrl, socialUrl } from "../../lib/business-profile";
+import { httpsUrl, socialUrl, whatsappUrl } from "../../lib/business-profile";
 import { signOut } from "../auth/actions";
 import { blockSocialProfile, changeFavorite, changeFollow, changeLike, commentPhoto, deleteSocialPhoto, freezeSocial, requestDeletion, reviewSocialShop } from "./actions";
 import { SocialProfileForm } from "./profile-form";
@@ -51,9 +54,18 @@ export default async function ClientPage({ searchParams }: {
   const params = await searchParams;
   const page = pageIndex(params.pagina);
   const ownedShopId = isUuid(params.estabelecimento ?? "") ? params.estabelecimento! : null;
-  const ownedShop = ownedShopId ? await supabase.from("barberflow_establishments").select("id,name")
+  const ownedShop = ownedShopId ? await supabase.from("barberflow_establishments").select("id,name,slug,profile_details")
     .eq("id", ownedShopId).eq("owner_id", user.id).maybeSingle() : null;
   const publisher = ownedShop?.data ?? null;
+  const ownPlan = publisher ? (await supabase.rpc("barberflow_subscription_status", { shop: publisher.id })).data as SubscriptionStatus | null : null;
+  const expiry = ownPlan?.ends_before ? offsetDay(ownPlan.ends_before, -1).split("-").reverse().join("/") : null;
+  function feedLink(href: string) {
+    if (!publisher || !href.startsWith("/cliente")) return href;
+    const [pathname, query] = href.split("?");
+    const next = new URLSearchParams(query);
+    next.set("estabelecimento", publisher.id);
+    return pathname + "?" + next;
+  }
   const target = params.perfil && isUuid(params.perfil) ? params.perfil : null;
   const shop = params.loja && isUuid(params.loja) ? params.loja : null;
   const photo = params.foto && isUuid(params.foto) ? params.foto : null;
@@ -78,6 +90,7 @@ export default async function ClientPage({ searchParams }: {
     profileTable.select("username,avatar,banner,links,theme,frozen,revision").eq("user_id",profileId).maybeSingle(),
     view === "feed" ? supabase.rpc("barberflow_social_feed",{ page_number:page })
       : view === "foto" ? photos.select("*").eq("id",photo!)
+      : publisher && view === "perfil" ? photos.select("*").eq("shop",publisher.id).order("created_at",{ ascending:false }).order("id").range(page*12,page*12+12)
       : ["loja","perfil","perfil-publico"].includes(view) ? (shop ? photos.select("*").eq("shop",shop) : photos.select("*").eq("author",profileId).is("shop",null))
         .order("created_at",{ ascending:false }).order("id").range(page*12,page*12+12) : null,
     view === "loja" ? supabase.rpc("barberflow_social_counts",{ profile:shop ? null : profileId,shop_id:shop }) : null,
@@ -111,7 +124,7 @@ export default async function ClientPage({ searchParams }: {
   const shopInfo = shopResult?.data as { name:string; slug:string; can_review:boolean } | null;
   if ((target && !profile && !profileResult.error) || (shop && !shopInfo && !shopResult?.error) || (photo && !postsResult?.data?.length && !postsResult?.error)) notFound();
   const posts = (postsResult?.data ?? []) as Photo[];
-  const setup = view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
+  const setup = !publisher && view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
   const people: Person[] = connections?.data?.rows ?? directoryResult?.data ?? [];
   const shops: Shop[] = savedShops?.data ?? [];
   const blocked = (blockedProfiles?.data ?? []) as Pick<Person,"user_id"|"username">[];
@@ -140,36 +153,46 @@ export default async function ClientPage({ searchParams }: {
   const names = new Map((authors?.data ?? []).map((a)=>[a.user_id,a.username]));
   const more = Math.max(posts.length,people.length,shops.length,blocked.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25 || (likerRows?.data?.length ?? 0)>25;
   const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,purchaseNotices,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles,summaryResult,likerRows,likerProfiles].some(result=>result?.error);
-  const title = setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
+  const businessDetails = publisher?.profile_details;
+  const identityName = publisher?.name ?? accountName;
+  const identityImage = httpsUrl(businessDetails?.logo) ?? links.get(account?.avatar ?? "");
+  const identityUsername = publisher?.slug || username;
+  const businessProfile = publisher && view === "perfil";
+  const title = businessProfile ? publisher.name : setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
   return <div className="container workspace social-workspace">
     <aside className="workspace-rail client-rail">
-      <Link className="client-rail-profile" href="/cliente?aba=perfil">
+      <Link className="client-rail-profile" href={feedLink("/cliente?aba=perfil")}>
         <span className="client-rail-avatar" aria-hidden="true">
-          {account?.avatar && links.get(account.avatar) ? <img src={links.get(account.avatar)} alt="" width={48} height={48} /> : accountName.slice(0, 2).toUpperCase()}
+          {identityImage ? <img src={identityImage} alt="" width={48} height={48} /> : identityName.slice(0, 2).toUpperCase()}
         </span>
         <span className="client-rail-identity">
-          <strong>{accountName}</strong>
-          {username && <small>@{username}</small>}
+          <strong>{identityName}</strong>
+          {identityUsername && <small>@{identityUsername}</small>}
+          {ownPlan?.plan && <small className="client-rail-plan" data-tier={ownPlan.plan}>
+            {ownPlan.plan === "premium" && "♛ "}{subscriptionPlanLabel(ownPlan.plan)}
+            {expiry && <span> · Vencimento {expiry}</span>}
+          </small>}
         </span>
       </Link>
-      <nav className="workspace-modules client-rail-nav" aria-label="Área do cliente">
+      <nav className="workspace-modules client-rail-nav" aria-label={publisher ? "Feed do estabelecimento" : "Área do cliente"}>
         <div className="client-rail-group">
-          <Link href="/cliente" aria-current={view === "feed" ? "page" : undefined}>Feed</Link>
-          <Link href="/cliente?aba=perfil" aria-current={view === "perfil" ? "page" : undefined}>Meu perfil</Link>
-          <Link href="/cliente?aba=notificacoes" aria-current={view === "notificacoes" ? "page" : undefined}>Notificações</Link>
+          <Link href={feedLink("/cliente")} aria-current={view === "feed" ? "page" : undefined}><FeedIcon name="feed" />Feed</Link>
+          {publisher && <Link href={`/painel/${publisher.id}/resumo`}><FeedIcon name="dashboard" />Visão geral</Link>}
+          <Link href={feedLink("/cliente?aba=perfil")} aria-current={view === "perfil" ? "page" : undefined}><FeedIcon name="person" />Meu perfil</Link>
+          <Link href={feedLink("/cliente?aba=notificacoes")} aria-current={view === "notificacoes" ? "page" : undefined}><FeedIcon name="bell" />Notificações</Link>
         </div>
         <div className="client-rail-group">
-          <Link href="/cliente?aba=pessoas" aria-current={view === "pessoas" ? "page" : undefined}>Encontrar pessoas</Link>
-          <Link href="/estabelecimentos">Encontrar estabelecimentos</Link>
-          <Link href="/cliente?aba=lojas-seguidas" aria-current={view === "lojas-seguidas" ? "page" : undefined}>Estabelecimentos seguidos</Link>
-          <Link href="/cliente?aba=favoritos" aria-current={view === "favoritos" ? "page" : undefined}>Estabelecimentos favoritos</Link>
+          <Link href={feedLink("/cliente?aba=pessoas")} aria-current={view === "pessoas" ? "page" : undefined}><FeedIcon name="search" />Encontrar pessoas</Link>
+          <Link href={publisher ? "/estabelecimentos?estabelecimento=" + publisher.id : "/estabelecimentos"}><FeedIcon name="shop" />Encontrar estabelecimentos</Link>
+          <Link href={feedLink("/cliente?aba=lojas-seguidas")} aria-current={view === "lojas-seguidas" ? "page" : undefined}><FeedIcon name="following" />Estabelecimentos seguidos</Link>
+          <Link href={feedLink("/cliente?aba=favoritos")} aria-current={view === "favoritos" ? "page" : undefined}><FeedIcon name="star" />Estabelecimentos favoritos</Link>
         </div>
         <div className="client-rail-group">
-          <Link href="/meus-agendamentos">Minhas reservas</Link>
-          <Link href="/minhas-compras">Minhas compras</Link>
+          <Link href="/meus-agendamentos"><FeedIcon name="calendar" />Minhas reservas</Link>
+          <Link href="/minhas-compras"><FeedIcon name="bag" />Minhas compras</Link>
         </div>
       </nav>
-      <form className="client-rail-exit" action={signOut}><button className="workspace-notices">Sair do sistema</button></form>
+      <form className="client-rail-exit" action={signOut}><button className="workspace-notices"><FeedIcon name="exit" />Sair do sistema</button></form>
     </aside>
     <section className="workspace-content section" data-social-theme={profile?.theme}>
       <h1>{title}</h1>
@@ -187,16 +210,33 @@ export default async function ClientPage({ searchParams }: {
           </form>
         </section>
       </>}
+      {businessProfile && <section className="card social-profile profile-feature">
+        {httpsUrl(businessDetails?.cover) && <img className="social-banner" src={httpsUrl(businessDetails?.cover)} alt="Banner do estabelecimento" />}
+        {identityImage && <img className="social-avatar" src={identityImage} alt="" />}
+        {identityUsername && <p>@{identityUsername}</p>}
+        <div className="profile-networks">{[
+          ["Instagram", businessDetails?.instagram && /^@?[\w.]{1,30}$/.test(businessDetails.instagram) ? "https://www.instagram.com/" + businessDetails.instagram.replace(/^@/, "") : undefined],
+          ["Facebook", socialUrl(businessDetails?.facebook, ["facebook.com", "fb.com"])],
+          ["TikTok", socialUrl(businessDetails?.tiktok, ["tiktok.com"])],
+          ["YouTube", socialUrl(businessDetails?.youtube, ["youtube.com", "youtu.be"])],
+          ["WhatsApp", whatsappUrl(businessDetails?.whatsapp)],
+        ].map(([label, link]) => link && <a key={label} href={link} target="_blank" rel="noopener noreferrer">{label}</a>)}</div>
+        <div className="account-links">
+          <Link href={feedLink("/cliente?aba=seguindo")}>Pessoas seguidas</Link>
+          <Link href={feedLink("/cliente?aba=lojas-seguidas")}>Estabelecimentos seguidos</Link>
+        </div>
+        {publisher.slug && <Link className="secondary" href={`/estabelecimento/${publisher.slug}#feed`}>Abrir página pública</Link>}
+      </section>}
       {view==="feed" && !setup && <>
-        {!profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para publicar e interagir.</Link></p>}
-        <form className="account-form card panel-form" action="/estabelecimentos"><label>Busque estabelecimentos por nome, cidade ou serviço <input name="busca" maxLength={120} required /></label><button className="primary">Buscar</button></form>
+        {!publisher && !profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para publicar e interagir.</Link></p>}
+        <form className="account-form card panel-form" action="/estabelecimentos">{publisher && <input type="hidden" name="estabelecimento" value={publisher.id} />}<label>Busque estabelecimentos por nome, cidade ou serviço <input name="busca" maxLength={120} required /></label><button className="primary">Buscar</button></form>
         {generalResult?.data?.length ? <section><h2>Novidades do TOP BARBER</h2>{generalResult.data.map((item)=><article key={item.id} className="card"><h3>{item.title}</h3><p>{item.body}</p></article>)}</section> : null}
         {publisher && <p><Link href={`/painel/${publisher.id}/resumo`}>Voltar ao painel de {publisher.name}</Link></p>}
         {publisher ? <PhotoForm path={path} shop={publisher.id} />
           : profile && !profile.frozen && <PhotoForm path={path} shop={null} />}
         <h2>Publicações</h2>{!posts.length && <p>Nenhuma publicação disponível no momento.</p>}
       </>}
-      {["perfil","perfil-publico"].includes(view) && <>
+      {!businessProfile && ["perfil","perfil-publico"].includes(view) && <>
         {profile && <div className="card social-profile profile-feature">
           {links.get(profile.banner) && <img className="social-banner" src={links.get(profile.banner)} alt="Banner do perfil" />}
           {links.get(profile.avatar) && <img className="social-avatar" src={links.get(profile.avatar)} alt="" />}
@@ -204,8 +244,8 @@ export default async function ClientPage({ searchParams }: {
           {joined && <p className="profile-member">No TOP BARBER desde {joined}</p>}
           {presenceResult?.data && <ProfilePresence key={profileId} initial={presenceResult.data} profile={profileId} shop={null} />}
           <div className="profile-stats">
-            <Link href={`/cliente?aba=seguidores&perfil=${profileId}`}><strong>{summary?.followers ?? "—"}</strong> Seguidores</Link>
-            <Link href={`/cliente?aba=seguindo&perfil=${profileId}`}><strong>{summary?.following ?? "—"}</strong> Seguindo</Link>
+            <Link href={feedLink(`/cliente?aba=seguidores&perfil=${profileId}`)}><strong>{summary?.followers ?? "—"}</strong> Seguidores</Link>
+            <Link href={feedLink(`/cliente?aba=seguindo&perfil=${profileId}`)}><strong>{summary?.following ?? "—"}</strong> Seguindo</Link>
           </div>
           <div className="profile-networks">{Object.entries(socials).map(([label,hosts])=> {
             const link = socialUrl(profile.links?.[label],hosts);
@@ -256,7 +296,7 @@ export default async function ClientPage({ searchParams }: {
       {connections?.data && <p>{connections.data.count} {collection === "seguidores" ? "seguidores" : "perfis seguidos"}</p>}
       {(view === "pessoas" || connections?.data) && (people.length ? <ul className="cards social-collection-grid">
         {people.slice(0,12).map((person) => <SocialCollectionCard key={person.user_id} name={person.username}
-          href={"/cliente?perfil=" + person.user_id} image={links.get(person.avatar)} followers={followers.get("person:" + person.user_id)}>
+          href={feedLink("/cliente?perfil=" + person.user_id)} image={links.get(person.avatar)} followers={followers.get("person:" + person.user_id)}>
           {collection === "seguindo" && profileId === user.id && <form action={changeFollow.bind(null,path,person.user_id,false,true)}>
             <button className="secondary">Deixar de seguir</button>
           </form>}
@@ -266,7 +306,7 @@ export default async function ClientPage({ searchParams }: {
         {collection !== "lojas-seguidas" && collection !== "favoritos" && <h2>Estabelecimentos seguidos</h2>}
         {shops.length ? <ul className="cards social-collection-grid">
           {shops.slice(0,12).map((item) => <SocialCollectionCard key={item.id} name={item.name}
-            href={"/cliente?loja=" + item.id} image={httpsUrl(item.logo ?? undefined)} detail={item.city} followers={followers.get("shop:" + item.id)}>
+            href={feedLink("/cliente?loja=" + item.id)} image={httpsUrl(item.logo ?? undefined)} detail={item.city} followers={followers.get("shop:" + item.id)}>
             <form action={collection === "favoritos" ? changeFavorite.bind(null,path,item.id,true) : changeFollow.bind(null,path,item.id,true,true)}>
               <button className="secondary">{collection === "favoritos" ? "Remover favorito" : "Deixar de seguir"}</button>
             </form>
@@ -290,8 +330,8 @@ export default async function ClientPage({ searchParams }: {
       {view === "notificacoes" && page === 0 && <section className="section">
         <h2>Compras</h2>
         <nav className="account-links finance-tabs" aria-label="Situação dos produtos">
-          <Link className="secondary finance-tab" data-tone="rose" aria-current={deniedPurchases ? "page" : undefined} href="/cliente?aba=notificacoes&compras=negados">Produtos Negados</Link>
-          <Link className="secondary finance-tab" data-tone="green" aria-current={!deniedPurchases ? "page" : undefined} href="/cliente?aba=notificacoes&compras=confirmados">Produtos Confirmados</Link>
+          <Link className="secondary finance-tab" data-tone="rose" aria-current={deniedPurchases ? "page" : undefined} href={feedLink("/cliente?aba=notificacoes&compras=negados")}>Produtos Negados</Link>
+          <Link className="secondary finance-tab" data-tone="green" aria-current={!deniedPurchases ? "page" : undefined} href={feedLink("/cliente?aba=notificacoes&compras=confirmados")}>Produtos Confirmados</Link>
         </nav>
         {purchaseNotices?.error ? <p role="alert">Não foi possível carregar os avisos de compra.</p>
           : purchaseNotices?.data?.length ? <ul className="cards order-card-grid">
@@ -306,17 +346,17 @@ export default async function ClientPage({ searchParams }: {
           </ul> : <p>{deniedPurchases ? "Nenhum produto negado." : "Nenhum produto confirmado."}</p>}
       </section>}
       {view==="notificacoes" && (notices.length ? <ul className="cards">{notices.slice(0,25).map((item,index)=><li className="card" key={item.photo+item.occurred+index}>
-        <Link href={"/cliente?foto="+item.photo}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação social.</p>)}
-      {["perfil","perfil-publico"].includes(view) && <h2>Galeria</h2>}
+        <Link href={feedLink("/cliente?foto="+item.photo)}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação social.</p>)}
+      {["perfil","perfil-publico"].includes(view) && !businessProfile && <h2>Galeria</h2>}
       {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" key={post.id}>
         <ProductGallery name="Fotos da publicação" compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {
           const url = links.get(object);
           return url ? [{url, kind:"photo" as const, slot:"photo-"+(index+1)}] : [];
         })} />
-        {post.shop ? <Link href={"/cliente?loja="+post.shop}>{post.promotion ? "Promoção do estabelecimento" : "Ver estabelecimento"}</Link> :
-          names.has(post.author) && <Link href={"/cliente?perfil="+post.author}>{names.get(post.author)}</Link>}
+        {post.shop ? <Link href={feedLink("/cliente?loja="+post.shop)}>{post.promotion ? "Promoção do estabelecimento" : "Ver estabelecimento"}</Link> :
+          names.has(post.author) && <Link href={feedLink("/cliente?perfil="+post.author)}>{names.get(post.author)}</Link>}
         <p className="social-post-text">{post.caption}</p>
-        {!photo && <Link href={"/cliente?foto="+post.id}>Abrir publicação</Link>}
+        {!photo && <Link href={feedLink("/cliente?foto="+post.id)}>Abrir publicação</Link>}
         {post.author===user.id && <details><summary>Editar ou excluir publicação</summary>
           <PhotoForm path={path} shop={post.shop} photo={post} />
           <form action={deleteSocialPhoto.bind(null,photo ? (post.shop ? "/cliente?loja="+post.shop : "/cliente?aba=perfil") : path,post.id)}><label><input name="confirm" type="checkbox" required /> Confirmar exclusão</label> <button className="secondary">Excluir publicação</button></form>
@@ -327,13 +367,13 @@ export default async function ClientPage({ searchParams }: {
         <form action={changeLike.bind(null,path,photo,!!liked?.data)}><button className="secondary">{liked?.data ? "Remover curtida" : "Curtir foto"}</button></form>
         <details className="card panel-form"><summary>Quem curtiu</summary>
           {likerNames.size ? <ul>{likerIds.filter(id=>likerNames.has(id)).map(id=><li key={id}>
-            <Link href={"/cliente?perfil="+id}>{likerNames.get(id)}</Link>
+            <Link href={feedLink("/cliente?perfil="+id)}>{likerNames.get(id)}</Link>
           </li>)}</ul> : <p>Nenhuma curtida visível nesta página.</p>}
         </details>
         <h2>Comentários</h2>
         <CommentForm path={path} photo={photo} parent={null} />
         {comments?.data?.slice(0,25).map(comment=><article className="card panel-form" key={comment.id}>
-          <p>{comment.parent && "Resposta · "}{comment.body}</p><Link href={"/cliente?perfil="+comment.actor}>Ver perfil de quem comentou</Link>
+          <p>{comment.parent && "Resposta · "}{comment.body}</p><Link href={feedLink("/cliente?perfil="+comment.actor)}>Ver perfil de quem comentou</Link>
           {!comment.parent && <details><summary>Responder</summary><CommentForm path={path} photo={photo} parent={comment.id} /></details>}
         </article>)}
       </>}

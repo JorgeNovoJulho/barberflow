@@ -1,3 +1,4 @@
+import { isUuid } from "../../lib/establishments";
 import { DirectoryDistance, DirectoryLocation } from "./directory-location";
 import { DirectoryAction } from "./directory-action";
 import { coordinatesFromMap, parseCoordinates } from "../../lib/directory-distance";
@@ -10,13 +11,14 @@ import { supabaseServer } from "../../lib/supabase";
 
 type Listing = { id: string; slug: string; name: string; city: string; segment: string; logo: string | null; cover: string | null };
 
-export default async function Directory({ searchParams }: { searchParams: Promise<{ busca?: string; segmento?: string; pagina?: string; estado?: string; origem?: string }> }) {
-  const { busca, segmento, pagina, estado, origem } = await searchParams;
+export default async function Directory({ searchParams }: { searchParams: Promise<{ busca?: string; segmento?: string; pagina?: string; estado?: string; origem?: string; estabelecimento?: string }> }) {
+  const { busca, segmento, pagina, estado, origem, estabelecimento } = await searchParams;
+  const feedShop = isUuid(estabelecimento ?? "") ? estabelecimento : undefined;
   const query = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const segment = typeof segmento === "string" && isSegment(segmento) ? segmento : "";
   const supabase = await supabaseServer();
   const page = pageIndex(pagina);
-  const path = (index: number) => "/estabelecimentos?" + new URLSearchParams({ busca:query, segmento:segment, pagina:String(index), ...(origem === "feed" ? { origem } : {}) });
+  const path = (index: number) => "/estabelecimentos?" + new URLSearchParams({ busca:query, segmento:segment, pagina:String(index), ...(origem === "feed" ? { origem } : {}), ...(feedShop ? { estabelecimento: feedShop } : {}) });
   const [result, identity] = supabase ? await Promise.all([
     supabase.rpc("barberflow_search_directory",{ search_text:query,selected_segment:segment,page_number:page }),
     supabase.auth.getClaims(),
@@ -38,8 +40,10 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       <h1>Encontre profissionais e estabelecimentos</h1>
       <p>Busque na sua cidade e veja os serviços disponíveis para agendar.</p>
     </header>
+    {feedShop && <Link href={"/cliente?estabelecimento=" + feedShop}>Voltar ao Feed</Link>}
     {origem === "feed" && <Link href="/cliente">Voltar aos primeiros passos</Link>}
     <form className="account-form card panel-form directory-search" action="/estabelecimentos">
+      {feedShop && <input type="hidden" name="estabelecimento" value={feedShop} />}
       {origem === "feed" && <input type="hidden" name="origem" value="feed" />}
       <label>Buscar por nome, cidade ou serviço <input name="busca" maxLength={120} defaultValue={query} /></label>
       <label>Segmento <select name="segmento" defaultValue={segment}>
@@ -72,7 +76,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
                 <DirectoryAction kind="services" label="Ver serviços" href={`/estabelecimento/${item.slug}`} />
                 <DirectoryAction kind="calendar" label="Agendar" href={`/estabelecimento/${item.slug}/agendar`} />
                 {user && <>
-                  <DirectoryAction kind="posts" label="Publicações" href={`/cliente?loja=${item.id}`} />
+                  <DirectoryAction kind="posts" label="Publicações" href={`/cliente?loja=${item.id}` + (feedShop ? "&estabelecimento=" + feedShop : "")} />
                   <DirectoryAction kind={followed.has(item.id) ? "unfollow" : "follow"} label={followed.has(item.id) ? "Deixar de seguir" : "Seguir"} pressed={followed.has(item.id)} action={changeFollow.bind(null,path(page),item.id,true,followed.has(item.id))} />
                   <DirectoryAction kind="favorite" label={favorited.has(item.id) ? "Remover favorito" : "Favoritar"} pressed={favorited.has(item.id)} action={changeFavorite.bind(null,path(page),item.id,favorited.has(item.id))} />
                 </>}

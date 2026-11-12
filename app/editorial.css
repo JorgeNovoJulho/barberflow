@@ -294,3 +294,8 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .post-composer-fields { padding: 0; border: 0; margin: 0; min-width: 0; }
 .public-feed-photos { display: grid; gap: .5rem; }
 .public-feed-photos img { width: 100%; height: auto; border-radius: .65rem; }
+
+.client-rail-identity .client-rail-plan { display: block; white-space: normal; }
+.client-rail-plan[data-tier="premium"] { color: #ffd46e; }
+.client-rail-nav .workspace-icon, .client-rail-exit .workspace-icon { flex: 0 0 1rem; width: 1rem; height: 1rem; }
+.client-rail-exit button { display: flex; align-items: center; justify-content: center; gap: .5rem; }
