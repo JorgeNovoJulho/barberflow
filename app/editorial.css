@@ -467,3 +467,13 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .professional-appointments { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; padding: 0; list-style: none; }
 .professional-appointment-time { display: block; width: fit-content; padding: .45rem .7rem; border-radius: .6rem; background: #302354; color: white; font-weight: 750; }
 .professional-identity .account-links > details > summary { margin: 0; display: inline-flex; align-items: center; min-height: 2.75rem; background: #ad2037; color: white; }
+
+.professional-appointments > .card { display: grid; align-content: start; gap: .65rem; }
+.professional-appointments > .card :is(h3, p) { margin: 0; }
+.professional-appointment-status { width: fit-content; padding: .2rem .55rem; border-radius: .5rem; background: #dbe9ff; color: #163a76; font-weight: 700; }
+.professional-appointment-status[data-state="completed"] { background: #d5f1e1; color: #18573a; }
+.professional-appointment-status[data-state="cancelled"] { background: #f9dce1; color: #812033; }
+.professional-appointment-status[data-state="no_show"] { background: #ffe7a9; color: #664000; }
+
+.professional-agenda { margin-block: 1.25rem; border-block-start: .25rem solid #6241b4; }
+.professional-agenda h2 { margin-block: 0 .85rem; }

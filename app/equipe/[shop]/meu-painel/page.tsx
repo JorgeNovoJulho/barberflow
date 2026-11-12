@@ -1,5 +1,6 @@
 import { appointmentAvatars, ClientAvatar } from "../../../painel/[establishmentId]/appointment-card";
 import Link from "next/link";
+import { AgendaRefresh } from "./agenda-refresh";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isUuid } from "../../../../lib/establishments";
@@ -11,7 +12,7 @@ const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Men
 type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; booked_by: string | null };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
-  available: boolean; services: string[]; service_rate: number; product_rate: number;
+  available: boolean; day_started?: boolean; services: string[]; service_rate: number; product_rate: number;
   appointments: Appointment[]; attended: number; absent: number; paid_services: number; sold_products: number;
   hours: { weekday: number; hour: number; quantity: number }[];
   daily: { services: number; products: number; service_units: number; product_units: number; service_commission: number; product_commission: number };
@@ -106,7 +107,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <Link className="primary" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
         <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
-      {panel.available ? <details><summary className="secondary">Fechar Dia</summary>
+      {(panel.day_started ?? panel.available) ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
           <p>Fechar a disponibilidade para novos agendamentos online de hoje?</p>
           <SubmitButton>Confirmar fechamento</SubmitButton>
@@ -122,25 +123,30 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <section className="card"><h2>Produtos hoje</h2><p>{panel.daily.product_units} · {money(panel.daily.products)}</p>
         <strong>A receber {money(panel.daily.product_commission)}</strong></section>
     </div>
-    <details className="card" id="agenda-dia" open={Boolean(agenda || estado || page)}>
-      <summary>Agendamentos · {appointments.length}</summary>
+    <section className="card professional-agenda" id="agenda-dia" aria-labelledby="professional-agenda-title">
+      <AgendaRefresh />
+      <h2 id="professional-agenda-title">Agendamentos · {appointments.length}</h2>
       <nav className="account-links" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
         <Link key={key} className="secondary" aria-current={agendaPeriod === key ? "page" : undefined}
           href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
         : !appointments.length && <p>Nenhum agendamento neste período.</p>}
       <ul className="professional-appointments">{visibleAppointments.map((entry, index) => {
+        const status = ({ scheduled: "Em aberto", pending: "Em aberto", completed: "Concluído", cancelled: "Cancelado", no_show: "Falta" } as Record<string, string>)[entry.state] ?? entry.state;
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card team-professional-card" data-tone={index % 4} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
+          <span className="professional-appointment-status" data-state={entry.state}>{status}</span>
           <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>{entry.phone}</a>}
+          {entry.state === "completed" && <Link className="secondary" href={`/equipe/${shop}/comanda/${entry.id}`}>Ver comanda</Link>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
             {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id)) ? <strong>Presença confirmada</strong>
               : <form action={checkIn.bind(null, shop, entry.id, false)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
             {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id))
               ? <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>
               : <form action={checkIn.bind(null, shop, entry.id, true)}><SubmitButton>Abrir comanda</SubmitButton></form>)}
+            {entry.state === "scheduled" && !entry.starts.startsWith(panel.today) && !entry.checked_in && <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>}
             <details><summary className="agenda-absence-button">Falta</summary><form action={appointmentAction.bind(null, shop, entry.id, "absence")}>
               <SubmitButton>Confirmar falta</SubmitButton></form></details>
             <details><summary className="agenda-cancel-button">Cancelar agendamento</summary><form className="account-form" action={appointmentAction.bind(null, shop, entry.id, "cancel")}>
@@ -151,7 +157,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       })}</ul>
       {page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
       {(page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
-    </details>
+    </section>
     <section className="card" id="desempenho">
       <h2>Desempenho</h2>
       <nav className="account-links" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
