@@ -51,10 +51,10 @@ function maskPhone(raw: string) {
   return "(" + digits.slice(0, 2) + ")" + number.slice(0, 5) + (number.length > 5 ? "-" + number.slice(5) : "");
 }
 
-export function BookingForm({ slug, services, initialService, initialPerson, day, today, limit, initialSlots, initialName, action, requestId }: {
+export function BookingForm({ slug, services, initialService, initialPerson, day, today, limit, initialSlots, initialName, action, requestId, teamShop }: {
   slug: string; services: PublicProfile["services"]; initialService: string; initialPerson: string;
   day: string; today: string; limit: string; initialSlots: Slot[] | null; initialName: string;
-  action: (data: FormData) => Promise<void>; requestId: string;
+  action: (data: FormData) => Promise<void>; requestId: string; teamShop?: string;
 }) {
   const [serviceId, setService] = useState(initialService);
   const [personId, setPerson] = useState(initialPerson);
@@ -91,13 +91,13 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
       setCheck({ key, error: true, slots: [] });
       return;
     }
-    void createBrowserClient(url, token).rpc("barberflow_public_slots", {
-      profile_slug: slug, professional: person.id, service: serviceId, booking_day: selectedDay,
+    void createBrowserClient(url, token).rpc(teamShop ? "barberflow_team_booking_slots" : "barberflow_public_slots", {
+      ...(teamShop ? { shop_id: teamShop } : { profile_slug: slug }), professional: person.id, service: serviceId, booking_day: selectedDay,
     }).then(({ data, error }) => {
       if (current) setCheck({ key, error: !!error, slots: error ? [] : data ?? [] });
     });
     return () => { current = false; };
-  }, [slug, person, serviceId, selectedDay, key, revision]);
+  }, [slug, teamShop, person, serviceId, selectedDay, key, revision]);
 
   const availability = check?.key === key ? check : null;
   const slots = person ? availability?.slots ?? [] : [];
@@ -177,11 +177,12 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           <div><dt>Duração</dt><dd>{service ? service.duration_minutes + " min" : "—"}</dd></div>
           <div><dt>Total</dt><dd><strong>{price}</strong></dd></div>
         </dl>
+        {teamShop && <label>Observações <textarea name="note" rows={2} maxLength={1000} /></label>}
         <input type="hidden" name="requestId" value={requestId} />
         <div className="account-form">
-          <label>Nome <input name="customer" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)}
+          <label>{teamShop ? "Nome do cliente" : "Nome"} <input name="customer" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)}
             className={timeValid && !nameValid ? "booking-field-required" : undefined} autoComplete="name" /></label>
-          <label>WhatsApp <input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" required
+          <label>{teamShop ? "WhatsApp do cliente" : "WhatsApp"} <input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" required
             value={phone} onChange={(event) => setPhone(maskPhone(event.target.value))} placeholder="(99)99999-9999"
             className={timeValid && nameValid && !phoneValid ? "booking-field-required" : undefined} /></label>
           <p role="status">{!timeValid ? "Selecione um horário para continuar." : !nameValid ? "Preencha seu nome."

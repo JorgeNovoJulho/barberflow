@@ -421,3 +421,17 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .professional-peaks { padding: 0; list-style: none; display: grid; gap: .55rem; }
 .professional-peaks li { display: grid; grid-template-columns: 6rem minmax(0,1fr) 3ch; gap: .5rem; align-items: center; }
 .professional-peaks meter { width: 100%; }
+
+.professional-identity .account-links { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .65rem; }
+.professional-identity .account-links > details, .professional-identity .account-links > form { margin: 0; }
+.professional-identity .account-links > a:nth-child(2) { background: #16634e; color: white; }
+.professional-identity .professional-public-link { background: #20528b; color: white; }
+.professional-identity .account-links > details > summary,
+.team-professional-card .agenda-absence-button { background: #ffdf8b; color: #553200; }
+.team-professional-card .agenda-cancel-button { background: #ad2037; color: white; }
+.team-professional-card .agenda-absence-button, .team-professional-card .agenda-cancel-button {
+  cursor: pointer;
+  padding: .65rem .85rem;
+  border-radius: .65rem;
+  font-weight: 700;
+}
