@@ -257,3 +257,15 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .subscription-tier-label, .subscription-expiry { display: inline-block; padding: .3rem .6rem; border-radius: .45rem; background: #e0e9fc; color: #254378; font-weight: 750; }
 .subscription-admin-card[data-tier="premium"] .subscription-tier-label { background: #f8e5ac; color: #674407; }
 .master-proof-count { display: inline-grid; place-items: center; min-width: 1.35rem; padding-inline: .3rem; margin-inline-start: .45rem; border-radius: 1rem; background: #a31b37; color: white; font-size: .75rem; }
+
+.master-users #exclusoes, .master-users .master-cards > :nth-child(4n+1), .master-user-list > :nth-child(4n+1) { background: #eef4ff; border-color: #c4d4f0; }
+.master-users #noticias, .master-users .master-cards > :nth-child(4n+2), .master-user-list > :nth-child(4n+2) { background: #f1ecff; border-color: #d6c8f1; }
+.master-users .master-cards > :nth-child(4n+3), .master-user-list > :nth-child(4n+3) { background: #eaf8f1; border-color: #b5ddca; }
+.master-users .master-cards > :nth-child(4n+4), .master-user-list > :nth-child(4n+4) { background: #fff5e1; border-color: #ebd3a3; }
+.master-user-list h2 { font-size: 1.2rem; overflow-wrap: anywhere; }
+.subscription-approval-notice[data-feedback="success"] { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-top: .6rem; padding: .6rem .8rem; background: #e5f8ee; color: #15543b; border: 1px solid #85c8a8; border-radius: .75rem; }
+.subscription-approval-notice button { flex: none; min-width: 2.75rem; min-height: 2.75rem; border: 0; border-radius: .45rem; color: inherit; background: #ccebdc; font-size: 1.4rem; cursor: pointer; }
+.subscription-status-card .subscription-current { padding: .7rem .85rem; border-radius: .65rem; background: #e7effe; color: #24477e; }
+.subscription-status-card .subscription-current[data-tier="premium"] { background: #fff1cb; color: #794d00; }
+.subscription-status-card .subscription-current strong { font-size: 1.2rem; }
+.subscription-unlocked { display: grid; gap: .4rem; padding-inline-start: 1.25rem; }

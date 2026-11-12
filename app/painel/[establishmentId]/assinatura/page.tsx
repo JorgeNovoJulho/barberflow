@@ -85,7 +85,7 @@ export default async function Subscription({ params, searchParams }: {
     <p className="eyebrow">{businessName}</p><h1>Assinatura</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role={estado === "enviado" ? "status" : "alert"}>{feedback[estado]}</p>}
     {!prices || archived?.error || [subscription, current, history, openCharges, access].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
-      <section className="card panel-form">
+      <section className="card panel-form subscription-status-card" data-tier={accessStatus?.plan ?? "none"}>
         <h2>Situação da assinatura</h2>
         {accessStatus?.plan && <p className="subscription-current" data-tier={accessStatus.plan}>
           {accessStatus.plan === "premium" && <span aria-hidden="true">♛ </span>}
@@ -93,6 +93,11 @@ export default async function Subscription({ params, searchParams }: {
           {current.data && <> · {planNames[current.data.period as PlanPeriod]}</>}
           {accessStatus.ends_before && <> · Vencimento {dateLabel(offsetDay(accessStatus.ends_before, -1))}</>}
         </p>}
+        {accessStatus?.state === "normal" && isPlanTier(accessStatus.plan) && <>
+          <h3>Funções liberadas no seu plano</h3>
+          <p>Agenda, gestão de clientes, comandas, estoque, vitrine, financeiro e página pública.</p>
+          <ul className="subscription-unlocked">{planTiers[accessStatus.plan].limits.map((limit) => <li key={limit}>{limit}</li>)}</ul>
+        </>}
         {accessStatus?.state === "expired" && <p role="status" data-feedback="warning">Acesso vencido. A área de assinatura continua disponível para renovação.</p>}
         {accessStatus?.state === "blocked" && <p role="status" data-feedback="warning">Acesso bloqueado pela administração.</p>}
         {accessStatus?.state === "frozen" && <p role="status" data-feedback="warning">Acesso congelado pela administração.</p>}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { mediaLinks } from "../../cliente/social";
 import { requireMaster } from "../../../lib/master";
 import { SubmitButton } from "../../auth/submit";
 import { MasterCards, MasterPagination, MasterTabs, masterDate, reportPage } from "../master-ui";
@@ -7,7 +8,7 @@ import { requestUserRecovery } from "./actions";
 
 const path = "/gestao-master/usuarios";
 
-type User = { id: string; email: string | null; name: string | null; intent: string | null; created_at: string;
+type User = { id: string; avatar: string | null; email: string | null; name: string | null; intent: string | null; created_at: string;
   email_confirmed_at: string | null; last_sign_in_at: string | null; banned_until: string | null;
   seen_at: string | null; online: boolean; businesses: number };
 type Report = { total: number; confirmed: number; online: number; filtered: number; rows: User[] };
@@ -25,8 +26,9 @@ export default async function UsersAdmin({ searchParams }: { searchParams: Promi
   ]);
   const requests = (deletion.data ?? []) as { user_id:string; requested_at:string; email:string }[];
   const report = data as Report | null;
+  const avatars = await mediaLinks(supabase, (report?.rows ?? []).flatMap(({ avatar }) => avatar ? [avatar] : []));
   const recoveryEnabled = process.env.BARBERFLOW_MASTER_RECOVERY_EMAILS === "true";
-  return <section className="container section">
+  return <section className="container section master-users">
     <MasterTabs current={path} />
     <h1>Contas e Usuários</h1>
     <details className="card panel-form" id="exclusoes" open={params.exclusoes!==undefined}>
@@ -61,8 +63,15 @@ export default async function UsersAdmin({ searchParams }: { searchParams: Promi
         <button type="submit" className="secondary">Buscar</button>
       </form>
       <p>{report.filtered} resultado(s)</p>
-      <ul className="cards">{report.rows.map((user) => <li className="card" key={user.id}>
-        <h2>{user.name || "Conta TOP BARBER"}</h2>
+      <ul className="cards master-user-list">{report.rows.map((user) => {
+        const name = user.name || "Conta TOP BARBER";
+        const avatar = user.avatar && avatars.get(user.avatar);
+        return <li className="card" key={user.id}>
+        <h2 className="subscription-business">
+          {avatar ? <img src={avatar} alt="" width={44} height={44} loading="lazy" />
+            : <span aria-hidden="true">{name.trim().slice(0, 2).toUpperCase()}</span>}
+          {name}
+        </h2>
         <p>{user.email ?? "Sem e-mail"} · {user.banned_until && Date.parse(user.banned_until)>Date.now() ? "Bloqueada" : user.online ? "Online recente" : "Sem atividade recente"}</p>
         <dl className="order-totals">
           <div><dt>Perfil</dt><dd>{user.intent === "barbearia" ? "Estabelecimento" : user.intent === "cliente" ? "Cliente" : "Sem classificação"}</dd></div>
@@ -77,7 +86,7 @@ export default async function UsersAdmin({ searchParams }: { searchParams: Promi
           {recoveryEnabled ? <form action={requestUserRecovery.bind(null, user.id)}><SubmitButton>Enviar recuperação por e-mail</SubmitButton></form>
             : <p>Envio administrativo indisponível até a configuração do e-mail no Supabase.</p>}
         </details>}
-      </li>)}</ul>
+      </li>})}</ul>
       <MasterPagination page={page} total={report.filtered} search={search} />
     </> : <p role="alert">Não foi possível carregar o relatório de contas.</p>}
   </section>;
