@@ -360,7 +360,7 @@ export default async function ClientPage({ searchParams }: {
         <Link href={feedLink("/cliente?foto="+item.photo)}>{item.kind}</Link><p>{item.description}</p></li>)}</ul> : <p>Nenhuma notificação social.</p>)}
       {["perfil","perfil-publico"].includes(view) && !businessProfile && <h2>Galeria</h2>}
       {!setup && posts.length>0 && <ul className={photo ? "social-post-detail" : "cards social-gallery social-post-grid"}>{posts.slice(0,12).map(post=><li className="card" id={"post-" + post.id} key={post.id}>
-        <ProductGallery name="Fotos da publicação" compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {
+        <ProductGallery name="Fotos da publicação" post={post.id} compact={!photo} items={(photo ? imagesFor(post) : imagesFor(post).slice(0,1)).flatMap((object,index) => {
           const url = links.get(object);
           return url ? [{url, kind:"photo" as const, slot:"photo-"+(index+1)}] : [];
         })} />

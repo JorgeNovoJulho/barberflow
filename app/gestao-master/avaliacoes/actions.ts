@@ -15,3 +15,12 @@ export async function moderateReview(review: string, decision: "hide" | "restore
   revalidatePath(path);
   redirect(path + "?estado=salvo");
 }
+
+export async function moderateFeedComment(comment: string, remove: boolean) {
+  const supabase = await requireMaster();
+  const path = "/gestao-master/avaliacoes";
+  if (!isUuid(comment)) redirect(path + "?estado=erro#comentarios-denunciados");
+  const { data, error } = await supabase.rpc("barberflow_moderate_feed_comment", { comment_id: comment, remove_comment: remove });
+  if (!error && data === true) revalidatePath("/cliente");
+  redirect(path + "?estado=" + (!error && data === true ? "salvo" : "erro") + "#comentarios-denunciados");
+}

@@ -1,10 +1,11 @@
 "use client";
 
+import { GalleryDiscussion } from "../../../cliente/gallery-discussion";
 import { useId, useRef, useState } from "react";
 
 export type ProductMedia = { slot: string; kind: "photo" | "video"; url: string };
 
-export function ProductGallery({ name, items, compact = false }: { name: string; items: ProductMedia[]; compact?: boolean }) {
+export function ProductGallery({ name, items, compact = false, post }: { name: string; items: ProductMedia[]; compact?: boolean; post?: string }) {
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const inlineVideo = useRef<HTMLVideoElement>(null);
@@ -23,6 +24,16 @@ export function ProductGallery({ name, items, compact = false }: { name: string;
     setExpanded(true);
   };
 
+  const expandedMedia = <>
+    {expanded && (selected.kind === "photo"
+      ? <img key={selected.url} src={selected.url} alt={`${label(selected)} de ${name}`} />
+      : <video key={selected.url} src={selected.url} controls playsInline preload="metadata" aria-label={`Vídeo de ${name}`} />)}
+    <footer>
+      {items.length > 1 && <button type="button" className="secondary" onClick={() => move(-1)}>Anterior</button>}
+      <span aria-live="polite">{label(selected)} · {index + 1} de {items.length}</span>
+      {items.length > 1 && <button type="button" className="secondary" onClick={() => move(1)}>Próxima</button>}
+    </footer>
+  </>;
   return <div className={compact ? "product-gallery social-post-cover" : "product-gallery"} aria-label={`Galeria de ${name}`}>
     <div className="product-gallery-stage">
       {selected.kind === "photo" ? <button className="product-gallery-photo" type="button" onClick={open}
@@ -44,10 +55,10 @@ export function ProductGallery({ name, items, compact = false }: { name: string;
       </div>
       <button type="button" className="secondary" aria-label="Rolar miniaturas para a direita" onClick={() => thumbnails.current?.scrollBy({ left: 126 })}>›</button>
     </div>}
-    <dialog ref={dialog} className={compact ? "product-gallery-dialog social-fullscreen" : "product-gallery-dialog"} aria-labelledby={titleId} onClose={() => setExpanded(false)}
+    <dialog ref={dialog} className={compact || post ? "product-gallery-dialog social-fullscreen" : "product-gallery-dialog"} aria-labelledby={titleId} onClose={() => setExpanded(false)}
       onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}
       onKeyDown={(event) => {
-        if (items.length < 2 || event.target instanceof HTMLVideoElement) return;
+        if (items.length < 2 || (event.target instanceof HTMLElement && !!event.target.closest("video,input,textarea,[contenteditable]"))) return;
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
           move(event.key === "ArrowLeft" ? -1 : 1);
@@ -57,14 +68,7 @@ export function ProductGallery({ name, items, compact = false }: { name: string;
         <header><h2 id={titleId}>{name}</h2>
           <button type="button" className="secondary" autoFocus onClick={() => dialog.current?.close()}>Fechar</button>
         </header>
-        {expanded && (selected.kind === "photo"
-          ? <img key={selected.url} src={selected.url} alt={`${label(selected)} de ${name}`} />
-          : <video key={selected.url} src={selected.url} controls playsInline preload="metadata" aria-label={`Vídeo de ${name}`} />)}
-        <footer>
-          {items.length > 1 && <button type="button" className="secondary" onClick={() => move(-1)}>Anterior</button>}
-          <span aria-live="polite">{label(selected)} · {index + 1} de {items.length}</span>
-          {items.length > 1 && <button type="button" className="secondary" onClick={() => move(1)}>Próxima</button>}
-        </footer>
+        {post && expanded ? <GalleryDiscussion post={post}>{expandedMedia}</GalleryDiscussion> : expandedMedia}
       </div>
     </dialog>
   </div>;

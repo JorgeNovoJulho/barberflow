@@ -301,3 +301,19 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .client-rail-exit button { display: flex; align-items: center; justify-content: center; gap: .5rem; }
 
 .top-barber-logo { display: block; width: clamp(9rem, 15vw, 12rem); height: auto; border-radius: .45rem; }
+
+.gallery-feed-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 26rem); gap: 1rem; align-items: start; }
+.gallery-feed-main > :is(img, video) { display: block; width: 100%; max-height: 64dvh; object-fit: contain; }
+.social-fullscreen .gallery-feed-main > img { max-height: 64dvh; }
+.gallery-feed-thread, .gallery-feed-controls { background: #282034; border: 1px solid #544763; border-radius: .8rem; padding: .85rem; color: #fff; }
+.gallery-feed-thread { max-height: 78dvh; overflow: auto; }
+.gallery-feed-thread h3 { color: inherit; }
+.gallery-feed-comment { padding-block: .75rem; border-bottom: 1px solid #544763; overflow-wrap: anywhere; }
+.gallery-feed-comment p { color: inherit; }
+.gallery-feed-comment .subscription-business img { object-fit: cover; }
+.gallery-feed-reply { padding-inline-start: .75rem; border-inline-start: 2px solid #a797e2; }
+.gallery-feed-layout button[aria-pressed="true"] { background: #ddd2ff; color: #291745; border-color: #a797e2; }
+@media (max-width: 48rem) {
+  .gallery-feed-layout { grid-template-columns: minmax(0, 1fr); }
+  .gallery-feed-thread { max-height: none; overflow: visible; }
+}
