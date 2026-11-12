@@ -8,7 +8,8 @@ import { lockFinance, recordPayment, requestFinanceEmail, resetFinancePassword, 
 import { PasswordField } from "./password-field";
 import { FinanceEmailResetForm } from "./email-reset-form";
 import { FinanceEntriesPanel, type FinanceEntries } from "./lancamentos";
-import { saoPauloToday } from "../../../../lib/agenda";
+import { FinanceCostCards, commissionPeriods, type CommissionPeriod, type CommissionReport, type MonthlyCosts } from "./cost-cards";
+import { saoPauloToday, validDay } from "../../../../lib/agenda";
 import { PerformanceCards, type PerformanceSummary } from "./performance-cards";
 import { financeGuide } from "./guias";
 
@@ -60,11 +61,11 @@ const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZo
 
 export default async function Finance({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string; comandas?: string; paginaComandas?: string; atendimento?: string }>;
+  searchParams: Promise<{ estado?: string; guia?: string; comanda?: string; comandas?: string; paginaComandas?: string; atendimento?: string; profissionalComissao?: string; periodoComissao?: string; dataComissao?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { estado, guia, comanda, comandas, paginaComandas, atendimento } = await searchParams;
+  const { estado, guia, comanda, comandas, paginaComandas, atendimento, profissionalComissao, periodoComissao, dataComissao } = await searchParams;
   const sale = comanda && isUuid(comanda) ? comanda : null;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/financeiro` }));
@@ -87,11 +88,21 @@ export default async function Finance({ params, searchParams }: {
   const setup = access.data === "setup";
   const blocked = access.data === "blocked";
   const today = saoPauloToday();
-  const [result, entriesResult, controls, performance] = access.data === "unlocked" ? await Promise.all([
+  const period = typeof periodoComissao === "string" && Object.hasOwn(commissionPeriods, periodoComissao)
+    ? periodoComissao as CommissionPeriod : "mes";
+  const reference = typeof dataComissao === "string" && validDay(dataComissao) ? dataComissao : "";
+  const professional = typeof profissionalComissao === "string" && isUuid(profissionalComissao) ? profissionalComissao : "";
+  const [result, entriesResult, controls, performance, monthlyCosts, monthlyCommission, commissionFilter] = access.data === "unlocked" ? await Promise.all([
     supabase.rpc("barberflow_receivables", { shop, bill_view: billView, page_number: billPage }), supabase.rpc("barberflow_finance_entries", { shop, expense_view: guide }),
     supabase.rpc("barberflow_card_controls", { shop }),
     supabase.rpc("barberflow_performance_report", { shop, first_day: today.slice(0, 7) + "-01", last_day: today, professional: null }),
-  ]) : [null, null, null, null];
+    supabase.rpc("barberflow_monthly_costs", { shop_id: shop }),
+    supabase.rpc("barberflow_commission_report", { shop_id: shop, period: "mes", reference_day: null }),
+    reference || period !== "mes" ? supabase.rpc("barberflow_commission_report", {
+      shop_id: shop, period, reference_day: reference || null,
+    }) : null,
+  ]) : [null, null, null, null, null, null, null];
+  const costs = monthlyCosts?.data as MonthlyCosts | null;
   const ledger = result?.data as Ledger | null;
   const entries = entriesResult?.data as FinanceEntries | null;
   const cardControls = (controls?.data ?? []) as { receipt_id: string; payment_id: string | null }[];
@@ -151,10 +162,14 @@ export default async function Finance({ params, searchParams }: {
             <div key={key} className="card dashboard-metric"><dt>{title} em aberto</dt><dd>{money(entries?.payable_by_type?.[key] ?? 0)}</dd></div>)}
           {!!entries?.payable_by_type?.unclassified && <div className="card dashboard-metric"><dt>Contas sem classificação</dt><dd>{money(entries.payable_by_type.unclassified)}</dd></div>}
           <div className="card dashboard-metric"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
+          {costs && <FinanceCostCards costs={costs} monthly={monthlyCommission?.data as CommissionReport | null}
+            filtered={(commissionFilter ?? monthlyCommission)?.data as CommissionReport | null} period={period}
+            reference={reference} professional={professional} guide={guide} />}
         </dl>
+        {monthlyCosts?.error && <p role="status">Não foi possível carregar os custos deste mês.</p>}
         {performance?.data && <section aria-labelledby="finance-month-summary">
           <h2 id="finance-month-summary">Desempenho deste mês</h2>
-          <PerformanceCards report={performance.data as PerformanceSummary} />
+          <PerformanceCards report={performance.data as PerformanceSummary} costs={costs} />
         </section>}
         {performance?.error && <p role="status">Não foi possível carregar os indicadores do mês.</p>}
         {entries && <FinanceEntriesPanel shop={shop} data={entries} guide={guide} today={today} />}

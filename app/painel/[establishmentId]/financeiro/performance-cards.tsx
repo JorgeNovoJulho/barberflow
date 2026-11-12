@@ -1,3 +1,4 @@
+import type { MonthlyCosts } from "./cost-cards";
 import { bookingCurrency } from "../../../../lib/public-booking";
 
 type Ranking = { name: string; quantity: number; cents: number };
@@ -7,7 +8,7 @@ export type PerformanceSummary = {
   hours: { weekday: number; hour: number; quantity: number }[];
 };
 
-export function PerformanceCards({ report }: { report: PerformanceSummary }) {
+export function PerformanceCards({ report, costs }: { report: PerformanceSummary; costs: MonthlyCosts | null }) {
   const slots = new Map(report.hours.map(({ weekday, hour, quantity }) => [weekday * 24 + hour, quantity]));
   const max = Math.max(1, ...slots.values());
   const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -21,7 +22,14 @@ export function PerformanceCards({ report }: { report: PerformanceSummary }) {
       {report.professionals.length ? <ol>{report.professionals.map((row) => <li key={row.professional_id}>{row.name} · {money(row.cents)}</li>)}</ol> : <p>Sem dados no período.</p>}
     </section>
     <section className="card"><h2>Serviços mais vendidos</h2>
-      {report.services.length ? <ol>{report.services.map((row) => <li key={row.service_id + ":" + row.name}>{row.name} · {row.quantity} venda(s) · {money(row.cents)}</li>)}</ol> : <p>Sem dados no período.</p>}
+      {(costs?.services ?? report.services).length ? <ol>{(costs?.services ?? report.services).slice(0, 3).map((row) =>
+        <li key={("id" in row ? row.id : row.service_id) + ":" + row.name}>{row.name} · {row.quantity} venda(s) · {money(row.cents)}</li>)}</ol>
+        : <p>Sem dados no período.</p>}
+    </section>
+    <section className="card"><h2>Produtos mais vendidos</h2>
+      {costs ? (costs.products.length ? <ol>{costs.products.slice(0, 3).map((row) =>
+        <li key={row.id}>{row.name} · {row.quantity} un. · {money(row.cents)}</li>)}</ol> : <p>Sem dados no período.</p>)
+        : <p>Ranking indisponível.</p>}
     </section>
     <section className="card finance-heatmap"><h2>Dias e horários mais movimentados</h2>
       <p>Atendimentos concluídos por dia da semana e hora de início.</p>

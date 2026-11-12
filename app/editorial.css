@@ -385,3 +385,12 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .stock-margin-profile[data-tier="baixa"] { background: #ffe0e4; color: #91162a; }
 .stock-margin-profile[data-tier="media"] { background: #fff0b3; color: #684600; }
 .stock-margin-profile[data-tier="alta"] { background: #d8f4e4; color: #14543c; }
+
+.dashboard-metric .finance-cost-detail {
+  margin: .45rem 0 0;
+  font-size: .875rem;
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+.finance-cost-detail summary { cursor: pointer; font-weight: 650; }
+.finance-cost-detail ul { padding-inline-start: 1.15rem; }
