@@ -1,3 +1,4 @@
+import { PurchaseUpdates } from "../minhas-compras/purchase-updates";
 import { BusinessHeader } from "../estabelecimento/[slug]/business-header";
 import { publicProfile } from "../../lib/public-booking";
 import { masterDate } from "../gestao-master/master-ui";
@@ -139,7 +140,7 @@ export default async function ClientPage({ searchParams }: {
   const shopNames = new Map<string, string>((shopAuthors?.data ?? []).map(({ id, name }: { id: string; name: string }) => [id, name]));
   const reactions = (engagement?.data ?? {}) as Record<string, {
     liked: boolean; likes: number; comments: number;
-    people: { id: string; name: string }[]; messages: { id: string; name: string; body: string }[];
+    people: { id: string; name: string; avatar?: string }[]; messages: { id: string; name: string; body: string; avatar?: string }[];
   }>;
   const setup = !publisher && view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
   const people: Person[] = connections?.data?.rows ?? [];
@@ -152,8 +153,10 @@ export default async function ClientPage({ searchParams }: {
   const imagesFor = (post: Photo) => [post.object_path, ...(post.extra_photos ?? [])].filter(Boolean);
   const summary = summaryResult?.data;
   const joined = summary?.joined && new Intl.DateTimeFormat("pt-BR", { month:"long", year:"numeric", timeZone:"America/Sao_Paulo" }).format(new Date(summary.joined));
+  const reactionAvatars = Object.values(reactions).flatMap(({ people, messages }) =>
+    [...people, ...messages].flatMap(({ avatar }) => avatar ? [avatar] : []));
   const [links, likes, comments, authors, likerRows, cardCounts, purchasePhotos] = await Promise.all([
-    mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar), ...directory.slice(0,12).flatMap((item) => item.kind === "person" && item.image ? [item.image] : [])]),
+    mediaLinks(supabase,[...reactionAvatars,account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar), ...directory.slice(0,12).flatMap((item) => item.kind === "person" && item.image ? [item.image] : [])]),
     photo ? supabase.from("barberflow_social_likes").select("actor",{ count:"exact",head:true }).eq("photo",photo) : null,
     photo ? supabase.from("barberflow_social_comments").select("id,actor,parent,body").eq("photo",photo).order("created_at",{ascending:false}).order("id").range(page*25,page*25+25) : null,
     posts.length ? supabase.from("barberflow_social_profiles").select("user_id,username").in("user_id",[...new Set(posts.map(p=>p.author))]) : null,
@@ -180,6 +183,7 @@ export default async function ClientPage({ searchParams }: {
   const businessProfile = publisher && view === "perfil";
   const title = businessProfile ? publisher.name : setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
   return <div className="container workspace social-workspace">
+    <PurchaseUpdates interval={5000} />
     <aside className="workspace-rail client-rail">
       <Link className="client-rail-profile" href={feedLink("/cliente?aba=perfil")}>
         <span className="client-rail-avatar" aria-hidden="true">
@@ -404,18 +408,18 @@ export default async function ClientPage({ searchParams }: {
         {!photo && <>
           <div className="account-links feed-reactions">
             <form action={changeLike.bind(null, path + "#post-" + post.id, post.id, !!reactions[post.id]?.liked)}>
-              <button className="secondary" aria-pressed={!!reactions[post.id]?.liked}>{reactions[post.id]?.liked ? "♥ Curtido" : "♡ Curtir"}</button>
+              <button className="secondary feed-like-button" aria-pressed={!!reactions[post.id]?.liked}>{reactions[post.id]?.liked ? "♥ Curtido" : "♡ Curtir"}</button>
             </form>
             <Link href={feedLink("/cliente?foto="+post.id)}>Abrir publicação</Link>
           </div>
           <details><summary>Quem curtiu{reactions[post.id] ? ` · ${reactions[post.id].likes}` : ""}</summary>
             {reactions[post.id]?.people.length ? <ul>{reactions[post.id].people.map((person) =>
-              <li key={person.id}>{person.name}</li>)}</ul> : <p>Nenhuma curtida visível.</p>}
+              <li key={person.id}><ReactionIdentity name={person.name} image={links.get(person.avatar ?? "")} /></li>)}</ul> : <p>Nenhuma curtida visível.</p>}
             {(reactions[post.id]?.likes ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todas as curtidas</Link>}
           </details>
           <details open={params.comentarios === post.id}>
             <summary>Comentar e ver comentários{reactions[post.id] ? ` · ${reactions[post.id].comments}` : ""}</summary>
-            {reactions[post.id]?.messages.map((comment) => <p key={comment.id}><strong>{comment.name}</strong> · {comment.body}</p>)}
+            {reactions[post.id]?.messages.map((comment) => <div className="feed-comment-preview" key={comment.id}><ReactionIdentity name={comment.name} image={links.get(comment.avatar ?? "")} /><p>{comment.body}</p></div>)}
             {(reactions[post.id]?.comments ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todos os comentários</Link>}
             <CommentForm path={path + "&comentarios=" + post.id + "#post-" + post.id} photo={post.id} parent={null} />
           </details>
@@ -447,4 +451,11 @@ export default async function ClientPage({ searchParams }: {
 
 function CommentForm({path,photo,parent}:{path:string;photo:string;parent:string|null}) {
   return <form className="account-form panel-form" action={commentPhoto.bind(null,path,photo,parent)}><label>{parent ? "Resposta" : "Comentário"} <textarea name="body" maxLength={500} required /></label><button className="secondary">Publicar</button></form>;
+}
+
+function ReactionIdentity({ name, image }: { name: string; image?: string }) {
+  return <span className="feed-reaction-identity">
+    {image ? <img src={image} width={28} height={28} loading="lazy" alt="" /> : <span aria-hidden="true">{name.slice(0,2).toUpperCase()}</span>}
+    <strong>{name}</strong>
+  </span>;
 }

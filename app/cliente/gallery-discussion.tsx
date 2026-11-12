@@ -13,12 +13,17 @@ export function GalleryDiscussion({ post, children }: { post: string; children: 
 
   useEffect(() => {
     let current = true;
-    void loadGalleryFeed(post).then((data) => {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadGalleryFeed(post).then((data) => {
       if (!current) return;
       setFeed(data);
       if (!data) setMessage("Não foi possível carregar a conversa.");
     }).catch(() => { if (current) setMessage("Não foi possível carregar a conversa."); });
-    return () => { current = false; };
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => { current = false; window.clearInterval(timer); };
   }, [post]);
 
   function update(action: () => Promise<boolean>, success?: string, after?: () => void) {

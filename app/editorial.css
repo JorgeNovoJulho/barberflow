@@ -333,3 +333,10 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .gallery-feed-comment details > summary { font-size: .8rem; }
 .gallery-feed-controls .account-form { gap: .4rem; }
 .feed-profile-actions form { display: inline-flex; margin: 0; }
+
+.feed-reactions .feed-like-button { background: #f2e9ff; color: #512681; border-color: #cbb2ed; }
+.feed-reactions .feed-like-button[aria-pressed="true"] { background: #6333a0; color: white; border-color: #6333a0; }
+.feed-reaction-identity { display: inline-flex; align-items: center; gap: .45rem; }
+.feed-reaction-identity > :is(img, span) { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; object-fit: cover; background: var(--accent-soft); color: var(--accent-ink); font-size: .68rem; }
+.feed-comment-preview { padding-block: .35rem; }
+.feed-comment-preview p { margin: .2rem 0 .2rem 2.2rem; }
