@@ -142,7 +142,7 @@ export default async function DashboardPage({ params, searchParams }: {
       </Link><Link className="primary dashboard-action-sale" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="primary dashboard-action-close" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>
     </header>
     {comanda === "salva" && <p role="status">Comanda salva e mantida em aberto.</p>}
-    <div className="checkout checkout-columns">
+    <div className="checkout checkout-columns overview-shortcuts">
       <Link className="card checkout-shortcut checkout-shortcut-open" id="comandas-abertas" href={checkout}>
         <strong>Comandas abertas <span aria-hidden="true">→</span></strong>
         <span>{openSales ? `${openSales.count} · ${money(openSales.total)}` : "Consultar comandas"}</span>
@@ -156,36 +156,36 @@ export default async function DashboardPage({ params, searchParams }: {
         <span>{newOrdersResult.error ? "Contagem indisponível" : `${newOrdersResult.count ?? 0} aguardando pagamento`}</span>
         <div><Link className="secondary" href={`/painel/${shop}/vitrine?aba=pendentes`}>Abrir pedidos da vitrine</Link></div>
       </section>
+      <details className="card overview-notifications" id="notificacoes" open={notificacoes === "1"}>
+        <summary className={notifications?.unread ? "notice-unread" : undefined}>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
+        {aviso === "falha" && <p role="alert">Não foi possível atualizar as notificações.</p>}
+        {notificationResult.error || !notifications ? <p role="alert">Não foi possível carregar as notificações.</p>
+          : <>
+            <div className="account-links notification-tools">
+            <nav className="account-links finance-tabs" aria-label="Guias de notificações">
+              <Link className="secondary finance-tab" data-tone="rose" href={noticeLink("nao-lidas")} aria-current={!readNotices ? "page" : undefined}>Não lidas ({notifications.unread})</Link>
+              <Link className="secondary finance-tab" data-tone="green" href={noticeLink("lidas")} aria-current={readNotices ? "page" : undefined}>Lidas</Link>
+            </nav>
+            {notifications.items.length > 0 && <details className="notification-clear"><summary className="secondary">Limpar todas</summary>
+              <p>Remover todos os avisos lidos e não lidos da lista?</p>
+              <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, true)}>
+                <SubmitButton>Confirmar limpeza</SubmitButton>
+              </form>
+            </details>}
+            {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, false)}>
+              <SubmitButton tone="keep">Marcar todas como lidas</SubmitButton>
+            </form>}
+            </div>
+            {visibleNotices.length ? <ul className="dashboard-notice-list">{visibleNotices.map((item) => <li key={item.id + "-" + (item.kind ?? "booking")}>
+              <strong>{item.kind === "cancellation" ? "Agendamento cancelado pelo cliente" : item.kind === "showcase_order" ? "Novo pedido da vitrine" : "Novo agendamento"}{item.booking_read_at ? "" : " · Não lida"}</strong>
+              <p>{item.client_name} · {item.service_name}{item.starts_at && ` · ${formatDay(item.starts_at)} às ${item.starts_at.slice(11, 16)}`}</p>
+              <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
+              {item.kind === "showcase_order" && <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos da vitrine</Link>}
+              {item.starts_at && <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}${item.kind === "cancellation" ? "&visao=cancelados" : ""}#registro-${item.id}`}>Abrir na agenda</Link>}
+            </li>)}</ul> : <p>Nenhuma notificação {readNotices ? "lida" : "não lida"}.</p>}
+          </>}
+      </details>
     </div>
-    <details className="card panel-form" id="notificacoes" open={notificacoes === "1"}>
-      <summary className={notifications?.unread ? "notice-unread" : undefined}>Notificações{notifications?.unread ? ` · ${notifications.unread} não lida(s)` : ""}</summary>
-      {aviso === "falha" && <p role="alert">Não foi possível atualizar as notificações.</p>}
-      {notificationResult.error || !notifications ? <p role="alert">Não foi possível carregar as notificações.</p>
-        : <>
-          <div className="account-links notification-tools">
-          <nav className="account-links finance-tabs" aria-label="Guias de notificações">
-            <Link className="secondary finance-tab" data-tone="rose" href={noticeLink("nao-lidas")} aria-current={!readNotices ? "page" : undefined}>Não lidas ({notifications.unread})</Link>
-            <Link className="secondary finance-tab" data-tone="green" href={noticeLink("lidas")} aria-current={readNotices ? "page" : undefined}>Lidas</Link>
-          </nav>
-          {notifications.items.length > 0 && <details className="notification-clear"><summary className="secondary">Limpar todas</summary>
-            <p>Remover todos os avisos lidos e não lidos da lista?</p>
-            <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, true)}>
-              <SubmitButton>Confirmar limpeza</SubmitButton>
-            </form>
-          </details>}
-          {notifications.unread > 0 && <form action={markBookingNotifications.bind(null, shop, notifications.as_of, selected.days, false)}>
-            <SubmitButton tone="keep">Marcar todas como lidas</SubmitButton>
-          </form>}
-          </div>
-          {visibleNotices.length ? <ul className="dashboard-notice-list">{visibleNotices.map((item) => <li key={item.id + "-" + (item.kind ?? "booking")}>
-            <strong>{item.kind === "cancellation" ? "Agendamento cancelado pelo cliente" : item.kind === "showcase_order" ? "Novo pedido da vitrine" : "Novo agendamento"}{item.booking_read_at ? "" : " · Não lida"}</strong>
-            <p>{item.client_name} · {item.service_name}{item.starts_at && ` · ${formatDay(item.starts_at)} às ${item.starts_at.slice(11, 16)}`}</p>
-            <p>Recebida em {new Date(item.booking_created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
-            {item.kind === "showcase_order" && <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos da vitrine</Link>}
-            {item.starts_at && <Link className="secondary" href={`/painel/${shop}/agenda?dia=${item.starts_at.slice(0, 10)}${item.kind === "cancellation" ? "&visao=cancelados" : ""}#registro-${item.id}`}>Abrir na agenda</Link>}
-          </li>)}</ul> : <p>Nenhuma notificação {readNotices ? "lida" : "não lida"}.</p>}
-        </>}
-    </details>
     <h2 className="panel-form">Indicadores</h2>
     <nav className="account-links" aria-label="Período dos indicadores">
       {periods.map(({ days, label }) => <Link key={days} className="secondary" aria-current={days === selected.days ? "page" : undefined}

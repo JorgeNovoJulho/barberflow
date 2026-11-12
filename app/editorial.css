@@ -275,3 +275,18 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .service-professional-choice:has(input:checked) { background: var(--accent-soft); }
 .service-professional-choice img, .service-professional-avatar { width: 2.25rem; height: 2.25rem; border-radius: 50%; object-fit: cover; flex: none; }
 .service-professional-avatar { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+
+.checkout.checkout-columns.overview-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; align-items: stretch; }
+.overview-shortcuts:has(.overview-notifications[open]) { grid-auto-rows: auto; }
+.overview-shortcuts > .card { min-width: 0; min-height: 8.5rem; margin: 0; }
+.overview-shortcuts > .checkout-shortcut { align-content: start; }
+.overview-shortcuts > .overview-notifications { background: #edf3ff; border-color: #c8d7f1; color: #233e69; }
+.overview-notifications > summary { min-height: 2.75rem; align-content: center; font-weight: 750; }
+.team-professional-card[data-tone="0"] { --team-tint: #eef4ff; --team-border: #a7bce4; }
+.team-professional-card[data-tone="1"] { --team-tint: #eaf8f2; --team-border: #9bcdb9; }
+.team-professional-card[data-tone="2"] { --team-tint: #f3edff; --team-border: #c6b3e7; }
+.team-professional-card[data-tone="3"] { --team-tint: #fff5e0; --team-border: #dec188; }
+.card.team-professional-card { background: var(--team-tint); border-color: var(--team-border); border-inline-start-width: .28rem; color: #172038; }
+@media (max-width: 38rem) {
+  .checkout.checkout-columns.overview-shortcuts { grid-template-columns: minmax(0, 1fr); }
+}
