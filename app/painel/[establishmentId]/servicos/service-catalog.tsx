@@ -1,10 +1,40 @@
 import Link from "next/link";
+import { httpsUrl } from "../../../../lib/business-profile";
+import { saveServiceProfessionals } from "./actions";
 import { SubmitButton } from "../../../auth/submit";
 import { changeServiceAvailability, deleteService, moveService, saveService } from "../../actions";
 import { PanelStatus } from "../../status";
 import { ServiceMedia } from "../../../service-media";
 import { serviceMediaUrls, type ServiceMediaPaths } from "../../../../lib/service-media";
 import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
+
+type Professional = { id: string; name: string; photo_url: string; active: boolean };
+type Assignments = { professionals: Professional[]; links: { professional_id: string; service_id: string }[]; failed: boolean; open?: string };
+
+function ServiceProfessionals({ shop, service, assignments }: { shop: string; service: string; assignments: Assignments }) {
+  const linked = new Set(assignments.links.filter((item) => item.service_id === service).map((item) => item.professional_id));
+  const options = assignments.professionals.filter(({ id, active }) => active || linked.has(id));
+  return <details id={"vincular-" + service} open={assignments.open === service}>
+    <summary>Vincular profissional{!assignments.failed && ` · ${linked.size} vinculado(s)`}</summary>
+    {assignments.failed ? <p role="alert">Não foi possível carregar os vínculos. Recarregue para tentar novamente.</p>
+      : !options.length ? <p>Nenhum profissional disponível. <Link href={`/painel/${shop}/profissionais`}>Cadastrar profissional</Link></p>
+      : <form className="account-form" action={saveServiceProfessionals.bind(null, shop, service)}>
+        <fieldset className="service-professional-options"><legend>Quem realiza este serviço?</legend>
+          {options.map(({ id, name, photo_url, active }) => {
+            const photo = httpsUrl(photo_url);
+            return <label className="service-professional-choice" key={id}>
+              <input type="checkbox" name="professional" value={id} defaultChecked={linked.has(id)} disabled={!active} />
+              {photo ? <img src={photo} alt="" width={36} height={36} loading="lazy" />
+                : <span className="service-professional-avatar" aria-hidden="true">{name.trim().slice(0, 1).toUpperCase()}</span>}
+              <span>{name}{!active && " · Inativo"}</span>
+            </label>;
+          })}
+        </fieldset>
+        <SubmitButton>Salvar vínculos</SubmitButton>
+      </form>}
+  </details>;
+}
+
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -43,8 +73,8 @@ function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establ
   </form>;
 }
 
-export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false }: {
-  establishmentId: string; name: string; services: Service[]; failed: boolean; estado?: string; team?: boolean;
+export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false, assignments }: {
+  establishmentId: string; name: string; services: Service[]; failed: boolean; estado?: string; team?: boolean; assignments?: Assignments;
 }) {
   const urls = await serviceMediaUrls(services);
   const occupiedOrders = new Set(services.map(({ display_order }) => display_order));
@@ -70,6 +100,7 @@ export async function ServiceCatalog({ establishmentId, name, services, failed, 
           {service.category && <p>{service.category}</p>}
           {service.description && <p>{service.description}</p>}
           <details><summary>Editar serviço</summary><ServiceForm establishmentId={establishmentId} team={team} service={service} /></details>
+          {assignments && <ServiceProfessionals key={service.id + (estado ?? "")} shop={establishmentId} service={service.id} assignments={assignments} />}
           {service.active && <div className="account-links">
             {([-1, 1] as const).map((step) => {
               const neighbor = services[index + step];
