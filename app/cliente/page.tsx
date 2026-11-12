@@ -1,5 +1,6 @@
 import { BusinessHeader } from "../estabelecimento/[slug]/business-header";
 import { publicProfile } from "../../lib/public-booking";
+import { masterDate } from "../gestao-master/master-ui";
 import { FeedIcon } from "./feed-icon";
 import { offsetDay } from "../../lib/agenda";
 import { subscriptionPlanLabel, type SubscriptionStatus } from "../../lib/subscriptions";
@@ -21,6 +22,8 @@ import { PhotoForm } from "./photo-form";
 import { mediaLinks, pageIndex, socialSession, socials } from "./social";
 
 type Photo = { id:string; author:string; shop:string|null; object_path:string; extra_photos?:string[]; caption:string; audience:string; promotion:boolean };
+type DirectoryProfile = { id: string; kind: "person" | "shop"; name: string; image: string | null;
+  account_type: string; followers: number; following: number; online: boolean; last_seen: string | null };
 type Person = { user_id: string; username: string; avatar: string };
 type Shop = { id: string; slug: string; name: string; city: string; logo: string | null };
 const collectionLabels = {
@@ -50,7 +53,7 @@ function SocialCollectionCard({ name, href, image, detail, followers, children }
 }
 
 export default async function ClientPage({ searchParams }: {
-  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string; estabelecimento?:string; comentarios?:string }>;
+  searchParams: Promise<{ aba?:string; perfil?:string; loja?:string; foto?:string; pagina?:string; estado?:string; compras?:string; estabelecimento?:string; comentarios?:string; busca?:string }>;
 }) {
   const { supabase,user } = await socialSession();
   const params = await searchParams;
@@ -75,7 +78,9 @@ export default async function ClientPage({ searchParams }: {
   const view = collection ?? (photo ? "foto" : shop ? "loja" : target ? "perfil-publico" : ["perfil","notificacoes","pessoas"].includes(params.aba ?? "") ? params.aba! : "feed");
   const cancellations = view === "notificacoes" ? await supabase.rpc("barberflow_my_cancellation_notices") : null;
   const deniedPurchases = params.compras === "negados";
+  const search = typeof params.busca === "string" ? params.busca.trim().slice(0,120) : "";
   const query = new URLSearchParams();
+  if (view === "pessoas" && search) query.set("busca",search);
   if (publisher) query.set("estabelecimento", publisher.id);
   if (params.compras) query.set("compras", deniedPurchases ? "negados" : "confirmados");
   if (params.aba) query.set("aba",params.aba);
@@ -99,7 +104,7 @@ export default async function ClientPage({ searchParams }: {
     shop || (target && target!==user.id) ? followTable.select(shop ? "shop" : "target").eq("follower",user.id).eq(shop ? "shop" : "target",shop ?? target!).maybeSingle() : null,
     shop ? supabase.rpc("barberflow_social_shop_info",{ shop_id:shop }) : null,
     view === "perfil" ? supabase.rpc("barberflow_my_service_counts") : null,
-    view === "pessoas" ? profileTable.select("user_id,username,avatar").neq("user_id",user.id).eq("frozen",false).order("username").order("user_id").range(page*12,page*12+12) : null,
+    view === "pessoas" ? supabase.rpc("barberflow_feed_search", { search_text: search, page_number: page }) : null,
     view === "notificacoes" ? supabase.rpc("barberflow_social_notices",{ page_number:page }) : null,
     view === "perfil" ? supabase.from("barberflow_account_deletion_requests").select("requested_at").eq("user_id",user.id).maybeSingle() : null,
     view === "feed" && page===0 ? supabase.from("barberflow_social_news").select("id,title,body").order("created_at",{ascending:false}).limit(5) : null,
@@ -135,7 +140,10 @@ export default async function ClientPage({ searchParams }: {
     people: { id: string; name: string }[]; messages: { id: string; name: string; body: string }[];
   }>;
   const setup = !publisher && view === "feed" && roleResult?.data === "cliente" && !profileResult.error && !(profile?.username && profile.avatar);
-  const people: Person[] = connections?.data?.rows ?? directoryResult?.data ?? [];
+  const people: Person[] = connections?.data?.rows ?? [];
+  const directory = (directoryResult?.data ?? []) as DirectoryProfile[];
+  const ownFeedCounts = publisher && view === "perfil"
+    ? (await supabase.rpc("barberflow_own_feed_counts", { shop_id: publisher.id })).data : null;
   const shops: Shop[] = savedShops?.data ?? [];
   const blocked = (blockedProfiles?.data ?? []) as Pick<Person,"user_id"|"username">[];
   const notices = (noticesResult?.data ?? []) as { kind:string; photo:string; occurred:string; description:string }[];
@@ -143,7 +151,7 @@ export default async function ClientPage({ searchParams }: {
   const summary = summaryResult?.data;
   const joined = summary?.joined && new Intl.DateTimeFormat("pt-BR", { month:"long", year:"numeric", timeZone:"America/Sao_Paulo" }).format(new Date(summary.joined));
   const [links, likes, comments, authors, likerRows, cardCounts, purchasePhotos] = await Promise.all([
-    mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar)]),
+    mediaLinks(supabase,[account?.avatar ?? "",profile?.avatar ?? "",profile?.banner ?? "",...posts.slice(0,12).flatMap(p=>photo ? imagesFor(p) : imagesFor(p).slice(0,1)),...people.slice(0,12).map((p)=>p.avatar), ...directory.slice(0,12).flatMap((item) => item.kind === "person" && item.image ? [item.image] : [])]),
     photo ? supabase.from("barberflow_social_likes").select("actor",{ count:"exact",head:true }).eq("photo",photo) : null,
     photo ? supabase.from("barberflow_social_comments").select("id,actor,parent,body").eq("photo",photo).order("created_at",{ascending:false}).order("id").range(page*25,page*25+25) : null,
     posts.length ? supabase.from("barberflow_social_profiles").select("user_id,username").in("user_id",[...new Set(posts.map(p=>p.author))]) : null,
@@ -161,7 +169,7 @@ export default async function ClientPage({ searchParams }: {
   const likerNames = new Map((likerProfiles?.data ?? []).map(row=>[row.user_id,row.username]));
   const liked = photo ? await supabase.from("barberflow_social_likes").select("photo").eq("photo",photo).eq("actor",user.id).maybeSingle() : null;
   const names = new Map((authors?.data ?? []).map((a)=>[a.user_id,a.username]));
-  const more = Math.max(posts.length,people.length,shops.length,blocked.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25 || (likerRows?.data?.length ?? 0)>25;
+  const more = Math.max(directory.length,posts.length,people.length,shops.length,blocked.length)>12 || notices.length>25 || (comments?.data?.length ?? 0)>25 || (likerRows?.data?.length ?? 0)>25;
   const failed = [profileResult,postsResult,shopResult,servicesResult,directoryResult,noticesResult,purchaseNotices,comments,generalResult,roleResult,connections,savedShops,presenceResult,blockedProfiles,summaryResult,likerRows,likerProfiles].some(result=>result?.error);
   const businessDetails = publisher?.profile_details;
   const identityName = publisher?.name ?? accountName;
@@ -177,7 +185,6 @@ export default async function ClientPage({ searchParams }: {
         </span>
         <span className="client-rail-identity">
           <strong>{identityName}</strong>
-          {!publisher && identityUsername && <small>@{identityUsername}</small>}
           {ownPlan?.plan && <small className="client-rail-plan" data-tier={ownPlan.plan}>
             {ownPlan.plan === "premium" && "♛ "}{subscriptionPlanLabel(ownPlan.plan)}
             {expiry && <span> · Vencimento {expiry}</span>}
@@ -225,18 +232,20 @@ export default async function ClientPage({ searchParams }: {
         {httpsUrl(businessDetails?.cover) && <img className="social-banner" src={httpsUrl(businessDetails?.cover)} alt="Banner do estabelecimento" />}
         {identityImage && <img className="social-avatar" src={identityImage} alt="" />}
         {identityUsername && <p>@{identityUsername}</p>}
-        <div className="profile-networks">{[
+        <div className="account-links finance-tabs feed-profile-actions">{[
           ["Instagram", businessDetails?.instagram && /^@?[\w.]{1,30}$/.test(businessDetails.instagram) ? "https://www.instagram.com/" + businessDetails.instagram.replace(/^@/, "") : undefined],
           ["Facebook", socialUrl(businessDetails?.facebook, ["facebook.com", "fb.com"])],
           ["TikTok", socialUrl(businessDetails?.tiktok, ["tiktok.com"])],
           ["YouTube", socialUrl(businessDetails?.youtube, ["youtube.com", "youtu.be"])],
           ["WhatsApp", whatsappUrl(businessDetails?.whatsapp)],
-        ].map(([label, link]) => link && <a key={label} href={link} target="_blank" rel="noopener noreferrer">{label}</a>)}</div>
-        <div className="account-links">
-          <Link href={feedLink("/cliente?aba=seguindo")}>Pessoas seguidas</Link>
-          <Link href={feedLink("/cliente?aba=lojas-seguidas")}>Estabelecimentos seguidos</Link>
+        ].map(([label, link], index) => link && <a key={label} className="secondary finance-tab" data-tone={["rose","blue","purple","amber","green"][index]}
+          href={link} target="_blank" rel="noopener noreferrer">{label}</a>)}
+          <Link className="secondary finance-tab" data-tone="purple" href={publisher.slug ? feedLink("/cliente?loja=" + publisher.id) : feedLink("/cliente?aba=perfil")}>{ownFeedCounts?.followers ?? "—"} seguidores</Link>
+          <Link className="secondary finance-tab" data-tone="blue" href={feedLink("/cliente?aba=seguindo")}>{ownFeedCounts?.following ?? "—"} seguindo</Link>
+          <Link className="secondary finance-tab" data-tone="amber" href={feedLink("/cliente?aba=lojas-seguidas")}>Estabelecimentos seguidos</Link>
+          {publisher.slug && <Link className="secondary finance-tab" data-tone="green" href={`/estabelecimento/${publisher.slug}#feed`}>Abrir página pública</Link>}
+          <Link className="secondary finance-tab" data-tone="rose" href={`/painel/${publisher.id}/publicacao`}>Editar perfil</Link>
         </div>
-        {publisher.slug && <Link className="secondary" href={`/estabelecimento/${publisher.slug}#feed`}>Abrir página pública</Link>}
       </section>}
       {view==="feed" && !setup && <>
         {!publisher && !profile && <p><Link href="/cliente?aba=perfil">Crie seu perfil para publicar e interagir.</Link></p>}
@@ -254,21 +263,21 @@ export default async function ClientPage({ searchParams }: {
           <div className="profile-feature-body"><h2>{profile.username}</h2>
           {joined && <p className="profile-member">No TOP BARBER desde {joined}</p>}
           {presenceResult?.data && <ProfilePresence key={profileId} initial={presenceResult.data} profile={profileId} shop={null} />}
-          <div className="profile-stats">
-            <Link href={feedLink(`/cliente?aba=seguidores&perfil=${profileId}`)}><strong>{summary?.followers ?? "—"}</strong> Seguidores</Link>
-            <Link href={feedLink(`/cliente?aba=seguindo&perfil=${profileId}`)}><strong>{summary?.following ?? "—"}</strong> Seguindo</Link>
-          </div>
-          <div className="profile-networks">{Object.entries(socials).map(([label,hosts])=> {
+          <div className="account-links finance-tabs feed-profile-actions">
+            <Link className="secondary finance-tab" data-tone="purple" href={feedLink(`/cliente?aba=seguidores&perfil=${profileId}`)}><strong>{summary?.followers ?? "—"}</strong> Seguidores</Link>
+            <Link className="secondary finance-tab" data-tone="blue" href={feedLink(`/cliente?aba=seguindo&perfil=${profileId}`)}><strong>{summary?.following ?? "—"}</strong> Seguindo</Link>
+          {view === "perfil" && <Link className="secondary finance-tab" data-tone="amber" href="#editar-perfil">Editar perfil</Link>}
+          {Object.entries(socials).map(([label,hosts])=> {
             const link = socialUrl(profile.links?.[label],hosts);
-            return link && <Link key={label} href={link} rel="noreferrer"><SocialIcon name={label} />{label}</Link>;
+            return link && <Link key={label} className="secondary finance-tab" data-tone="green" href={link} rel="noreferrer"><SocialIcon name={label} />{label}</Link>;
           })}</div>
           {target && target!==user.id && <form action={changeFollow.bind(null,path,target,false,!!followingResult?.data)}><button className="secondary">{followingResult?.data ? "Deixar de seguir" : "Seguir"}</button></form>}
           {target && target!==user.id && <form action={blockSocialProfile.bind(null,target,true)}><button className="secondary">Bloquear usuário</button></form>}
           </div>
         </div>}
         {view==="perfil" && <>
-          <SocialProfileForm key={profile?.revision ?? "new"} profile={profile ?? undefined}
-            avatar={links.get(profile?.avatar ?? "")} banner={links.get(profile?.banner ?? "")} setup={false} />
+          <div id="editar-perfil"><SocialProfileForm key={profile?.revision ?? "new"} profile={profile ?? undefined}
+            avatar={links.get(profile?.avatar ?? "")} banner={links.get(profile?.banner ?? "")} setup={false} /></div>
           <p><Link href="/cliente?aba=bloqueados">Gerenciar usuários bloqueados</Link></p>
           {profile && <form action={freezeSocial.bind(null,!profile.frozen)}><button className="secondary">{profile.frozen ? "Reativar perfil" : "Congelar perfil"}</button></form>}
           <details className="card panel-form"><summary>Solicitar exclusão da conta</summary>
@@ -305,7 +314,28 @@ export default async function ClientPage({ searchParams }: {
         </form>}
       </div>}
       {connections?.data && <p>{connections.data.count} {collection === "seguidores" ? "seguidores" : "perfis seguidos"}</p>}
-      {(view === "pessoas" || connections?.data) && (people.length ? <ul className="cards social-collection-grid">
+      {view === "pessoas" && <>
+        <form className="agenda-date feed-directory-search" action="/cliente">
+          <input type="hidden" name="aba" value="pessoas" />
+          {publisher && <input type="hidden" name="estabelecimento" value={publisher.id} />}
+          <label>Nome de usuário ou estabelecimento <input name="busca" type="search" maxLength={120} defaultValue={search} /></label>
+          <button className="primary">Buscar</button>
+        </form>
+        {directory.length ? <ul className="cards social-collection-grid">{directory.slice(0,12).map((item) => {
+          const image = item.kind === "shop" ? httpsUrl(item.image ?? undefined) : links.get(item.image ?? "");
+          return <li className="card social-collection-card feed-directory-card" key={item.kind + item.id}>
+            <Link href={feedLink("/cliente?" + (item.kind === "shop" ? "loja=" : "perfil=") + item.id)}>
+              <div className="social-collection-identity">
+                <span className="social-collection-avatar" aria-hidden="true">{image ? <img src={image} alt="" width={56} height={56} loading="lazy" /> : item.name.slice(0,2).toUpperCase()}</span>
+                <div><strong>{item.name}</strong><p>{item.account_type}</p></div>
+              </div>
+              <p className="feed-directory-totals"><span>{item.followers} seguidores</span><span>{item.following} seguindo</span></p>
+              <p>{item.online && <>Online agora · </>}{item.last_seen ? <>Último acesso <time dateTime={item.last_seen}>{masterDate(item.last_seen)}</time></> : "Sem registro de acesso"}</p>
+            </Link>
+          </li>;
+        })}</ul> : !directoryResult?.error && <p>Nenhum perfil encontrado.</p>}
+      </>}
+      {connections?.data && (people.length ? <ul className="cards social-collection-grid">
         {people.slice(0,12).map((person) => <SocialCollectionCard key={person.user_id} name={person.username}
           href={feedLink("/cliente?perfil=" + person.user_id)} image={links.get(person.avatar)} followers={followers.get("person:" + person.user_id)}>
           {collection === "seguindo" && profileId === user.id && <form action={changeFollow.bind(null,path,person.user_id,false,true)}>

@@ -317,3 +317,11 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
   .gallery-feed-layout { grid-template-columns: minmax(0, 1fr); }
   .gallery-feed-thread { max-height: none; overflow: visible; }
 }
+
+.feed-profile-actions { padding: .65rem; align-items: center; gap: .55rem; }
+.feed-directory-search { margin-block: 1rem; }
+.feed-directory-card > a { display: grid; gap: .6rem; color: inherit; text-decoration: none; }
+.feed-directory-card > a:hover strong { text-decoration: underline; }
+.feed-directory-card p { margin: 0; }
+.feed-directory-totals { display: flex; flex-wrap: wrap; gap: .4rem; }
+.feed-directory-totals span { background: var(--accent-soft); color: var(--accent-ink); padding: .2rem .45rem; border-radius: .4rem; }
