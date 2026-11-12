@@ -11,12 +11,12 @@ import { ProfileView } from "./profile-view";
 
 export default async function Establishment({ params, searchParams }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ denuncia?: string; vitrine?: string; produtos?: string; agendamento?: string }>;
+  searchParams: Promise<{ denuncia?: string; vitrine?: string; produtos?: string; agendamento?: string; equipe?: string }>;
 }) {
   const { slug } = await params;
   const profile = await publicProfile(slug);
   if (!profile) notFound();
-  const { denuncia, vitrine, produtos, agendamento } = await searchParams;
+  const { denuncia, vitrine, produtos, agendamento, equipe } = await searchParams;
   const supabase = await supabaseServer();
   const requestToken = (await cookies()).get("barberflow-guest-" + slug)?.value;
   const confirmation = agendamento === "registrado" && requestToken && isUuid(requestToken)
@@ -29,6 +29,8 @@ export default async function Establishment({ params, searchParams }: {
   const photos = supabase && posts.length ? await mediaLinks(supabase,
     posts.flatMap((post) => [post.object_path, ...post.extra_photos])) : new Map<string, string>();
   const presence = social?.data ? await supabase?.rpc("barberflow_profile_presence", { profile: null, shop_id: social.data }) : null;
+  const professional = equipe && isUuid(equipe) && social?.data === equipe && supabase
+    ? await supabase.rpc("barberflow_professional_panel", { shop_id: equipe, period: "dia" }) : null;
   return <>
     {booking && <div className="container" id="agendamento-confirmado">
       <section className="card panel-form" aria-labelledby="booking-confirmed-title">
@@ -42,7 +44,7 @@ export default async function Establishment({ params, searchParams }: {
         <Link className="secondary" href={`/estabelecimento/${slug}/consultar`}>Consultar meu agendamento</Link>
       </section>
     </div>}
-    <ProfileView profile={profile} denuncia={denuncia} vitrine={vitrine} produtos={produtos} />
+    <ProfileView professionalShop={professional?.data ? equipe : undefined} profile={profile} denuncia={denuncia} vitrine={vitrine} produtos={produtos} />
     {posts.length > 0 && <section className="container section" id="feed">
       <h2>Feed de {profile.name}</h2>
       <ul className="cards social-post-grid">{posts.map((post) => <li className="card" key={post.id}>

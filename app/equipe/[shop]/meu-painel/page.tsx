@@ -8,7 +8,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 
 const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Mensal" };
-type Appointment = { id: string; client: string; phone: string | null; service: string; starts: string; state: string; checked_in?: boolean; booked_by: string | null };
+type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; booked_by: string | null };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
   available: boolean; services: string[]; service_rate: number; product_rate: number;
@@ -105,7 +105,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <nav className="account-links" aria-label="Ações do profissional">
         <Link className="primary" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
         <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
-        {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}`}>Página pública</Link>}
+        {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       {panel.available ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
           <p>Fechar a disponibilidade para novos agendamentos online de hoje?</p>
@@ -129,12 +129,12 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
         : !appointments.length && <p>Nenhum agendamento neste período.</p>}
-      <ul className="finance-entry-list">{visibleAppointments.map((entry, index) => {
+      <ul className="professional-appointments">{visibleAppointments.map((entry, index) => {
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card team-professional-card" data-tone={index % 4} key={entry.id}>
-          <strong>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</strong>
-          <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service}</p>
-          {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>WhatsApp</a>}
+          <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
+          <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
+          {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>{entry.phone}</a>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
             {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id)) ? <strong>Presença confirmada</strong>
               : <form action={checkIn.bind(null, shop, entry.id, false)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
@@ -143,7 +143,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
               : <form action={checkIn.bind(null, shop, entry.id, true)}><SubmitButton>Abrir comanda</SubmitButton></form>)}
             <details><summary className="agenda-absence-button">Falta</summary><form action={appointmentAction.bind(null, shop, entry.id, "absence")}>
               <SubmitButton>Confirmar falta</SubmitButton></form></details>
-            <details><summary className="agenda-cancel-button">Cancelar cliente</summary><form className="account-form" action={appointmentAction.bind(null, shop, entry.id, "cancel")}>
+            <details><summary className="agenda-cancel-button">Cancelar agendamento</summary><form className="account-form" action={appointmentAction.bind(null, shop, entry.id, "cancel")}>
               <label>Motivo <textarea name="reason" maxLength={500} required /></label><SubmitButton>Confirmar cancelamento</SubmitButton>
             </form></details>
           </div>}

@@ -568,3 +568,13 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 @media (prefers-reduced-motion: reduce) {
   .local-photo-ring { transition: none; }
 }
+
+.local-photo-carousel { --photo-size: clamp(5rem, 23vw, 13.75rem); }
+.local-photo-slide {
+  transform: translateX(calc(var(--photo-offset) * 104%)) rotateY(calc(var(--photo-offset) * -24deg));
+  transition: transform .45s ease;
+}
+.local-photo-slide[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .local-photo-slide { transition: none; }
+}

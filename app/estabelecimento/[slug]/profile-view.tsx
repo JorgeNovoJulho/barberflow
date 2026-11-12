@@ -11,8 +11,8 @@ import { saoPauloToday } from "../../../lib/agenda";
 import { SubmitButton } from "../../auth/submit";
 import { reportReview } from "./review-actions";
 
-export async function ProfileView({ profile, previewShop, denuncia, vitrine, produtos }: {
-  profile: PublicProfile; previewShop?: string; denuncia?: string; vitrine?: string; produtos?: string;
+export async function ProfileView({ profile, professionalShop, previewShop, denuncia, vitrine, produtos }: {
+  profile: PublicProfile; professionalShop?: string; previewShop?: string; denuncia?: string; vitrine?: string; produtos?: string;
 }) {
   const { slug } = profile;
   const supabase = await supabaseServer();
@@ -55,7 +55,7 @@ export async function ProfileView({ profile, previewShop, denuncia, vitrine, pro
     {previewShop ? <div className="card panel-form">
       <Link href={'/painel/' + previewShop + '/publicacao'}>Voltar à Página pública</Link>
       <p>Prévia da última versão salva. Agendamentos e compras ficam desativados aqui.</p>
-    </div> : <Link href="/estabelecimentos">Ver estabelecimentos</Link>}
+    </div> : <Link href={professionalShop ? `/equipe/${professionalShop}/meu-painel` : "/estabelecimentos"}>{professionalShop ? "Voltar ao painel profissional" : "Ver estabelecimentos"}</Link>}
     <BusinessHeader name={profile.name} city={profile.city} details={profile.details}>
       <div className="business-heading-badges">
         {!!Object.keys(details.hours ?? {}).length && <strong className={`business-status${open ? " is-open" : ""}`}>{open ? "Aberto agora" : "Fechado agora"}</strong>}

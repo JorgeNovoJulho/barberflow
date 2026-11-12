@@ -73,7 +73,7 @@ export default async function TeamAgenda({ params, searchParams }: {
   }
   return <section className="container section">
     <PurchaseUpdates />
-    <Link href="/painel">Voltar ao painel</Link>
+    <Link href={individual.data ? `/equipe/${shop}/meu-painel` : "/painel"}>Voltar ao painel</Link>
     <p className="eyebrow">{business.name}</p><h1>Agenda da equipe</h1>
     {individual.data && <p><Link className="primary" href={`/equipe/${shop}/meu-painel`}>Meu painel profissional</Link></p>}
     {clientAccess.data === true && <p><Link className="secondary" href={`/equipe/${shop}/clientes`}>Clientes da equipe</Link></p>}
