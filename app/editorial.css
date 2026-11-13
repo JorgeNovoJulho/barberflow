@@ -507,3 +507,6 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 @media (min-width: 48rem) {
   .agenda-stack[open] > ul { position: absolute; inset-inline: 0; margin: .25rem 0 0; }
 }
+
+.agenda-stack[data-state="cancelled"] > summary { background: #ffebef; color: #891b34; }
+.agenda-stack[data-state="no_show"] > summary { background: #fff0b8; color: #654600; }

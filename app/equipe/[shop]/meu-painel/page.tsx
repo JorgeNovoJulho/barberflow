@@ -1,3 +1,4 @@
+import { offsetDay } from "../../../../lib/agenda";
 import { appointmentAvatars, ClientAvatar } from "../../../painel/[establishmentId]/appointment-card";
 import Link from "next/link";
 import { VisiblePageRefresh } from "../../../visible-page-refresh";
@@ -19,6 +20,7 @@ type Panel = {
 };
 const money = (value: number) => bookingCurrency.format(value / 100);
 const dayLabel = (value: string) => value.slice(0, 10).split("-").reverse().join("/");
+const appointmentStatus: Record<string, string> = { scheduled: "Em aberto", pending: "Em aberto", completed: "Concluído", cancelled: "Cancelado", no_show: "Falta" };
 const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 async function client(shop: string) {
@@ -91,7 +93,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const appointments = (agendaResult.data ?? []) as Appointment[];
   const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(appointments.length / 12) - 1)) : 0;
   const visibleAppointments = appointments.slice(page * 12, page * 12 + 12);
-  const avatars = await appointmentAvatars(supabase, visibleAppointments);
+  const avatars = await appointmentAvatars(supabase, agendaPeriod === "dia" ? visibleAppointments : appointments);
   const publicSlug = bookingContext.data?.slug;
   return <section className="container section professional-workspace">
     <Link href={`/equipe/${shop}`}>Agenda da equipe</Link>
@@ -132,7 +134,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
         : !appointments.length && <p>Nenhum agendamento neste período.</p>}
       {(() => { const renderCard = (entry: Appointment, index: number) => {
-        const status = ({ scheduled: "Em aberto", pending: "Em aberto", completed: "Concluído", cancelled: "Cancelado", no_show: "Falta" } as Record<string, string>)[entry.state] ?? entry.state;
+        const status = appointmentStatus[entry.state] ?? entry.state;
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card team-professional-card" data-tone={index % 4} data-state={entry.state} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
@@ -155,21 +157,28 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         </li>;
       };
       if (agendaPeriod === "dia") return <ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul>;
-      const groups = new Map<string, Appointment[]>()
-      for (const entry of visibleAppointments) {
+      const groups = new Map<string, Appointment[]>();
+      const month = panel.today.slice(0, 7) + "-01";
+      const nextMonth = offsetDay(month, 32).slice(0, 7) + "-01";
+      const monday = offsetDay(panel.today, -((new Date(panel.today).getUTCDay() + 6) % 7));
+      const secondHalf = panel.today.slice(-2) > "15";
+      const start = agendaPeriod === "semana" ? monday : agendaPeriod === "quinzena" && secondHalf ? offsetDay(month, 15) : month;
+      const end = agendaPeriod === "semana" ? offsetDay(monday, 7) : agendaPeriod === "quinzena" && !secondHalf ? offsetDay(month, 15) : nextMonth;
+      for (let date = start; date < end; date = offsetDay(date, 1)) groups.set(date, []);
+      for (const entry of appointments) {
         const date = entry.starts.slice(0, 10);
         groups.set(date, [...(groups.get(date) ?? []), entry]);
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
-        <section key={date}><h3>{dayLabel(date)}</h3>
-          {entries.map((entry, index) => <details className="agenda-stack" key={entry.id}>
-            <summary>{entry.starts.slice(11, 16)} · {entry.client}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
+        <section key={date}><h3>{dayLabel(date)}</h3>{!entries.length && <p>Sem agendamentos</p>}
+          {entries.map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
+            <summary>{entry.starts.slice(11, 16)} · {entry.client} · {appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
           </details>)}
         </section>)}</div>;
       })()}
-      {page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
-      {(page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
+      {agendaPeriod === "dia" && page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
+      {agendaPeriod === "dia" && (page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
     </section>
     <section className="card" id="desempenho">
       <h2>Desempenho</h2>
