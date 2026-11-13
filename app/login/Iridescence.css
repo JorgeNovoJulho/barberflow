@@ -20,3 +20,30 @@
 @media (prefers-reduced-motion: reduce) {
   .login-scene > .login-iridescence { display: none; }
 }
+
+.login-scene {
+  background: #e7e9fb;
+  overflow: hidden;
+}
+.login-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 18% 25%, #a9b6ff 0, transparent 58%),
+    radial-gradient(ellipse at 83% 72%, #d6a8ed 0, transparent 60%),
+    linear-gradient(120deg, #d9edff, #efdcff 52%, #c4e9ec);
+  background-size: 145% 145%;
+  animation: login-background-flow 14s ease-in-out infinite alternate;
+}
+.login-scene > .login-iridescence { z-index: 1; pointer-events: none; }
+.login-scene > :not(.login-iridescence) { position: relative; z-index: 2; }
+@keyframes login-background-flow {
+  from { background-position: 0% 25%; }
+  to { background-position: 100% 75%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-scene::before { animation: none; }
+}
