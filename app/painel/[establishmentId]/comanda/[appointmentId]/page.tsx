@@ -9,7 +9,7 @@ import { StockFeedback } from "../../estoque/feedback";
 import { CollectPayment } from "./collect-payment";
 import { closedAtLabel, orderPage, orderPeriod, orderTab } from "../../comandas/filters";
 
-const paymentMethods: Record<string, string> = { pix: "Pix", cash: "Dinheiro", card: "Cartão", transfer: "Transferência", other: "Outro" };
+const paymentMethods: Record<string, string> = { pix: "Pix", cash: "Dinheiro", card: "Cartão", debit: "Débito", credit: "Crédito", transfer: "Transferência", other: "Outro" };
 type Payments = { received_cents: number; payments: {
   id: string; amount_cents: number; method: string; recorded_at: string; reversed_at: string | null; reversal_reason: string | null;
 }[] };
@@ -48,7 +48,7 @@ export default async function Order({ params, searchParams }: {
 
   const [paymentResult, pix, cards] = receipt.data ? await Promise.all([
     supabase.rpc("barberflow_order_payments", { shop, appointment: appointmentId }),
-    supabase.rpc("barberflow_business_pix", { shop }),
+    supabase.rpc("barberflow_professional_order_pix", { shop, appointment: appointmentId }),
     supabase.rpc("barberflow_card_status", { shop, receipt: appointmentId }),
   ]) : [];
   const payments = paymentResult?.data as Payments | null | undefined;
@@ -69,7 +69,7 @@ export default async function Order({ params, searchParams }: {
   const total = receipt.data?.total_cents ?? serviceTotal + productTotal;
   const discounts = items.reduce((sum, item) => sum + item.quantity * item.unit_price_cents - item.line_total_cents, 0);
 
-  return <section className="container section">
+  return <section className="container section appointment-checkout">
     <nav className="account-links" aria-label="Atendimento">
       <Link href={`/painel/${shop}/comandas?${returnQuery}`}>Voltar às comandas</Link>
       <Link href={`/painel/${shop}/agenda?dia=${appointment.starts_at.slice(0, 10)}`}>Voltar à agenda</Link>

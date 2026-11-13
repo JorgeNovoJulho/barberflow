@@ -578,3 +578,7 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 @media (prefers-reduced-motion: reduce) {
   .local-photo-slide { transition: none; }
 }
+
+.appointment-checkout .order-layout { grid-template-columns: minmax(0, 1fr); }
+.appointment-checkout .panel-form { max-width: none; }
+.appointment-checkout .collection-options > details { margin-block: .65rem; }

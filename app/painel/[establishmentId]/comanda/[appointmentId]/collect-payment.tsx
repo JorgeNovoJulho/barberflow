@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { supabaseServer } from "../../../../../lib/supabase";
+import { CashReceived } from "../../../../equipe/[shop]/comanda/[appointment]/cash-received";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { showcasePix } from "../../../../../lib/pix";
@@ -14,6 +17,15 @@ type CardState = {
   charge: { id: string; url: string | null; expires: string; sandbox: boolean; status: string; amount: number; provider: CardProvider } | null;
 };
 
+async function confirm(shop: string, receipt: string, balance: number, method: string, form: FormData) {
+  "use server";
+  const client = await supabaseServer();
+  const raw = String(form.get("cash") ?? "").trim().replace(",", ".");
+  const tendered = /^\d{1,8}(\.\d{1,2})?$/.test(raw) ? Math.round(Number(raw) * 100) : null;
+  const { data } = await client?.rpc("barberflow_collect_order", { shop, appointment: receipt, payment_method: method, expected: balance, tendered }) ?? {};
+  redirect(`/painel/${shop}/comanda/${receipt}?pagamento=${data ? "recebido" : "falha"}#recebimento`);
+}
+
 export async function CollectPayment({ shop, receipt, balance, pix, cards, status }: {
   shop: string; receipt: string; balance: number; pix: Pix | null; cards: CardState | null; status?: string;
 }) {
@@ -24,6 +36,8 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
   const qr = pixCode ? await QRCode.toDataURL(pixCode, { scale: 6, margin: 4, errorCorrectionLevel: "M" }) : null;
   const liveLink = active?.url && Date.parse(active.expires) > Date.now() && isCardCheckout(active.url) ? active.url : null;
   return <div className="collection-options">
+    {status === "recebido" && <p role="status">Recebimento confirmado.</p>}
+    {status === "falha" && <p role="alert">Não foi possível confirmar. Confira o saldo atual e tente novamente.</p>}
     {status && Object.hasOwn(paymentFeedback, status) && <p role="status">{paymentFeedback[status]}</p>}
     {active ? <section>
       <h3>Cobrança por cartão em aberto{active.sandbox ? " · teste" : ""}</h3>
@@ -39,26 +53,24 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
         <SubmitButton disabled={!canUseCards}>Consultar pagamento no provedor</SubmitButton>
       </form>
     </section> : balance > 0 ? <>
-      <section>
-        <h3>Receber por Pix</h3>
+      <details name="order-payment-method"><summary className="secondary">Pix</summary>
         {qr && pixCode ? <>
-          <p>Escaneie ou copie o código para pagar o saldo de <strong>{bookingCurrency.format(balance / 100)}</strong>.</p>
-          <img className="payment-qr" src={qr} alt="Código QR Pix para o saldo da comanda" width={300} height={300} />
-          <label className="showcase-pix-code">Pix Copia e Cola
-            <textarea readOnly value={pixCode} rows={3} spellCheck={false} />
-          </label>
+          <p>Valor a receber: {bookingCurrency.format(balance / 100)}</p>
+          <img className="payment-qr" src={qr} alt="QR Code Pix da comanda" width={300} height={300} />
           <CopyPix value={pixCode} code />
-          <p>Confira o crédito no extrato antes de <Link href={`/painel/${shop}/financeiro#comandas`}>registrar o recebimento</Link>.</p>
-        </> : <p><Link href={settings}>Cadastre a conta Pix do estabelecimento</Link> para gerar o código.</p>}
-      </section>
-      <section>
-        <h3>Receber por cartão</h3>
-        {cards?.account && canUseCards ? <form action={cardCheckout.bind(null, shop, receipt)}>
-          {cards.account.sandbox && <p>Ambiente de teste. O pagamento de teste não baixa o saldo da comanda.</p>}
-          <p>Use cartão se ainda não enviou um código Pix para este saldo.</p>
-          <SubmitButton>Gerar link de pagamento por cartão</SubmitButton>
-        </form> : <p><Link href={settings}>Configurar provedor de cartão</Link></p>}
-      </section>
+          <form action={confirm.bind(null, shop, receipt, balance, "pix")}><SubmitButton tone="keep">Confirmar recebimento</SubmitButton></form>
+        </> : <p><Link href={settings}>Configurar Pix do estabelecimento</Link></p>}
+      </details>
+      {(["debit", "credit"] as const).map((method) => <details name="order-payment-method" key={method}>
+        <summary className="secondary">{method === "debit" ? "Débito" : "Crédito"}</summary>
+        <p>Valor para digitar na maquininha: <strong>{bookingCurrency.format(balance / 100)}</strong></p>
+        <form action={confirm.bind(null, shop, receipt, balance, method)}><SubmitButton tone="keep">Confirmar pagamento</SubmitButton></form>
+        {cards?.account && canUseCards && <form action={cardCheckout.bind(null, shop, receipt)}><SubmitButton>Gerar link de cartão</SubmitButton></form>}
+      </details>)}
+      <details name="order-payment-method"><summary className="secondary">Dinheiro</summary>
+        <p>Total a receber: <strong>{bookingCurrency.format(balance / 100)}</strong></p>
+        <form className="account-form" action={confirm.bind(null, shop, receipt, balance, "cash")}><CashReceived total={balance} /></form>
+      </details>
     </> : <p>Comanda quitada.</p>}
   </div>;
 }

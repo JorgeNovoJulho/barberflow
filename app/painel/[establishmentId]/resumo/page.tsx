@@ -80,7 +80,7 @@ export default async function DashboardPage({ params, searchParams }: {
   const path = `/painel/${shop}/resumo`;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path + "?periodo=" + selected.days }));
-  const [shopResult, report, notificationResult, openSalesResult, cardSalesResult, newOrdersResult] = await Promise.all([
+  const [shopResult, report, notificationResult, openSalesResult, cardSalesResult, newOrdersResult, orderReceipts] = await Promise.all([
     supabase.from("barberflow_establishments").select("name,profile_details").eq("id", shop).maybeSingle(),
     supabase.rpc("barberflow_dashboard", { shop, period_days: selected.days }),
     supabase.rpc("barberflow_booking_notifications", { shop }),
@@ -88,6 +88,7 @@ export default async function DashboardPage({ params, searchParams }: {
     supabase.rpc("barberflow_counter_report", { shop_id:shop,period:"dia",item_filter:"ambos",page_number:0 }),
     supabase.from("barberflow_showcase_orders").select("id", { count: "exact", head: true })
       .eq("establishment_id", shop).eq("status", "pending").gt("expires_at", new Date().toISOString()),
+    supabase.rpc("barberflow_today_order_receipts", { shop }),
   ]);
   if (shopResult.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!shopResult.data) notFound();
@@ -154,7 +155,8 @@ export default async function DashboardPage({ params, searchParams }: {
       </Link>
       <Link className="card checkout-shortcut checkout-shortcut-card" href={checkout+"?aba=fechamento#pagamentos-cartao"}>
         <strong>Pagamentos em cartão hoje <span aria-hidden="true">→</span></strong>
-        <span>{cardSales ? `Débito ${money(cardSales.debit)} · Crédito ${money(cardSales.credit)}` : "Consultar pagamentos"}</span>
+        <span>{cardSales ? `Débito ${money(cardSales.debit + Number(orderReceipts.data?.debit ?? 0))} · Crédito ${money(cardSales.credit + Number(orderReceipts.data?.credit ?? 0))}` : "Consultar pagamentos"}</span>
+        {cardSales && orderReceipts.data && <span>Pix e dinheiro hoje {money(cardSales.pix + Number(orderReceipts.data.pix))}</span>}
       </Link>
       <section className="card checkout-shortcut checkout-shortcut-orders">
         <strong>Novos pedidos da vitrine</strong>
