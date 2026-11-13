@@ -510,3 +510,4 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 
 .agenda-stack[data-state="cancelled"] > summary { background: #ffebef; color: #891b34; }
 .agenda-stack[data-state="no_show"] > summary { background: #fff0b8; color: #654600; }
+.agenda-stack[data-state="completed"] > summary { background: #e4f7ed; color: #18573a; }
