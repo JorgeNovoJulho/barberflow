@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
       if (next === "/nova-senha") return NextResponse.redirect(new URL(next, authOrigin()));
       if (chosen) {
         jar.delete("bf_google_signup");
-        const initialized = await supabase.rpc("barberflow_initialize_google_account", { chosen_kind: chosen });
+        const referral = jar.get("bf_google_referral")?.value;
+        jar.delete("bf_google_referral");
+        const initialized = referral ? await supabase.rpc("barberflow_initialize_google_referral", { chosen_kind: chosen, referral })
+          : await supabase.rpc("barberflow_initialize_google_account", { chosen_kind: chosen });
         if (initialized.error) {
           await supabase.auth.signOut({ scope: "local" });
           return googleError();

@@ -4,7 +4,7 @@ import { supabaseServer } from "../../lib/supabase";
 const tabs = [
   ["/gestao-master", "Landing Page"], ["/gestao-master/assinaturas", "Assinaturas"],
   ["/gestao-master/avaliacoes", "Moderação"], ["/gestao-master/usuarios", "Contas e Usuários"],
-  ["/gestao-master/financeiro", "Financeiro"],
+  ["/gestao-master/financeiro", "Financeiro"], ["/gestao-master/divulgadores", "Divulgadores"],
 ];
 
 export async function MasterTabs({ current }: { current: string }) {

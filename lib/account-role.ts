@@ -14,6 +14,12 @@ export async function afterLogin(client: NonNullable<Awaited<ReturnType<typeof s
     await client.auth.signOut({ scope: "local" });
     return "/login?estado=credenciais";
   }
+  if (user?.app_metadata.barberflow_promoter === true) {
+    const { data } = await client.rpc("barberflow_promoter_access");
+    if (data) return "/divulgador";
+    await client.auth.signOut({ scope: "local" });
+    return "/login?estado=credenciais";
+  }
   const role = await client.rpc("barberflow_account_kind");
   if (/^\/estabelecimento\/[a-z0-9-]+\/agendar(?:\?|$)/.test(next) || /^\/minhas-compras(?:\?|$)/.test(next)) return next;
   if (role.data === "cliente") return "/cliente";

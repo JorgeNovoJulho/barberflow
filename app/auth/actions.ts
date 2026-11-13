@@ -55,7 +55,8 @@ export async function signUp(data: FormData) {
   const password = value(data, "password");
   const name = value(data, "name").trim();
   const account = value(data, "account");
-  const back = (status: string): never => redirect("/cadastro?" + new URLSearchParams({ next, estado: status, tipo: account }));
+  const ref = value(data, "ref");
+  const back = (status: string): never => redirect("/cadastro?" + new URLSearchParams({ next, estado: status, tipo: account, ref }));
   const policies = policyLinks();
   if (!policies && !localTestSignup()) return back("indisponivel");
   if (!name || !["barbearia", "cliente"].includes(account) || (policies && value(data, "terms") !== "on")) return back("campos");
@@ -67,7 +68,7 @@ export async function signUp(data: FormData) {
     email: value(data, "email").trim(),
     password,
     options: {
-      data: { full_name: name, account_intent: account },
+      data: { full_name: name, account_intent: account, referral_code: /^[A-Z0-9]{12}$/.test(ref) ? ref : undefined },
       emailRedirectTo: callback(next),
     },
   });
@@ -99,6 +100,10 @@ export async function signUpGoogle(chosen: string, form: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback(next), queryParams: { prompt: "select_account" } } });
   if (error || !data.url) redirect(back + "&estado=google");
   (await cookies()).set("bf_google_signup", kind, { httpOnly: true, sameSite: "lax", secure: authOrigin().startsWith("https:"), path: "/", maxAge: 600 });
+  const referral = value(form, "ref");
+  const jar = await cookies();
+  jar.delete("bf_google_referral");
+  if (/^[A-Z0-9]{12}$/.test(referral)) jar.set("bf_google_referral", referral, { httpOnly: true, sameSite: "lax", secure: authOrigin().startsWith("https:"), path: "/", maxAge: 600 });
   redirect(data.url);
 }
 

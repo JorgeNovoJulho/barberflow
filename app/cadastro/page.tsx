@@ -4,18 +4,20 @@ import { accountKind } from "../../lib/account-role";
 import { signUp, signUpGoogle } from "../auth/actions";
 import { localPath, localTestSignup, policyLinks } from "../../lib/auth-path";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ estado?: string; erro?: string; next?: string; tipo?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ estado?: string; erro?: string; next?: string; tipo?: string; ref?: string }> }) {
   const params = await searchParams;
   const next = localPath(params.next);
   const policies = policyLinks();
   const testSignup = localTestSignup();
+  const ref = /^[A-Z0-9]{12}$/.test(params.ref ?? "") ? params.ref : undefined;
   const kind = accountKind(params.tipo);
   const choices = <nav className="account-kind" aria-label="Tipo de conta">
-    <Link className="primary" aria-current={kind === "cliente" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "cliente", next } }}>Sou cliente</Link>
-    <Link className="primary" aria-current={kind === "barbearia" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "barbearia", next } }}>Sou profissional</Link>
+    <Link className="primary" aria-current={kind === "cliente" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "cliente", next, ref } }}>Sou cliente</Link>
+    <Link className="primary" aria-current={kind === "barbearia" ? "page" : undefined} href={{ pathname: "/cadastro", query: { tipo: "barbearia", next, ref } }}>Sou profissional</Link>
   </nav>;
   if (!kind) return <section className="container section"><div className="card account-card"><h1>Crie sua conta</h1><p>Escolha como você quer usar o TOP BARBER.</p>{choices}<Link href="/login">Já tenho conta</Link></div></section>;
   return <AccountForm before={choices} title="Crie sua conta" description="Escolha como você quer usar o TOP BARBER." status={params.estado ?? params.erro} action={signUp} submit="Criar conta" alternateSubmit={<button type="submit" className="secondary" formAction={signUpGoogle.bind(null, kind)} formNoValidate disabled={!policies && !testSignup}>Criar conta com Google</button>} next={next} disabled={!policies && !testSignup} links={<Link href={{ pathname: "/login", query: { next } }}>Já tenho conta</Link>}>
+      <input type="hidden" name="ref" value={ref ?? ""} />
       <input type="hidden" name="account" value={kind} />
       <label>Nome completo <input name="name" autoComplete="name" required maxLength={120} /></label>
       <Email /><Password isNew />

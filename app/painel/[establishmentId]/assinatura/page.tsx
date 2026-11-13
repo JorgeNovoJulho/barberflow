@@ -61,7 +61,10 @@ export default async function Subscription({ params, searchParams }: {
   const preferred = subscription.data?.preferred_period as PlanPeriod | undefined;
   const preferredPlan = subscription.data?.preferred_plan;
   const defaultPlan = isPlanTier(preferredPlan) ? preferredPlan : isPlanTier(current.data?.plan) ? current.data.plan : "pro";
-  const prices = settings.data;
+  const promoter = access.data?.promoter === true;
+  const promoterFree = access.data?.promoter_free === true;
+  const prices = settings.data && promoter && access.data?.promoter_half
+    ? { ...settings.data, premium_monthly_cents: Math.ceil(settings.data.premium_monthly_cents / 2) } : settings.data;
   const supportNumber = prices?.support_whatsapp || subscriptionSupportNumber;
   const supportLink = "https://wa.me/" + supportNumber + "?" + new URLSearchParams({ text: subscriptionSupportMessage });
 
@@ -115,18 +118,19 @@ export default async function Subscription({ params, searchParams }: {
         {!pixReady && <p role="status">O Pix está temporariamente indisponível. Entre em contato com o suporte se precisar de ajuda.</p>}
         <form className="account-form" action={issueSubscriptionPix.bind(null, shop)}>
           <div className="subscription-plans">
-            {tiers.map((tier) => <fieldset key={tier} className="card subscription-plan" data-tier={tier}>
+            {tiers.filter((tier) => !promoter || tier === "premium").map((tier) => <fieldset key={tier} className="card subscription-plan" data-tier={tier}>
               <legend>{tier === "premium" && <span aria-hidden="true">♛ </span>}{planTiers[tier].name}</legend>
               <ul>{planTiers[tier].limits.map((limit) => <li key={limit}>{limit}</li>)}</ul>
-              {periods.map((period) => <label key={period} className="subscription-option">
+              {periods.filter((period) => !promoter || period === "monthly").map((period) => <label key={period} className="subscription-option">
                 <input type="radio" name="option" value={tier + ":" + period} required
-                  defaultChecked={tier === defaultPlan && period === (preferred ?? "monthly")} />
+                  defaultChecked={promoter || tier === defaultPlan && period === (preferred ?? "monthly")} />
                 <span>{planNames[period]} · <strong>{planPrice(prices, tier, period)}</strong></span>
               </label>)}
             </fieldset>)}
           </div>
           <div className="subscription-actions">
-            <SubmitButton disabled={!pixReady}>Gerar Pix do plano selecionado</SubmitButton>
+            {promoterFree && <p>Seu acesso está isento de cobrança neste momento.</p>}
+            <SubmitButton disabled={!pixReady || promoterFree}>Gerar Pix do plano selecionado</SubmitButton>
             <a className="secondary subscription-whatsapp" href={supportLink} target="_blank" rel="noopener noreferrer">
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
                 <path d="M20 11.5a8 8 0 0 1-12 7L4 20l1.3-4A8 8 0 1 1 20 11.5Z" />
