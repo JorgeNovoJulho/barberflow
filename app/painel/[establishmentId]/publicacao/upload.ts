@@ -10,7 +10,7 @@ export async function uploadProfileMedia(shop: string, slot: string, form: FormD
     && !(slot.startsWith("professional-") && isUuid(slot.slice("professional-".length))))) return null;
   const video = slot === "video";
   const file = form.get("media");
-  if (!(file instanceof File) || !file.size || file.size > (video ? productVideoLimit : productImageLimit)
+  if (!(file instanceof File) || !file.size || file.size > (video ? productVideoLimit : slot.startsWith("gallery-") ? 10 * 1024 * 1024 : productImageLimit)
     || !(video ? productVideoTypes : productImageTypes).includes(file.type)) return null;
 
   const supabase = await supabaseServer();

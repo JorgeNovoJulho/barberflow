@@ -53,6 +53,8 @@ export async function savePublication(shop: string, form: FormData) {
     }).eq("id", shop).eq("owner_id", user.id).select("id").maybeSingle();
   revalidatePath(path);
   if (data) {
+    revalidatePath(path + "/previa");
+    if (slug) revalidatePath(`/estabelecimento/${slug}`);
     revalidatePath("/estabelecimentos");
     revalidatePath("/estabelecimento/[slug]", "page");
   }

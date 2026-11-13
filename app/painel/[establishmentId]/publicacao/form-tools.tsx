@@ -100,7 +100,7 @@ export function CopyHours({ day }: { day: number }) {
 }
 
 export function GalleryEditor({ shop, initial }: { shop: string; initial: string[] }) {
-  const input = useRef<HTMLTextAreaElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   const [links, setLinks] = useState(initial);
   const [uploading, setUploading] = useState(false);
   function update(index: number, nextIndex?: number) {
@@ -111,10 +111,7 @@ export function GalleryEditor({ shop, initial }: { shop: string; initial: string
     setLinks(next);
   }
   return <>
-    <label>Galeria do local (até {profileGalleryLimit} links HTTPS, um por linha)
-      <textarea ref={input} name="gallery" rows={4} defaultValue={initial.join("\n")} readOnly={uploading}
-        onChange={(event) => setLinks(event.currentTarget.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean))} />
-    </label>
+    <p>Galeria do local · até {profileGalleryLimit} fotos, 10 MB por arquivo</p><input type="hidden" ref={input} name="gallery" defaultValue={initial.join("\n")} />
     <ProfileMediaUpload shop={shop} target="gallery" onGalleryChange={setLinks} onPendingChange={setUploading} />
     {links.length > 0 && <ol className="cards">{links.slice(0, profileGalleryLimit).map((link, index) => <li className="card" key={index}>
       {httpsUrl(link) ? <img className="landing-card-photo" src={link} loading="lazy" alt={`Foto ${index + 1} da galeria`} /> : <p>Link inválido.</p>}
@@ -153,6 +150,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
 }) {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [preview, setPreview] = useState(() => httpsUrl(initialPreview));
   const video = target === "video";
   return <div>
@@ -174,6 +172,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
           setPending(true);
           onPendingChange?.(true);
           setStatus("Enviando…");
+          setProgress({ done: 0, total: files.length });
           let saved = 0;
           try {
             for (const file of files) {
@@ -189,8 +188,10 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
               if (target === "gallery") {
                 links.push(url);
                 destination.value = links.join("\n");
+                onGalleryChange?.([...links]);
               } else { destination.value = url; setPreview(url); }
               saved++;
+              setProgress({ done: saved, total: files.length });
             }
           } catch {
             // The feedback below keeps successfully uploaded files in the form.
@@ -200,10 +201,11 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
             onPendingChange?.(false);
             if (target === "gallery") onGalleryChange?.(links);
             setStatus(saved === files.length ? (target === "photo" ? "Foto enviada. Salve o profissional para aplicar." : "Arquivo enviado. Salve a publicação para aplicar.")
-              : `${saved} de ${files.length} enviados. Confira o formato e o limite de ${video ? 20 : 5} MB por arquivo.`);
+              : `${saved} de ${files.length} enviados. Confira o formato e o limite de ${video ? 20 : target === "gallery" ? 10 : 5} MB por arquivo.`);
           }
         }} />
     </label>
+    {target === "gallery" && pending && <progress aria-label="Progresso do envio da galeria" value={progress.done} max={progress.total} />}
     {preview && (video ? <video className="publication-media-thumb" src={preview} controls preload="metadata" />
       : <img className="publication-media-thumb" src={preview} alt={target === "logo" ? "Prévia do logotipo" : "Prévia da capa"} />)}
     <p role="status">{status}</p>
