@@ -46,3 +46,29 @@
 @media (prefers-reduced-motion: reduce) {
   .login-scene::before { animation: none; }
 }
+
+/* Keep the login controls usable when the form has little inline space. */
+.login-scene .account-links > a,
+.login-scene .account-links > details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+
+.login-scene .account-links > details {
+  flex-basis: 100%;
+  min-inline-size: 0;
+}
+
+.login-scene .account-links > details > summary {
+  display: list-item;
+  align-content: center;
+}
+
+.login-scene .finance-password-input {
+  flex-wrap: wrap;
+}
+
+.login-scene .finance-password-input > input {
+  flex: 1 1 10rem;
+}
