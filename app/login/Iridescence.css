@@ -13,36 +13,35 @@
   height: 100%;
 }
 
-
-
-.login-scene { position: relative; isolation: isolate; background: #e7e9fb; }
-.login-scene > .login-iridescence { position: absolute; inset: 0; z-index: -1; }
-@media (prefers-reduced-motion: reduce) {
-  .login-scene > .login-iridescence { display: none; }
-}
-
 .login-scene {
-  background: #e7e9fb;
+  position: relative;
+  isolation: isolate;
   overflow: hidden;
+  background: #171b45;
 }
 .login-scene::before {
   content: "";
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  inset: -28%;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 18% 25%, #a9b6ff 0, transparent 58%),
-    radial-gradient(ellipse at 83% 72%, #d6a8ed 0, transparent 60%),
-    linear-gradient(120deg, #d9edff, #efdcff 52%, #c4e9ec);
-  background-size: 145% 145%;
-  animation: login-background-flow 14s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 24% 32%, #6b99ff, transparent 48%),
+    radial-gradient(ellipse at 76% 64%, #bb68f5, transparent 48%),
+    conic-gradient(from 30deg, #172852, #277f98, #593997, #172852);
+  animation: login-background-flow 7s ease-in-out infinite alternate;
 }
-.login-scene > .login-iridescence { z-index: 1; pointer-events: none; }
-.login-scene > :not(.login-iridescence) { position: relative; z-index: 2; }
+.login-scene > .login-iridescence {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: .65;
+  pointer-events: none;
+}
+.login-scene > .section { position: relative; z-index: 2; }
+
 @keyframes login-background-flow {
-  from { background-position: 0% 25%; }
-  to { background-position: 100% 75%; }
+  from { transform: translate3d(-12%, -7%, 0) rotate(-12deg); }
+  to { transform: translate3d(12%, 7%, 0) rotate(12deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .login-scene::before { animation: none; }
