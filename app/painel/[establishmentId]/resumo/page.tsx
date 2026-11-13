@@ -81,7 +81,7 @@ export default async function DashboardPage({ params, searchParams }: {
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path + "?periodo=" + selected.days }));
   const [shopResult, report, notificationResult, openSalesResult, cardSalesResult, newOrdersResult] = await Promise.all([
-    supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle(),
+    supabase.from("barberflow_establishments").select("name,profile_details").eq("id", shop).maybeSingle(),
     supabase.rpc("barberflow_dashboard", { shop, period_days: selected.days }),
     supabase.rpc("barberflow_booking_notifications", { shop }),
     supabase.rpc("barberflow_counter_open", { shop_id:shop,page_number:0 }),
@@ -91,6 +91,7 @@ export default async function DashboardPage({ params, searchParams }: {
   ]);
   if (shopResult.error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!shopResult.data) notFound();
+  const logo = httpsUrl(shopResult.data.profile_details?.logo);
   const openSales = openSalesResult.data as OpenSales|null;
   const cardSales = cardSalesResult.data as Closing|null;
   const checkout = `/painel/${shop}/caixa`;
@@ -137,7 +138,10 @@ export default async function DashboardPage({ params, searchParams }: {
       <Link href={`/painel/${shop}/clientes`}>Clientes</Link>
     </nav>
     <header className="dashboard-header">
-      <div><p className="eyebrow">{shopResult.data.name}</p><h1>Visão geral</h1></div>
+      <div className="overview-business-heading">
+        {logo && <img src={logo} alt="" width={72} height={72} decoding="async" />}
+        <div><p className="eyebrow">{shopResult.data.name}</p><h1>Visão geral</h1></div>
+      </div>
       <div className="account-links dashboard-actions"><Link className="primary dashboard-action-agenda" href={`/painel/${shop}/agenda?novo=1#novo`}>
         <span aria-hidden="true">+</span> Novo agendamento
       </Link><Link className="primary dashboard-action-sale" href={checkout+"?aba=nova"}>Criar comanda</Link><Link className="primary dashboard-action-close" href={checkout+"?aba=fechamento"}>Fechamento</Link></div>

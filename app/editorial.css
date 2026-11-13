@@ -477,3 +477,14 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 
 .professional-agenda { margin-block: 1.25rem; border-block-start: .25rem solid #6241b4; }
 .professional-agenda h2 { margin-block: 0 .85rem; }
+
+.overview-business-heading { display: flex; align-items: center; gap: clamp(.65rem, 2vw, 1rem); min-width: 0; }
+.overview-business-heading img {
+  width: clamp(3rem, 8vw, 4.5rem);
+  height: auto;
+  aspect-ratio: 1;
+  flex: none;
+  object-fit: cover;
+  border-radius: .85rem;
+}
+.overview-business-heading > div { min-width: 0; overflow-wrap: anywhere; }
