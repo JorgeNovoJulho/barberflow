@@ -150,6 +150,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
             })}
           </div>}
           {accessByProfessional.has(professional.id) && <p>Login profissional <strong style={{ overflowWrap: "anywhere" }}>{accessByProfessional.get(professional.id)?.login}</strong></p>}
+          {!delegated && <Link className="secondary" href={`/painel/${shop}/profissionais/agenda?profissional=${professional.id}`}>Ver agendamentos</Link>}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
