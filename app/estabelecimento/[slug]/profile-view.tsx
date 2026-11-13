@@ -1,3 +1,4 @@
+import { VisiblePageRefresh } from "../../visible-page-refresh";
 import { BusinessHeader } from "./business-header";
 import { serviceMediaUrls } from "../../../lib/service-media";
 import { ServiceMedia } from "../../service-media";
@@ -111,9 +112,10 @@ export async function ProfileView({ profile, professionalShop, previewShop, denu
       <h2>Vídeo do estabelecimento</h2>
       <video className="product-media-preview" src={video} controls playsInline preload="metadata" />
     </section>}
+    <VisiblePageRefresh pauseWithin="form, dialog" />
     {!!gallery.length && <section className="profile-section" id="fotos">
       <h2>Fotos do local</h2>
-      <ProfileGallery images={gallery} title={profile.name} />
+      <ProfileGallery key={JSON.stringify(gallery)} images={gallery} title={profile.name} />
     </section>}
     {!!professionals.length && <section className="profile-section" id="profissionais">
       <h2>Profissionais</h2>

@@ -1,6 +1,6 @@
 import { appointmentAvatars, ClientAvatar } from "../../../painel/[establishmentId]/appointment-card";
 import Link from "next/link";
-import { AgendaRefresh } from "./agenda-refresh";
+import { VisiblePageRefresh } from "../../../visible-page-refresh";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isUuid } from "../../../../lib/establishments";
@@ -124,7 +124,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <strong>A receber {money(panel.daily.product_commission)}</strong></section>
     </div>
     <section className="card professional-agenda" id="agenda-dia" aria-labelledby="professional-agenda-title">
-      <AgendaRefresh />
+      <VisiblePageRefresh pauseWithin="#agenda-dia form" />
       <h2 id="professional-agenda-title">Agendamentos · {appointments.length}</h2>
       <nav className="account-links" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
         <Link key={key} className="secondary" aria-current={agendaPeriod === key ? "page" : undefined}

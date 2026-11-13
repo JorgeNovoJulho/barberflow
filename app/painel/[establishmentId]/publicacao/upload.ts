@@ -6,7 +6,7 @@ import { productImageLimit, productImageTypes, productVideoLimit, productVideoTy
 import { supabaseServer } from "../../../../lib/supabase";
 
 export async function uploadProfileMedia(shop: string, slot: string, form: FormData) {
-  if (!isUuid(shop) || (!/^(logo|cover|cover-studio|video|gallery-[1-8])$/.test(slot)
+  if (!isUuid(shop) || (!/^(logo|cover|cover-studio|video|gallery-(?:[1-9]|1[0-6]))$/.test(slot)
     && !(slot.startsWith("professional-") && isUuid(slot.slice("professional-".length))))) return null;
   const video = slot === "video";
   const file = form.get("media");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { businessDays, httpsUrl, publicProfileColor, publicProfileColors } from "../../../../lib/business-profile";
+import { businessDays, profileGalleryLimit, httpsUrl, publicProfileColor, publicProfileColors } from "../../../../lib/business-profile";
 import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 import { uploadProfileMedia } from "./upload";
 
@@ -111,12 +111,12 @@ export function GalleryEditor({ shop, initial }: { shop: string; initial: string
     setLinks(next);
   }
   return <>
-    <label>Galeria do local (até 8 links HTTPS, um por linha)
+    <label>Galeria do local (até {profileGalleryLimit} links HTTPS, um por linha)
       <textarea ref={input} name="gallery" rows={4} defaultValue={initial.join("\n")} readOnly={uploading}
         onChange={(event) => setLinks(event.currentTarget.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean))} />
     </label>
     <ProfileMediaUpload shop={shop} target="gallery" onGalleryChange={setLinks} onPendingChange={setUploading} />
-    {links.length > 0 && <ol className="cards">{links.slice(0, 8).map((link, index) => <li className="card" key={index}>
+    {links.length > 0 && <ol className="cards">{links.slice(0, profileGalleryLimit).map((link, index) => <li className="card" key={index}>
       {httpsUrl(link) ? <img className="landing-card-photo" src={link} loading="lazy" alt={`Foto ${index + 1} da galeria`} /> : <p>Link inválido.</p>}
       <div className="account-links">
         <button type="button" className="secondary" disabled={uploading || index === 0} onClick={() => update(index, index - 1)}>Mover para a esquerda</button>
@@ -166,8 +166,8 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
           picker.value = "";
           if (!destination || !files.length) return;
           const links = target === "gallery" ? destination.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean) : [];
-          if (links.length + files.length > 8) {
-            setStatus("A galeria aceita até oito fotos.");
+          if (links.length + files.length > profileGalleryLimit) {
+            setStatus(`A galeria aceita até ${profileGalleryLimit} fotos.`);
             return;
           }
           picker.dataset.mediaPending = "true";
@@ -180,7 +180,7 @@ export function ProfileMediaUpload({ shop, target, professional, onGalleryChange
               const data = new FormData();
               data.set("media", file);
               const slot = target === "gallery"
-                ? Array.from({ length: 8 }, (_, index) => `gallery-${index + 1}`)
+                ? Array.from({ length: profileGalleryLimit }, (_, index) => `gallery-${index + 1}`)
                   .find((candidate) => !links.some((link) => link.split("?")[0].endsWith(`/${shop}/${candidate}`)))
                 : target === "photo" ? `professional-${professional}` : target;
               if (!slot) break;

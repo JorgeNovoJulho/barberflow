@@ -1,3 +1,4 @@
+export const profileGalleryLimit = 16;
 import { parseCoordinates } from "./directory-distance";
 
 export const businessDays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
@@ -36,7 +37,7 @@ export function readBusinessProfile(value: unknown): BusinessProfile {
     const entry = record[key];
     if (typeof entry === "string") result[key] = entry;
   }
-  if (Array.isArray(record.gallery)) result.gallery = record.gallery.filter((entry): entry is string => typeof entry === "string").slice(0, 8);
+  if (Array.isArray(record.gallery)) result.gallery = record.gallery.filter((entry): entry is string => typeof entry === "string").slice(0, profileGalleryLimit);
   if (record.hours && typeof record.hours === "object") {
     const hours = record.hours as Record<string, unknown>;
     for (const [day] of businessDays.entries()) {
@@ -105,7 +106,7 @@ export function profileFromForm(form: FormData): BusinessProfile | null {
     || (profile.tiktok && !socialUrl(profile.tiktok, ["tiktok.com"]))
     || (profile.youtube && !socialUrl(profile.youtube, ["youtube.com", "youtu.be"]))) return null;
   profile.gallery = read("gallery").split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
-  if (profile.gallery.length > 8 || profile.gallery.some((value) => value.length > 500 || !httpsUrl(value))) return null;
+  if (profile.gallery.length > profileGalleryLimit || profile.gallery.some((value) => value.length > 500 || !httpsUrl(value))) return null;
   profile.region = profile.region?.toUpperCase();
   profile.hours = {};
   const clock = /^(?:[01]\d|2[0-3]):[0-5]\d$/;

@@ -3,13 +3,13 @@
 import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export function AgendaRefresh() {
+export function VisiblePageRefresh({ pauseWithin }: { pauseWithin?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     function refresh() {
-      if (!document.hidden && !pending && !document.activeElement?.closest("#agenda-dia form")) {
+      if (!document.hidden && !pending && (!pauseWithin || !document.activeElement?.closest(pauseWithin))) {
         startTransition(() => router.refresh());
       }
     }
@@ -19,7 +19,7 @@ export function AgendaRefresh() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [router, pending]);
+  }, [router, pending, pauseWithin]);
 
   return null;
 }
