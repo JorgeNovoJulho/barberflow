@@ -74,7 +74,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
     const refresh = () => {
       if (document.visibilityState === "visible") setRevision((value) => value + 1);
     };
-    const timer = window.setInterval(refresh, 30_000);
+    const timer = window.setInterval(refresh, 3_000);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.clearInterval(timer);

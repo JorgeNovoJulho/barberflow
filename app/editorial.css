@@ -488,3 +488,22 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
   border-radius: .85rem;
 }
 .overview-business-heading > div { min-width: 0; overflow-wrap: anywhere; }
+
+.agenda-stack { margin-block: .4rem; }
+.agenda-stack > summary { cursor: pointer; padding: .65rem; border-radius: .6rem; background: #e3ecff; }
+.agenda-stack-close { display: none; }
+.agenda-stack[open] > summary .agenda-stack-close { display: inline; float: right; font-weight: 800; }
+.professional-appointments > .card[data-state="cancelled"] { background: #ffebef; border-color: #d52c45; }
+.professional-appointments > .card[data-state="no_show"] { background: #fff5d5; border-color: #dfa900; }
+.professional-appointments > .card[data-state="completed"] { background: #e4f7ed; border-color: #27855a; }
+.professional-appointments > .card:is([data-state="scheduled"], [data-state="pending"]) { background: #e8f2ff; border-color: #3979bd; }
+.team-booking > summary { color: #14604d; background: #dcf5e9; padding: .65rem; border-radius: .6rem; }
+
+.professional-appointments .finance-entry-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+.professional-appointments .finance-entry-actions :is(button, summary, a.primary) { width: 100%; min-height: 2.75rem; text-align: center; }
+.professional-appointments .finance-entry-actions :is(button.primary, a.primary) { background: #16634e; color: white; }
+.agenda-stack { position: relative; }
+.agenda-stack[open] { z-index: 2; }
+@media (min-width: 48rem) {
+  .agenda-stack[open] > ul { position: absolute; inset-inline: 0; margin: .25rem 0 0; }
+}

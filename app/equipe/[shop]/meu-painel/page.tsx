@@ -9,7 +9,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 
 const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Mensal" };
-type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; booked_by: string | null };
+type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; cancellation_reason?: string | null; booked_by: string | null };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
   available: boolean; day_started?: boolean; services: string[]; service_rate: number; product_rate: number;
@@ -131,18 +131,17 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
         : !appointments.length && <p>Nenhum agendamento neste período.</p>}
-      <ul className="professional-appointments">{visibleAppointments.map((entry, index) => {
+      {(() => { const renderCard = (entry: Appointment, index: number) => {
         const status = ({ scheduled: "Em aberto", pending: "Em aberto", completed: "Concluído", cancelled: "Cancelado", no_show: "Falta" } as Record<string, string>)[entry.state] ?? entry.state;
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
-        return <li className="card team-professional-card" data-tone={index % 4} key={entry.id}>
+        return <li className="card team-professional-card" data-tone={index % 4} data-state={entry.state} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
           <span className="professional-appointment-status" data-state={entry.state}>{status}</span>
           <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>{entry.phone}</a>}
+          {entry.state === "cancelled" && <p><strong>Motivo do cancelamento</strong><br />{entry.cancellation_reason ?? "Motivo não informado."}</p>}
           {entry.state === "completed" && <Link className="secondary" href={`/equipe/${shop}/comanda/${entry.id}`}>Ver comanda</Link>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
-            {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id)) ? <strong>Presença confirmada</strong>
-              : <form action={checkIn.bind(null, shop, entry.id, false)}><SubmitButton>Confirmar presença</SubmitButton></form>)}
             {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id))
               ? <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>
               : <form action={checkIn.bind(null, shop, entry.id, true)}><SubmitButton>Abrir comanda</SubmitButton></form>)}
@@ -154,7 +153,21 @@ export default async function ProfessionalPanel({ params, searchParams }: {
             </form></details>
           </div>}
         </li>;
-      })}</ul>
+      };
+      if (agendaPeriod === "dia") return <ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul>;
+      const groups = new Map<string, Appointment[]>()
+      for (const entry of visibleAppointments) {
+        const date = entry.starts.slice(0, 10);
+        groups.set(date, [...(groups.get(date) ?? []), entry]);
+      };
+      return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
+        <section key={date}><h3>{dayLabel(date)}</h3>
+          {entries.map((entry, index) => <details className="agenda-stack" key={entry.id}>
+            <summary>{entry.starts.slice(11, 16)} · {entry.client}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
+            <ul className="professional-appointments">{renderCard(entry, index)}</ul>
+          </details>)}
+        </section>)}</div>;
+      })()}
       {page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
       {(page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
     </section>

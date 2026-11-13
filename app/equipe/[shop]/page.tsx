@@ -102,8 +102,8 @@ export default async function TeamAgenda({ params, searchParams }: {
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
       </details>}
-    {agenda.error ? <p role="alert">Não foi possível consultar a agenda.</p> : entries.length ? <ul className="cards">
-      {entries.map((item) => <li className="card" key={item.id}>
+    {agenda.error ? <p role="alert">Não foi possível consultar a agenda.</p> : entries.length ? <ul className="professional-appointments">
+      {entries.map((item) => <li className="card" data-state={item.state} key={item.id}>
         <h2>{item.kind === "block" ? "Horário bloqueado" : item.service_name}</h2>
         <p>{item.professional_name} · {item.starts_at.slice(11, 16)}–{item.ends_at.slice(11, 16)} · {states[item.state]}</p>
         {item.client_name && <p>{item.client_name}</p>}
@@ -115,7 +115,7 @@ export default async function TeamAgenda({ params, searchParams }: {
           </form>
         </details>}
         {item.can_edit && <div className="account-links">
-          {(item.state === "scheduled" ? [["completed", "Concluir"], ["no_show", "Marcar falta"], ["cancelled", "Cancelar"]]
+          {(item.state === "scheduled" ? [["no_show", "Marcar falta"], ["cancelled", "Cancelar"]]
             : item.state === "pending" ? [["scheduled", "Aprovar"], ["cancelled", "Recusar"]] : []).map(([state, label]) =>
               <form key={state} action={setState.bind(null, shop, item.id, day, state)}><SubmitButton tone={state === "cancelled" && label === "Cancelar" ? "cancel" : undefined}>{label}</SubmitButton></form>)}
         </div>}
