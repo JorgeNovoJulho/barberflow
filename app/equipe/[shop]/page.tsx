@@ -1,5 +1,5 @@
 import { BookingForm } from "../../estabelecimento/[slug]/agendar/booking-form";
-import type { PublicProfile } from "../../../lib/public-booking";
+import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
 import { offsetDay } from "../../../lib/agenda";
 import { PurchaseUpdates } from "../../minhas-compras/purchase-updates";
 import Link from "next/link";
@@ -88,7 +88,10 @@ export default async function TeamAgenda({ params, searchParams }: {
     person.services.push({ id: row.service_id, name: row.service_name, duration_minutes: row.duration_minutes });
     providers.set(person.id, person);
   }
-  const walkInProducts = individual.data ? (await supabase.from("barberflow_products").select("id,name").eq("establishment_id", shop).eq("active", true).is("deleted_at", null).gt("stock", 0).order("name")).data ?? [] : [];
+  const catalog = individual.data ? await supabase.rpc("barberflow_walk_in_products", { shop_id: shop }) : null;
+  const walkInProducts = (catalog?.data ?? []) as { id: string; name: string; description: string | null; price_cents: number }[];
+  const catalogLabel = (item: { name: string; price_cents: number; description?: string | null }) =>
+    [item.name, bookingCurrency.format(item.price_cents / 100), item.description].filter(Boolean).join(" · ");
   return <section className="container section">
     <PurchaseUpdates />
     <Link href={individual.data ? `/equipe/${shop}/meu-painel` : "/painel"}>Voltar ao painel</Link>
@@ -122,12 +125,13 @@ export default async function TeamAgenda({ params, searchParams }: {
       </details>}
     {individual.data && wizard && <details className="card team-booking" id="avulso" open={estado === "avulso" || estado === "falha"}>
       <summary>Avulso</summary>
+      {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
       {estado === "avulso" && <p role="status">Comanda avulsa criada. Abra o caixa para cobrar.</p>}
       <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
         <label>Nome do cliente <input name="name" required maxLength={120} /></label>
         <label>WhatsApp <input name="phone" type="tel" required maxLength={30} /></label>
-        <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
+        <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
         <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>
         <SubmitButton>Criar comanda avulsa</SubmitButton>
       </form>
