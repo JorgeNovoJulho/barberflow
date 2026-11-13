@@ -1,3 +1,5 @@
+import { RatingField } from "../rating-field";
+import { SocialSparks } from "./social-sparks";
 import { PurchaseUpdates } from "../minhas-compras/purchase-updates";
 import { BusinessHeader } from "../estabelecimento/[slug]/business-header";
 import { publicProfile } from "../../lib/public-booking";
@@ -182,7 +184,7 @@ export default async function ClientPage({ searchParams }: {
   const identityUsername = publisher?.slug || username;
   const businessProfile = publisher && view === "perfil";
   const title = businessProfile ? publisher.name : setup ? "Primeiros passos" : collection ? collectionLabels[collection] : shopInfo?.name ?? (view==="perfil-publico" ? profile?.username : ({ perfil:"Meu perfil", pessoas:"Encontrar pessoas", notificacoes:"Notificações", foto:"Publicação", feed:"Meu feed" })[view as "feed"]) ?? "Área do cliente";
-  return <div className="container workspace social-workspace">
+  return <SocialSparks><div className="container workspace social-workspace">
     <PurchaseUpdates interval={5000} />
     <aside className="workspace-rail client-rail">
       <Link className="client-rail-profile" href={feedLink("/cliente?aba=perfil")}>
@@ -317,7 +319,7 @@ export default async function ClientPage({ searchParams }: {
           </form>
         </div>
         {shopInfo.can_review && <form className="account-form panel-form" action={reviewSocialShop.bind(null,shop)}>
-          <label>Avaliação <select name="stars" defaultValue="5">{[0,1,2,3,4,5].map(star=><option key={star} value={star}>{star} estrelas</option>)}</select></label>
+          <RatingField />
           <label>Comentário <textarea name="message" maxLength={500} /></label><button className="secondary">Enviar avaliação</button>
         </form>}
       </div>}
@@ -408,7 +410,7 @@ export default async function ClientPage({ searchParams }: {
         {!photo && <>
           <div className="account-links feed-reactions">
             <form action={changeLike.bind(null, path + "#post-" + post.id, post.id, !!reactions[post.id]?.liked)}>
-              <button className="secondary feed-like-button" aria-pressed={!!reactions[post.id]?.liked}>{reactions[post.id]?.liked ? "♥ Curtido" : "♡ Curtir"}</button>
+              <button data-click-spark className="secondary feed-like-button" aria-pressed={!!reactions[post.id]?.liked}>{reactions[post.id]?.liked ? "♥ Curtido" : "♡ Curtir"}</button>
             </form>
             <Link href={feedLink("/cliente?foto="+post.id)}>Abrir publicação</Link>
           </div>
@@ -418,7 +420,7 @@ export default async function ClientPage({ searchParams }: {
             {(reactions[post.id]?.likes ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todas as curtidas</Link>}
           </details>
           <details open={params.comentarios === post.id}>
-            <summary>Comentar e ver comentários{reactions[post.id] ? ` · ${reactions[post.id].comments}` : ""}</summary>
+            <summary data-click-spark>Comentar e ver comentários{reactions[post.id] ? ` · ${reactions[post.id].comments}` : ""}</summary>
             {reactions[post.id]?.messages.map((comment) => <div className="feed-comment-preview" key={comment.id}><ReactionIdentity name={comment.name} image={links.get(comment.avatar ?? "")} /><p>{comment.body}</p></div>)}
             {(reactions[post.id]?.comments ?? 0) > 5 && <Link href={feedLink("/cliente?foto="+post.id)}>Ver todos os comentários</Link>}
             <CommentForm path={path + "&comentarios=" + post.id + "#post-" + post.id} photo={post.id} parent={null} />
@@ -431,7 +433,7 @@ export default async function ClientPage({ searchParams }: {
       </li>)}</ul>}
       {photo && posts.length>0 && <>
         <p>{likes?.count ?? 0} curtidas</p>
-        <form action={changeLike.bind(null,path,photo,!!liked?.data)}><button className="secondary">{liked?.data ? "Remover curtida" : "Curtir foto"}</button></form>
+        <form action={changeLike.bind(null,path,photo,!!liked?.data)}><button data-click-spark className="secondary">{liked?.data ? "Remover curtida" : "Curtir foto"}</button></form>
         <details className="card panel-form"><summary>Quem curtiu</summary>
           {likerNames.size ? <ul>{likerIds.filter(id=>likerNames.has(id)).map(id=><li key={id}>
             <Link href={feedLink("/cliente?perfil="+id)}>{likerNames.get(id)}</Link>
@@ -441,16 +443,16 @@ export default async function ClientPage({ searchParams }: {
         <CommentForm path={path} photo={photo} parent={null} />
         {comments?.data?.slice(0,25).map(comment=><article className="card panel-form" key={comment.id}>
           <p>{comment.parent && "Resposta · "}{comment.body}</p><Link href={feedLink("/cliente?perfil="+comment.actor)}>Ver perfil de quem comentou</Link>
-          {!comment.parent && <details><summary>Responder</summary><CommentForm path={path} photo={photo} parent={comment.id} /></details>}
+          {!comment.parent && <details><summary data-click-spark>Responder</summary><CommentForm path={path} photo={photo} parent={comment.id} /></details>}
         </article>)}
       </>}
       {!setup && (more || page>0) && <nav className="account-links" aria-label="Paginação">{page>0 && <Link href={url(page-1)}>Anterior</Link>}{more && <Link href={url(page+1)}>Próxima</Link>}</nav>}
     </section>
-  </div>;
+  </div></SocialSparks>;
 }
 
 function CommentForm({path,photo,parent}:{path:string;photo:string;parent:string|null}) {
-  return <form className="account-form panel-form" action={commentPhoto.bind(null,path,photo,parent)}><label>{parent ? "Resposta" : "Comentário"} <textarea name="body" maxLength={500} required /></label><button className="secondary">Publicar</button></form>;
+  return <form className="account-form panel-form" action={commentPhoto.bind(null,path,photo,parent)}><label>{parent ? "Resposta" : "Comentário"} <textarea name="body" maxLength={500} required /></label><button data-click-spark className="secondary">Publicar</button></form>;
 }
 
 function ReactionIdentity({ name, image }: { name: string; image?: string }) {

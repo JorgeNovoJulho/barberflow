@@ -40,9 +40,9 @@ export function GalleryDiscussion({ post, children }: { post: string; children: 
 
   function votes(item: Pick<GalleryComment, "likes" | "dislikes" | "vote">, comment: string | null) {
     return <>
-      <button type="button" className="secondary" disabled={busy} aria-pressed={item.vote === 1}
+      <button data-click-spark type="button" className="secondary" disabled={busy} aria-pressed={item.vote === 1}
         onClick={() => update(() => galleryVote(post, comment, 1))}>Curtir · {item.likes}</button>
-      <button type="button" className="secondary" disabled={busy} aria-pressed={item.vote === -1}
+      <button data-click-spark type="button" className="secondary" disabled={busy} aria-pressed={item.vote === -1}
         onClick={() => update(() => galleryVote(post, comment, -1))}>Negativar · {item.dislikes}</button>
     </>;
   }
@@ -57,7 +57,7 @@ export function GalleryDiscussion({ post, children }: { post: string; children: 
       <p>{comment.body}</p>
       <div className="account-links">
         {votes(comment, comment.id)}
-        {!comment.parent && <button type="button" className="secondary" onClick={() => {
+        {!comment.parent && <button data-click-spark type="button" className="secondary" onClick={() => {
           setReply(comment);
           document.getElementById(field)?.focus();
         }}>Responder</button>}
@@ -70,7 +70,7 @@ export function GalleryDiscussion({ post, children }: { post: string; children: 
           update(() => reportGalleryComment(comment.id, reason), "Denúncia enviada à moderação.", () => form.reset());
         }}>
           <label>Motivo <input name="reason" required minLength={3} maxLength={500} /></label>
-          <button className="secondary" disabled={busy}>Enviar denúncia</button>
+          <button data-click-spark className="secondary" disabled={busy}>Enviar denúncia</button>
         </form>
       </details>
     </article>;
@@ -83,16 +83,16 @@ export function GalleryDiscussion({ post, children }: { post: string; children: 
       {children}
       {feed && <div className="gallery-feed-controls">
         <div className="account-links">{votes(feed, null)}
-          <button className="secondary" type="button" onClick={() => document.getElementById(field)?.focus()}>Comentar</button>
+          <button data-click-spark className="secondary" type="button" onClick={() => document.getElementById(field)?.focus()}>Comentar</button>
         </div>
         <form className="account-form" onSubmit={(event) => {
           event.preventDefault();
           update(() => galleryComment(post, reply?.id ?? null, body), "Comentário publicado.", () => { setBody(""); setReply(null); });
         }}>
-          {reply && <p>Respondendo a {reply.name} <button type="button" className="secondary" onClick={() => setReply(null)}>Cancelar resposta</button></p>}
+          {reply && <p>Respondendo a {reply.name} <button data-click-spark type="button" className="secondary" onClick={() => setReply(null)}>Cancelar resposta</button></p>}
           <label>{reply ? "Sua resposta" : "Seu comentário"} <textarea id={field} maxLength={500} required rows={2} value={body}
             onChange={(event) => setBody(event.target.value)} /></label>
-          <button className="primary" disabled={busy}>Publicar {reply ? "resposta" : "comentário"}</button>
+          <button data-click-spark className="primary" disabled={busy}>Publicar {reply ? "resposta" : "comentário"}</button>
         </form>
       </div>}
       {message && <p role="status">{message}</p>}

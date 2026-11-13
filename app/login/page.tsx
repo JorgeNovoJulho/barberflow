@@ -14,7 +14,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const pendingEmail = params.estado === "email_pendente" ? (await cookies()).get("bf_pending_email")?.value : undefined;
   const next = localPath(params.next);
   return <div className="login-scene">
-    <Iridescence style={{}} className="login-iridescence" color={[0.68, 0.72, 1]} speed={0.45} detail={5} opacity={0.72} resolution={0.55} mouseReact={false} clickSwirl={false} />
+    <Iridescence style={{}} className="login-iridescence" color={[128 / 255, 153 / 255, 204 / 255]} speed={1} detail={8} resolution={0.75} mouseReact clickSwirl />
     <AccountForm title="Entrar" description="Acesse sua conta TOP BARBER." status={params.estado ?? params.erro} notice={pendingEmail && <>E-mail cadastrado: <strong>{pendingEmail}</strong>.</>} action={signIn} submit="Entrar" next={next} links={<><Link href="/recuperar-senha">Esqueci minha senha</Link><Link href={{ pathname: "/cadastro", query: { next } }}>Criar conta</Link>
     <details>
       <summary>Reenviar confirmação de e-mail</summary>

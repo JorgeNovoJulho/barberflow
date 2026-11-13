@@ -1,3 +1,4 @@
+import { RatingField } from "../rating-field";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { httpsUrl } from "../../lib/business-profile";
@@ -65,10 +66,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
         {booking.state === "completed" && <details>
           <summary>Avaliar atendimento</summary>
           <form className="account-form" action={submitReview.bind(null, booking.id)}>
-            <label>Nota <select name="stars" defaultValue="" required>
-              <option value="" disabled>Selecione</option>
-              {[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars}/5</option>)}
-            </select></label>
+            <RatingField required />
             <label>Comentário <textarea name="message" maxLength={500} rows={3} /></label>
             <SubmitButton>Enviar avaliação</SubmitButton>
           </form>
