@@ -33,6 +33,23 @@ async function bookForTeam(shop: string, form: FormData) {
   return createEntry(shop, day, "appointment", true, form);
 }
 
+async function createWalkIn(shop: string, day: string, request: string, form: FormData) {
+  "use server";
+  if (!isUuid(shop) || !isUuid(request) || !validDay(day)) notFound();
+  const client = await supabaseServer();
+  const service = String(form.get("service") ?? "");
+  const product = String(form.get("product") ?? "");
+  const units = Number(form.get("units"));
+  const selections = [
+    ...(isUuid(service) ? [{ kind: "service", id: service, units: 1 }] : []),
+    ...(isUuid(product) && Number.isInteger(units) && units >= 1 ? [{ kind: "product", id: product, units }] : []),
+  ];
+  const result = await client?.rpc("barberflow_create_walk_in", {
+    shop_id: shop, sale_id: request, customer: form.get("name"), contact: form.get("phone"), selections,
+  });
+  redirect(`/equipe/${shop}?dia=${day}&novo=1&estado=${result?.data === "ok" ? "avulso" : "falha"}#avulso`);
+}
+
 type Entry = { id: string; professional_name: string; kind: string; state: string; starts_at: string; ends_at: string;
   service_name: string | null; client_name: string | null; can_edit: boolean };
 type Offering = { professional_id: string; professional_name: string; service_id: string; service_name: string; duration_minutes: number };
@@ -71,6 +88,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     person.services.push({ id: row.service_id, name: row.service_name, duration_minutes: row.duration_minutes });
     providers.set(person.id, person);
   }
+  const walkInProducts = individual.data ? (await supabase.from("barberflow_products").select("id,name").eq("establishment_id", shop).eq("active", true).is("deleted_at", null).gt("stock", 0).order("name")).data ?? [] : [];
   return <section className="container section">
     <PurchaseUpdates />
     <Link href={individual.data ? `/equipe/${shop}/meu-painel` : "/painel"}>Voltar ao painel</Link>
@@ -98,10 +116,22 @@ export default async function TeamAgenda({ params, searchParams }: {
     {estado === "conflito" && <p role="alert">Este horário já está ocupado ou bloqueado.</p>}
     {bookingContext.error ? <p role="alert">Não foi possível consultar os serviços disponíveis.</p> : wizard &&
       <details className="card team-booking" id="novo-atendimento" open={novo === "1"}><summary>Novo atendimento</summary>
-        <BookingForm teamShop={shop} slug={wizard.slug ?? ""} services={wizard.services}
+        <BookingForm teamShop={shop} allowWalkIn={Boolean(individual.data)} slug={wizard.slug ?? ""} services={wizard.services}
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
       </details>}
+    {individual.data && wizard && <details className="card team-booking" id="avulso" open={estado === "avulso" || estado === "falha"}>
+      <summary>Avulso</summary>
+      {estado === "avulso" && <p role="status">Comanda avulsa criada. Abra o caixa para cobrar.</p>}
+      <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
+        <label>Nome do cliente <input name="name" required maxLength={120} /></label>
+        <label>WhatsApp <input name="phone" type="tel" required maxLength={30} /></label>
+        <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>
+        <SubmitButton>Criar comanda avulsa</SubmitButton>
+      </form>
+    </details>}
     {agenda.error ? <p role="alert">Não foi possível consultar a agenda.</p> : entries.length ? <ul className="professional-appointments">
       {entries.map((item) => <li className="card" data-state={item.state} key={item.id}>
         <h2>{item.kind === "block" ? "Horário bloqueado" : item.service_name}</h2>

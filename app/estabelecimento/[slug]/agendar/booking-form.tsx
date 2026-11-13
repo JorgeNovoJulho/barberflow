@@ -51,10 +51,10 @@ function maskPhone(raw: string) {
   return "(" + digits.slice(0, 2) + ")" + number.slice(0, 5) + (number.length > 5 ? "-" + number.slice(5) : "");
 }
 
-export function BookingForm({ slug, services, initialService, initialPerson, day, today, limit, initialSlots, initialName, action, requestId, teamShop }: {
+export function BookingForm({ slug, services, initialService, initialPerson, day, today, limit, initialSlots, initialName, action, requestId, teamShop, allowWalkIn = false }: {
   slug: string; services: PublicProfile["services"]; initialService: string; initialPerson: string;
   day: string; today: string; limit: string; initialSlots: Slot[] | null; initialName: string;
-  action: (data: FormData) => Promise<void>; requestId: string; teamShop?: string;
+  action: (data: FormData) => Promise<void>; requestId: string; teamShop?: string; allowWalkIn?: boolean;
 }) {
   const [serviceId, setService] = useState(initialService);
   const [personId, setPerson] = useState(initialPerson);
@@ -157,6 +157,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           : availability.error ? "Não foi possível consultar os horários."
           : !slots.length ? "Não há horários livres neste dia. Escolha outra data."
           : "Selecione um dos horários disponíveis."}</p>
+        {allowWalkIn && availability && !availability.error && !slots.length && <a className="secondary" href="#avulso" onClick={() => { const section = document.getElementById("avulso"); if (section instanceof HTMLDetailsElement) section.open = true; }}>Avulso</a>}
         {availability?.error && <button type="button" className="secondary" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button>}
         {!!slots.length && <fieldset className="booking-time-list">
           <legend>Horários disponíveis</legend>
