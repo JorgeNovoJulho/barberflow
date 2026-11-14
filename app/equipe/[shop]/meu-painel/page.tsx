@@ -1,3 +1,4 @@
+import { MyCommissions } from "./my-commissions";
 import { offsetDay } from "../../../../lib/agenda";
 import { appointmentAvatars, ClientAvatar } from "../../../painel/[establishmentId]/appointment-card";
 import Link from "next/link";
@@ -94,11 +95,11 @@ function media(value: string | null) {
 
 export default async function ProfessionalPanel({ params, searchParams }: {
   params: Promise<{ shop: string }>;
-  searchParams: Promise<{ periodo?: string; agenda?: string; estado?: string; pagina?: string }>;
+  searchParams: Promise<{ periodo?: string; agenda?: string; estado?: string; pagina?: string; comissoes?: string; ano?: string }>;
 }) {
   const { shop } = await params;
   const supabase = await client(shop);
-  const { periodo, agenda, estado, pagina } = await searchParams;
+  const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
   const [{ data, error }, counterResult, agendaResult, bookingContext] = await Promise.all([
@@ -211,6 +212,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       {agendaPeriod === "dia" && page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
       {agendaPeriod === "dia" && (page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}
     </section>
+    <MyCommissions shop={shop} today={panel.today} view={comissoes} year={ano}
+      base={`${base}?periodo=${period}&agenda=${agendaPeriod}`} />
     <section className="card" id="desempenho">
       <h2>Desempenho</h2>
       <nav className="account-links" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
