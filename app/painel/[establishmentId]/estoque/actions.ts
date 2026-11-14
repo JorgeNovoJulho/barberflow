@@ -26,7 +26,7 @@ async function context(shop: string, appointment?: string) {
 export async function saveProduct(shop: string, product: string | null, form: FormData) {
   const { supabase, finish } = await context(shop);
   const name = get(form, "name");
-  const sku = get(form, "sku");
+
   const barcode = get(form, "barcode");
   const description = get(form, "description");
   const showcase = product === null || form.has("showcase");
@@ -38,16 +38,16 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
   const minimum = Number(get(form, "minimum"));
   const initial = Number(get(form, "initial"));
   const expiry = get(form, "expiry");
-  if (!name || name.length > 120 || sku.length > 60 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || (!rawMarkup && price === null) || (product && !isUuid(product))) finish("invalido");
+  if (!name || name.length > 120 || description.length > 1500 || !/^\d{0,32}$/.test(barcode) || (!rawMarkup && price === null) || (product && !isUuid(product))) finish("invalido");
   if ((rawCost && cost === null) || !Number.isInteger(minimum) || minimum < 0 || minimum > 1000000
     || (!product && (!Number.isInteger(initial) || initial < 0 || initial > 1000000))
     || (expiry && !validDay(expiry))) finish("invalido");
   if (rawMarkup && (markup === null || !cost || markedUp(cost, markup) > 99999999)) finish("margem-invalida");
-  const fields = { margin_tier: null, markup_percent: markup, name, sku, barcode, description, showcase, price_cents: price ?? 0, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
+  const fields = { margin_tier: null, markup_percent: markup, name, barcode, description, showcase, price_cents: price ?? 0, cost_cents: cost, minimum_stock: minimum, expires_on: expiry || null };
   const { data, error } = product
     ? await supabase.from("barberflow_products").update(fields)
       .eq("id", product).eq("establishment_id", shop).select("id").maybeSingle()
-    : await supabase.rpc("barberflow_create_markup_product", { shop, product_name: name, product_sku: sku,
+    : await supabase.rpc("barberflow_create_markup_product", { shop, product_name: name, product_sku: "",
       markup, sale_price: price ?? 0, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
     revalidatePath(`/painel/${shop}/estoque`);

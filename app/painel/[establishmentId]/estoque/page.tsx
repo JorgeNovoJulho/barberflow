@@ -31,7 +31,7 @@ function alerts(product: Product, today: string, cutoff: string) {
 function ProductForm({ shop, product, margins }: { shop: string; product?: Product; margins: Margins }) {
   return <form className="account-form" action={saveProduct.bind(null, shop, product?.id ?? null)}>
     <label>Nome <input name="name" maxLength={120} required defaultValue={product?.name} /></label>
-    <label>Código do produto (SKU) <input name="sku" maxLength={60} defaultValue={product?.sku} /></label>
+    <p>SKU {product?.sku || "gerado automaticamente ao salvar"}</p>
     <label>Código de barras <input name="barcode" inputMode="numeric" pattern="[0-9]{1,32}" maxLength={32} defaultValue={product?.barcode} /></label>
     <StockPricingFields margins={margins} tier={product?.margin_tier} markup={product?.markup_percent} cost={product?.cost_cents} price={product?.price_cents} />
     {!product && <label>Quantidade inicial <input name="initial" type="number" min={0} max={1000000} defaultValue={0} required /></label>}
@@ -129,7 +129,7 @@ export default async function Stock({ params, searchParams }: {
         return <li key={product.id} id={`produto-${product.id}`} className="card stock-product">
         <div className="stock-product-top">
           <span className={`stock-label${product.active && product.stock > 0 ? " stock-label-active" : ""}`}>{!product.active ? "Congelado manualmente" : product.stock > 0 ? "À venda" : "Congelado · aguardando reposição"}</span>
-          {product.sku && <span className="stock-sku">SKU {product.sku}</span>}
+
         </div>
         <h3>{product.name}</h3>
         <ProductGallery name={product.name} items={productMediaSlots.flatMap((slot): ProductMedia[] => {
@@ -137,12 +137,14 @@ export default async function Stock({ params, searchParams }: {
           return url ? [{ slot, kind: slot === "video" ? "video" : "photo", url }] : [];
         })} />
         <dl className="stock-product-facts">
-          {product.barcode && <div><dt>Código de barras</dt><dd>{product.barcode}</dd></div>}
+
           <div><dt>Preço de venda</dt><dd>{bookingCurrency.format(product.price_cents / 100)}</dd></div>
           <div><dt>Estoque</dt><dd>{product.stock.toLocaleString("pt-BR")} un.</dd></div>
           <div><dt>Estoque mínimo</dt><dd>{product.minimum_stock} un.</dd></div>
           {product.cost_cents !== null && <div><dt>Custo unitário</dt><dd>{bookingCurrency.format(product.cost_cents / 100)}</dd></div>}
           {product.expires_on && <div><dt>Validade</dt><dd>{product.expires_on.split("-").reverse().join("/")}</dd></div>}
+          {product.sku && <div><dt>SKU</dt><dd>{product.sku}</dd></div>}
+          {product.barcode && <div style={{ gridColumn: '1 / -1', overflowWrap: 'anywhere' }}><dt>Código de barras</dt><dd>{product.barcode}</dd></div>}
         </dl>
         {activeOffer && <p className="stock-label stock-label-active">Oferta · {product.promo_units} un. por {bookingCurrency.format((product.promo_cents ?? 0) / 100)}</p>}
         {warningsByProduct.has(product.id) && <ul className="stock-warnings">
