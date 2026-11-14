@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { offsetDay } from "../../../../lib/agenda";
 import { bookingCurrency } from "../../../../lib/public-booking";
@@ -29,6 +30,14 @@ export async function MyCommissions({ shop, today, view, year, base }: {
   const client = await supabaseServer();
   const results = await Promise.all([...new Set([Number(start.slice(0, 4)), Number(offsetDay(end, -1).slice(0, 4))])]
     .map(reference_year => client?.rpc("barberflow_professional_commission_days", { shop_id: shop, reference_year })));
+  const receipts = await client?.rpc("barberflow_my_commission_receipts", { shop_id: shop });
+  async function acknowledge(receipt: string) {
+    "use server";
+    const session = await supabaseServer();
+    const result = await session?.rpc("barberflow_acknowledge_commission", { shop_id: shop, receipt });
+    if (result?.data !== true) throw new Error("Não foi possível confirmar o recebimento.");
+    revalidatePath(base.split("?")[0]);
+  }
   const failed = results.some(result => !result || result.error);
   const rows = results.flatMap(result => (result?.data ?? []) as Day[]).filter(row => row.day >= start && row.day < end);
   const url = (key: string, targetYear = selectedYear) => base + "&comissoes=" + key + "&ano=" + targetYear + "#minhas-comissoes";
@@ -72,6 +81,19 @@ export async function MyCommissions({ shop, today, view, year, base }: {
       </details>)}
       {period !== "ano" && !!rows.length && <DailyChart rows={rows} />}
     </>}
+    <h3>Confirmação de recebimentos</h3>
+    {receipts?.error ? <p role="alert">Não foi possível consultar os repasses.</p>
+      : receipts?.data?.length ? <ul className="professional-chart-bars">
+        {receipts.data.map((receipt: {id: string; issued_at: string; amount: number; acknowledged_at: string | null}) => <li key={receipt.id}>
+          <div><time dateTime={receipt.issued_at}>{new Date(receipt.issued_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</time>
+            <strong>{money(receipt.amount)}</strong></div>
+          {receipt.acknowledged_at ? <p>Recebimento confirmado</p> :
+            <form className="account-links" action={acknowledge.bind(null, receipt.id)}>
+              <label><input type="checkbox" required /> Conferi o pagamento e recebi o valor.</label>
+              <button className="primary action-keep">Confirmar recebimento</button>
+            </form>}
+        </li>)}
+      </ul> : <p>Nenhum repasse registrado pela loja.</p>}
   </section>;
 }
 
