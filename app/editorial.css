@@ -511,3 +511,13 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .agenda-stack[data-state="cancelled"] > summary { background: #ffebef; color: #891b34; }
 .agenda-stack[data-state="no_show"] > summary { background: #fff0b8; color: #654600; }
 .agenda-stack[data-state="completed"] > summary { background: #e4f7ed; color: #18573a; }
+
+.editorial-landing .landing-highlights + .editorial-search {
+  margin-block: clamp(1rem, 3vw, 2.5rem);
+}
+
+.editorial-search-heading > span { flex: none; }
+.editorial-search-heading > div { min-inline-size: 0; }
+.editorial-search-heading h2 { text-wrap: balance; }
+.editorial-search-form > :is(label, button) { min-inline-size: 0; }
+.editorial-search-form > button { white-space: normal; }
