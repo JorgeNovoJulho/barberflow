@@ -7,6 +7,10 @@ type Payout = { professional: string; cadence: string; first_day: number | null;
 type Order = { professional_id: string; receipt_id?: string; service_commission: number; product_commission: number };
 const periods: Record<string, string> = { daily: "dia", weekly: "semana", fortnightly: "quinzena", monthly: "mes" };
 
+const cadenceLabels: Record<string, string> = { daily: "Diário", weekly: "Semanal", fortnightly: "Quinzenal", monthly: "Mensal" };
+const monthFormat = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
+const referenceMonth = (day: string) => monthFormat.format(new Date(day + "T12:00:00Z"));
+
 function dueDate(today: string, payout: Payout) {
   if (payout.cadence === "daily") return today;
   const date = new Date(today + "T12:00:00Z");
@@ -45,10 +49,16 @@ export async function CommissionDue({ shop }: { shop: string }) {
       const amount = orders.filter(row => row.professional_id === person.id && !row.receipt_id)
         .reduce((sum, row) => sum + (row.service_commission ?? 0) + (row.product_commission ?? 0), 0);
       const due = dueDate(today, payout);
-      return <li className="card" key={person.id}>
+      const first = report?.result.data?.first ?? today;
+      const last = report?.result.data?.last ?? today;
+      const reference = first.slice(0, 7) === last.slice(0, 7)
+        ? referenceMonth(first) : referenceMonth(first) + " a " + referenceMonth(last);
+      const status = amount <= 0 ? "clear" : due < today ? "overdue" : due === today ? "today" : "upcoming";
+      return <li className="card commission-due-card" data-status={status} key={person.id}>
         <h3 className="subscription-business">{person.photo_url && <img className="booking-avatar" src={person.photo_url} width={36} height={36} alt="" loading="lazy" />}{person.name}</h3>
         <p><strong>{bookingCurrency.format(amount / 100)}</strong> em aberto no período</p>
-        <p><time dateTime={due}>{due.split("-").reverse().join("/")}</time>{amount > 0 && due <= today && <strong> · {due === today ? "Vence hoje" : "Vencido"}</strong>}</p>
+        <p>Pagamento {cadenceLabels[payout.cadence]} · Referência: {reference}</p>
+        <p>Vencimento: <time dateTime={due}>{due.split("-").reverse().join("/")}</time>{amount > 0 && due <= today && <strong> · {due === today ? "Vence hoje" : "Vencido"}</strong>}</p>
         <Link className="secondary" href={`/painel/${shop}/caixa?aba=comissoes&periodo=${periods[payout.cadence]}&data=${today}`}>Conferir repasse</Link>
       </li>;
     })}</ul>

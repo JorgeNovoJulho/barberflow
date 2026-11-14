@@ -568,3 +568,24 @@ svg.booking-client-avatar { padding: 6px; }
 
 .editorial-brand .landing-brand-name span { font-size: inherit; }
 .footer .brand-name span { color: #b7a8ff; }
+
+.card.commission-due-card[data-status="overdue"] {
+  background: #ffe9ed;
+  border-color: #db8b9a;
+  color: #68182a;
+}
+.card.commission-due-card[data-status="today"] {
+  background: #fff2d5;
+  border-color: #dbb468;
+  color: #603a05;
+}
+.card.commission-due-card[data-status="upcoming"] {
+  background: #e6efff;
+  border-color: #a4b9e7;
+  color: #17376b;
+}
+.card.commission-due-card[data-status="clear"] {
+  background: #e8f6ee;
+  border-color: #a5cdb7;
+  color: #17523b;
+}
