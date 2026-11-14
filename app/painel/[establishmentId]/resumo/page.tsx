@@ -1,3 +1,4 @@
+import { CommissionDue } from "./commission-due";
 import { ActiveProfessionals } from "./active-professionals";
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { AgendaIcon } from "../agenda-icon";
@@ -193,6 +194,7 @@ export default async function DashboardPage({ params, searchParams }: {
           </>}
       </details>
     </div>
+    <CommissionDue shop={shop} />
     <h2 className="panel-form">Indicadores</h2>
     <nav className="account-links" aria-label="Período dos indicadores">
       {periods.map(({ days, label }) => <Link key={days} className="secondary" aria-current={days === selected.days ? "page" : undefined}
