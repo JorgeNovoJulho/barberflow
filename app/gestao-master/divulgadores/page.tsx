@@ -1,4 +1,5 @@
 import { mediaLinks } from "../../cliente/social";
+import { redirect } from "next/navigation";
 import { requireMaster } from "../../../lib/master";
 import { authOrigin } from "../../../lib/auth-path";
 import { MasterTabs } from "../master-ui";
@@ -16,9 +17,35 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
   const cards = new Map<string, Profile>((profiles ?? []).map((profile: Profile) => [profile.id, profile]));
   const photos = await mediaLinks(client, [...(profiles ?? []), ...(referrals?.data ?? [])]
     .flatMap((row: { avatar: string | null }) => row.avatar ? [row.avatar] : []));
+  const requests = await client.rpc("barberflow_pending_promoter_requests");
+  async function review(id: string, form: FormData) {
+    "use server";
+    const master = await requireMaster("/gestao-master/divulgadores");
+    const decision = form.get("decision");
+    const { data } = await master.rpc("barberflow_review_promoter_request", {
+      applicant: id, approve: decision === "approve", explanation: String(form.get("reason") ?? ""),
+    });
+    redirect("/gestao-master/divulgadores?" + (data ? "salvo=1" : "erro=1"));
+  }
   return <section className="container section">
     <MasterTabs current="/gestao-master/divulgadores" />
     <h1>Gestão de divulgadores</h1>
+    <section className="card panel-form">
+      <h2>Solicitações pendentes</h2>
+      {requests.error ? <p role="alert">Não foi possível consultar as solicitações.</p>
+        : requests.data?.length ? <ul className="cards">{requests.data.map((item: { id: string; email: string; requested_at: string; payments: number }) =>
+          <li key={item.id} className="card">
+            <strong>{item.email}</strong>
+            <p>{new Date(item.requested_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · {item.payments} pagamento(s) confirmado(s)</p>
+            <form className="account-form" action={review.bind(null,item.id)}>
+              <label>Motivo da recusa (opcional) <input name="reason" maxLength={500} /></label>
+              <div className="account-links">
+                <button className="primary" name="decision" value="approve">Aprovar</button>
+                <button className="secondary" name="decision" value="deny">Negar</button>
+              </div>
+            </form>
+          </li>)}</ul> : <p>Nenhuma solicitação pendente.</p>}
+    </section>
     <form action={createInvite}><button className="primary">Gerar link de convite para divulgador</button></form>
     <form className="card account-form panel-form" action={saveCommission}>
       <h2>Comissão por primeira assinatura</h2>

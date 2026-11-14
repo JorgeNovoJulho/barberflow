@@ -82,12 +82,32 @@ export default async function Subscription({ params, searchParams }: {
     enviado: "Comprovante recebido e arquivado. A administração vai conferir o pagamento.",
   };
 
+  const request = await supabase.rpc("barberflow_promoter_request");
+  async function requestPromoter() {
+    "use server";
+    const client = await supabaseServer();
+    await client?.rpc("barberflow_promoter_request", { send_request: true });
+    redirect(path + "#conta-divulgador");
+  }
+
   return <section className="container section">
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link><Link href={`/painel/${shop}/resumo`}>Visão geral</Link>
     </nav>
     <p className="eyebrow">{businessName}</p><h1>Assinatura</h1>
     {estado && Object.hasOwn(feedback, estado) && <p role={estado === "enviado" ? "status" : "alert"}>{feedback[estado]}</p>}
+    <section className="card panel-form" id="conta-divulgador">
+      <h2>Conta Divulgador</h2>
+      <p>Divulgue o TOP BARBER com um link exclusivo e acompanhe as comissões pelas indicações.</p>
+      {request.error ? <p role="alert">Não foi possível consultar a solicitação.</p>
+        : request.data?.status === "active" ? <Link className="secondary" href="/divulgador">Abrir painel do divulgador</Link>
+        : request.data?.status === "pending" ? <p role="status">Solicitação em análise pela administração.</p>
+        : <form action={requestPromoter}>
+          {request.data?.status === "denied" && <p>Solicitação recusada. {request.data.reason}</p>}
+          {!request.data?.eligible && <p>É preciso ter ao menos uma assinatura Pro ou Premium confirmada.</p>}
+          <button className="primary" disabled={!request.data?.eligible}>Solicitar Conta Divulgador</button>
+        </form>}
+    </section>
     {!prices || archived?.error || [subscription, current, history, openCharges, access, pixAvailability].some((result) => result.error) ? <p role="alert">Não foi possível carregar a assinatura.</p> : <>
       <section className="card panel-form subscription-status-card" data-tier={accessStatus?.plan ?? "none"}>
         <h2>Situação da assinatura</h2>
