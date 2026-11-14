@@ -14,9 +14,10 @@ export async function createInvite() {
 
 export async function saveCommission(form: FormData) {
   const client = await requireMaster("/gestao-master/divulgadores");
-  const raw = String(form.get("cents") ?? "");
-  const { data } = /^\d{1,8}$/.test(raw)
-    ? await client.rpc("barberflow_promoter_commission_settings", { cents: Number(raw) }) : { data: false };
+  const rates = Object.fromEntries(["pro_monthly", "pro_yearly", "premium_monthly", "premium_yearly"].map(
+    key => [key, String(form.get(key) ?? "")],
+  ));
+  const { data } = await client.rpc("barberflow_promoter_rates", { new_rates: rates });
   redirect("/gestao-master/divulgadores?" + (data ? "salvo=1" : "erro=1"));
 }
 
