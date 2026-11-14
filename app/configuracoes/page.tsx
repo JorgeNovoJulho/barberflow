@@ -1,3 +1,4 @@
+import { InstallApp } from "./install-app";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "../../lib/supabase";
 import { defaultTheme, isThemeId } from "../../lib/themes";
@@ -14,6 +15,7 @@ export default async function Settings() {
   const theme = isThemeId(data?.theme) ? data.theme : defaultTheme;
   return <section className="container section">
     <h1>Configurações</h1>
+    <InstallApp />
     <div className="card">
       <h2>Aparência</h2>
       {error && <p role="status">As preferências estão indisponíveis neste ambiente.</p>}
