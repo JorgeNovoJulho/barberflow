@@ -20,6 +20,34 @@ type Panel = {
 };
 const money = (value: number) => bookingCurrency.format(value / 100);
 const dayLabel = (value: string) => value.slice(0, 10).split("-").reverse().join("/");
+const weekdays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const nationalDates: Record<string, string> = {
+  "01-01": "Confraternização Universal", "04-21": "Tiradentes",
+  "05-01": "Dia do Trabalho", "09-07": "Independência do Brasil",
+  "10-12": "Nossa Senhora Aparecida", "11-02": "Finados",
+  "11-15": "Proclamação da República", "11-20": "Consciência Negra", "12-25": "Natal",
+};
+
+function AgendaDate({ date }: { date: string }) {
+  const weekday = new Date(date + "T12:00:00Z").getUTCDay();
+  const holiday = nationalDates[date.slice(5)] ?? (date === "2026-04-03" ? "Paixão de Cristo" : undefined);
+  return <h3 className="professional-agenda-date" data-holiday={!!holiday} data-sunday={weekday === 0}>
+    <time dateTime={date}>{dayLabel(date)} {weekdays[weekday]}</time>
+    {holiday && <small>Feriado nacional · {holiday}</small>}
+  </h3>;
+}
+
+function MetricBars({ rows }: { rows: { label: string; value: number; color: string }[] }) {
+  const maximum = Math.max(1, ...rows.map(row => row.value));
+  return <ul className="professional-chart-bars">{rows.map(({ label, value, color }) =>
+    <li key={label}>
+      <div><span>{label}</span><strong>{value}</strong></div>
+      <span className="professional-chart-track" aria-hidden="true">
+        <span style={{ width: (value / maximum * 100) + "%", backgroundColor: color }} />
+      </span>
+    </li>)}</ul>;
+}
+
 const appointmentStatus: Record<string, string> = { scheduled: "Em aberto", pending: "Em aberto", completed: "Concluído", cancelled: "Cancelado", no_show: "Falta" };
 const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -94,6 +122,9 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(appointments.length / 12) - 1)) : 0;
   const visibleAppointments = appointments.slice(page * 12, page * 12 + 12);
   const avatars = await appointmentAvatars(supabase, agendaPeriod === "dia" ? visibleAppointments : appointments);
+  const attended = panel.attended + (counter?.attended_open ?? 0);
+  const attendanceTotal = attended + panel.absent;
+  const attendanceShare = attendanceTotal ? attended / attendanceTotal * 100 : 0;
   const publicSlug = bookingContext.data?.slug;
   return <section className="container section professional-workspace">
     <Link href={`/equipe/${shop}`}>Agenda da equipe</Link>
@@ -156,7 +187,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           </div>}
         </li>;
       };
-      if (agendaPeriod === "dia") return <ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul>;
+      if (agendaPeriod === "dia") return <><AgendaDate date={panel.today} /><ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul></>;
       const groups = new Map<string, Appointment[]>();
       const month = panel.today.slice(0, 7) + "-01";
       const nextMonth = offsetDay(month, 32).slice(0, 7) + "-01";
@@ -170,7 +201,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         groups.set(date, [...(groups.get(date) ?? []), entry]);
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
-        <section key={date}><h3>{dayLabel(date)}</h3>{!entries.length && <p>Sem agendamentos</p>}
+        <section key={date}><AgendaDate date={date} />{!entries.length && <p>Sem agendamentos</p>}
           {entries.map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
             <summary>{entry.starts.slice(11, 16)} · {entry.client} · {appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
@@ -184,16 +215,31 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <h2>Desempenho</h2>
       <nav className="account-links" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
         <Link key={key} className="secondary" aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}&agenda=${agendaPeriod}#desempenho`}>{label}</Link>)}</nav>
-      <dl>
-        <dt>Serviços fechados e pagos</dt><dd>{panel.paid_services}</dd>
-        <dt>Comparecimentos</dt><dd>{panel.attended + (counter?.attended_open ?? 0)}</dd>
-        <dt>Faltas</dt><dd>{panel.absent}</dd>
-        <dt>Produtos vendidos</dt><dd>{panel.sold_products}</dd>
-      </dl>
-      <h3>Dias e horários de pico</h3>
-      {panel.hours.length ? <ul className="professional-peaks">{panel.hours.map(({ weekday, hour, quantity }) =>
-        <li key={weekday * 24 + hour}><span>{days[weekday - 1]} · {hour}h</span><meter min={0} max={Math.max(...panel.hours.map((row) => row.quantity))} value={quantity} aria-label="Atendimentos concluídos" /><strong>{quantity}</strong></li>)}</ul>
-        : <p>Sem atendimentos concluídos no período.</p>}
+      <div className="professional-chart-grid">
+        <section className="professional-chart">
+          <h3>Comparecimentos e faltas</h3>
+          {attendanceTotal ? <div className="professional-chart-pie" aria-hidden="true"
+            style={{ background: `conic-gradient(#087e66 0 ${attendanceShare}%, #b74612 ${attendanceShare}% 100%)` }} />
+            : <p>Sem comparecimentos ou faltas no período.</p>}
+          <ul className="professional-chart-legend">
+            <li><span aria-hidden="true" style={{ backgroundColor: "#087e66" }} />Comparecimentos <strong>{attended}</strong></li>
+            <li><span aria-hidden="true" style={{ backgroundColor: "#b74612" }} />Faltas <strong>{panel.absent}</strong></li>
+          </ul>
+        </section>
+        <section className="professional-chart">
+          <h3>Serviços e produtos</h3>
+          <MetricBars rows={[
+            { label: "Serviços fechados e pagos", value: panel.paid_services, color: "#6341b9" },
+            { label: "Produtos vendidos", value: panel.sold_products, color: "#1767b8" },
+          ]} />
+        </section>
+        <section className="professional-chart">
+          <h3>Dias e horários de pico</h3>
+          {panel.hours.length ? <MetricBars rows={panel.hours.map(({ weekday, hour, quantity }) => ({
+            label: `${days[weekday - 1]} · ${hour}h`, value: quantity, color: "#087e66",
+          }))} /> : <p>Sem atendimentos concluídos no período.</p>}
+        </section>
+      </div>
     </section>
   </section>;
 }
