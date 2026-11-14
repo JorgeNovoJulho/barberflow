@@ -1,3 +1,4 @@
+import { normalizePixKey, pixLabel } from "../../../../lib/pix";
 import { ProfessionalCredentials } from "./professional-credentials";
 import { ProfessionalSubmission } from "./professional-form";
 import Link from "next/link";
@@ -111,6 +112,28 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     delegated ? null : supabase.rpc("barberflow_working_professionals", { shop_id: shop }),
   ]);
   const { estado } = await searchParams;
+  type Payout = { professional: string; cadence: string; first_day: number | null; second_day: number | null; pix_key: string; beneficiary: string; city: string };
+  const payouts = delegated ? null : await supabase.rpc("barberflow_owner_professional_payouts", { shop_id: shop });
+  const payoutById = new Map(((payouts?.data ?? []) as Payout[]).map(row => [row.professional, row]));
+  async function savePayout(person: string, form: FormData) {
+    "use server";
+    const client = await supabaseServer();
+    const frequency = String(form.get("frequency") ?? "");
+    const day = (field: string) => {
+      const value = String(form.get(field) ?? "");
+      return /^\d{1,2}$/.test(value) ? Number(value) : null;
+    };
+    const key = normalizePixKey(String(form.get("pix") ?? ""));
+    const holder = String(form.get("holder") ?? "").trim();
+    const city = String(form.get("city") ?? "").trim();
+    const result = key && pixLabel(holder, 25) && pixLabel(city, 15) && await client?.rpc("barberflow_save_professional_payout", {
+      shop_id: shop, person, frequency, day_one: frequency === "daily" ? null : day("first"),
+      day_two: frequency === "fortnightly" ? day("second") : null,
+      key_value: key, holder, holder_city: city,
+    });
+    redirect(`/painel/${shop}/profissionais?estado=${result && result.data === true ? "repasse-salvo" : "repasse-invalido"}`);
+  }
+
   const workingIds = new Set((working?.data ?? []).map((row: { id: string }) => row.id));
   async function toggleDay(person: string, start: boolean) {
     "use server";
@@ -127,6 +150,9 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
       <Link href={delegated ? `/equipe/${shop}` : "/painel"}>{delegated ? "Voltar à equipe" : "Meus estabelecimentos"}</Link>
       {!delegated && <Link href={`/painel/${shop}/servicos`}>Serviços</Link>}
     </nav>
+    {estado === "repasse-salvo" && <p role="status">Configuração de repasse salva.</p>}
+    {estado === "repasse-invalido" && <p role="alert">Confira a frequência, os dias de pagamento e os dados Pix.</p>}
+    {payouts?.error && <p role="alert">Não foi possível carregar as configurações de repasse.</p>}
     <p className="eyebrow">{businessName}</p>
     <h1>Profissionais</h1>
     {estado === "acesso-criado" && <p role="status">Acesso profissional salvo. O login está no cartão do profissional.</p>}
@@ -169,6 +195,25 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               </SubmitButton>
             </form>}
           </div>}
+          {!delegated && !payouts?.error && (() => {
+            const payout = payoutById.get(professional.id);
+            return <details>
+              <summary>Pagamento de comissões</summary>
+              <form className="account-form" action={savePayout.bind(null, professional.id)}>
+                <label>Frequência <select name="frequency" defaultValue={payout?.cadence ?? "daily"}>
+                  <option value="daily">Diário</option><option value="weekly">Semanal</option>
+                  <option value="fortnightly">Quinzenal</option><option value="monthly">Mensal</option>
+                </select></label>
+                <label>Dia do pagamento <input name="first" type="number" min={1} max={31} defaultValue={payout?.first_day ?? undefined} /></label>
+                <p>Diário dispensa data. Semanal usa 1 para segunda até 6 para sábado. Quinzenal usa 1 a 15 no primeiro campo. Mensal usa 1 a 31.</p>
+                <label>Dia da segunda quinzena <input name="second" type="number" min={16} max={31} defaultValue={payout?.second_day ?? undefined} /></label>
+                <label>Chave Pix do profissional <input name="pix" required maxLength={77} defaultValue={payout?.pix_key} /></label>
+                <label>Nome do titular da chave <input name="holder" required maxLength={120} defaultValue={payout?.beneficiary} /></label>
+                <label>Cidade do titular <input name="city" required maxLength={100} defaultValue={payout?.city} /></label>
+                <SubmitButton>Salvar dados de repasse</SubmitButton>
+              </form>
+            </details>;
+          })()}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
