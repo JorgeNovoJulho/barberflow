@@ -76,7 +76,7 @@ function DayForm({ shop, professional, day, hours, delegated }: { shop: string; 
 export async function ProfessionalManager({ params, searchParams, delegated = false }: {
   params: Promise<{ establishmentId: string }>;
   delegated?: boolean;
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; repasse?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
@@ -111,7 +111,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     delegated ? null : supabase.rpc("barberflow_managed_professional_roster", { shop_id: shop }),
     delegated ? null : supabase.rpc("barberflow_working_professionals", { shop_id: shop }),
   ]);
-  const { estado } = await searchParams;
+  const { estado, repasse } = await searchParams;
   type Payout = { professional: string; cadence: string; first_day: number | null; second_day: number | null; pix_key: string; beneficiary: string; city: string };
   const payouts = delegated ? null : await supabase.rpc("barberflow_owner_professional_payouts", { shop_id: shop });
   const payoutById = new Map(((payouts?.data ?? []) as Payout[]).map(row => [row.professional, row]));
@@ -123,7 +123,9 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
       const value = String(form.get(field) ?? "");
       return /^\d{1,2}$/.test(value) ? Number(value) : null;
     };
-    const key = normalizePixKey(String(form.get("pix") ?? ""));
+    const rawKey = String(form.get("pix") ?? "").trim();
+    const digits = rawKey.replace(/\D/g, "");
+    const key = normalizePixKey(rawKey) ?? (/^[1-9]\d9\d{8}$/.test(digits) && /^[0-9 ()-]+$/.test(rawKey) ? "+55" + digits : null);
     const holder = String(form.get("holder") ?? "").trim();
     const city = String(form.get("city") ?? "").trim();
     const result = key && pixLabel(holder, 25) && pixLabel(city, 15) && await client?.rpc("barberflow_save_professional_payout", {
@@ -131,7 +133,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
       day_two: frequency === "fortnightly" ? day("second") : null,
       key_value: key, holder, holder_city: city,
     });
-    redirect(`/painel/${shop}/profissionais?estado=${result && result.data === true ? "repasse-salvo" : "repasse-invalido"}`);
+    redirect(`/painel/${shop}/profissionais?estado=${result && result.data === true ? "repasse-salvo" : "repasse-invalido"}&repasse=${person}#repasse-${person}`);
   }
 
   const workingIds = new Set((working?.data ?? []).map((row: { id: string }) => row.id));
@@ -197,8 +199,10 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
           </div>}
           {!delegated && !payouts?.error && (() => {
             const payout = payoutById.get(professional.id);
-            return <details>
+            return <details id={`repasse-${professional.id}`} open={repasse === professional.id || undefined}>
               <summary>Pagamento de comissões</summary>
+              {repasse === professional.id && estado === "repasse-salvo" && <p role="status">Dados salvos.</p>}
+              {repasse === professional.id && estado === "repasse-invalido" && <p role="alert">Confira as datas e a chave Pix. Para celular, informe o DDD.</p>}
               <form className="account-form" action={savePayout.bind(null, professional.id)}>
                 <label>Frequência <select name="frequency" defaultValue={payout?.cadence ?? "daily"}>
                   <option value="daily">Diário</option><option value="weekly">Semanal</option>
