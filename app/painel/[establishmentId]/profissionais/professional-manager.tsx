@@ -98,7 +98,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     if (!data) notFound();
     businessName = data.name;
   }
-  const [professionals, services, assignments, hours, team, closedToday, managed] = await Promise.all([
+  const [professionals, services, assignments, hours, team, closedToday, managed, working] = await Promise.all([
     supabase.from("barberflow_professionals").select("id,name,description,active,photo_url,commission_bps,product_commission_bps,inherit_business_hours,instagram,facebook,tiktok,youtube,whatsapp")
       .eq("establishment_id", shop).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     delegated ? supabase.rpc("barberflow_team_assignment_services", { shop })
@@ -108,8 +108,18 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members", { shop }),
     delegated ? null : supabase.rpc("barberflow_professional_closed_today", { shop_id: shop }),
     delegated ? null : supabase.rpc("barberflow_managed_professional_roster", { shop_id: shop }),
+    delegated ? null : supabase.rpc("barberflow_working_professionals", { shop_id: shop }),
   ]);
   const { estado } = await searchParams;
+  const workingIds = new Set((working?.data ?? []).map((row: { id: string }) => row.id));
+  async function toggleDay(person: string, start: boolean) {
+    "use server";
+    const client = await supabaseServer();
+    const result = await client?.rpc("barberflow_owner_set_professional_day", {
+      shop_id: shop, person, available_now: start,
+    });
+    redirect(`/painel/${shop}/profissionais?estado=${result?.data === true ? "salvo" : "falha"}`);
+  }
   const accessByProfessional = new Map(((managed?.data ?? []) as ManagedAccess[]).map((row) => [row.professional_id, row]));
 
   return <section className="container section">
@@ -150,7 +160,15 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
             })}
           </div>}
           {accessByProfessional.has(professional.id) && <p>Login profissional <strong style={{ overflowWrap: "anywhere" }}>{accessByProfessional.get(professional.id)?.login}</strong></p>}
-          {!delegated && <Link className="secondary" href={`/painel/${shop}/profissionais/agenda?profissional=${professional.id}`}>Ver agendamentos</Link>}
+          {!delegated && <div className="account-links">
+            <Link className="secondary" href={`/painel/${shop}/profissionais/agenda?profissional=${professional.id}`}>Ver agendamentos</Link>
+            {professional.active && working && !working.error && <form action={toggleDay.bind(null, professional.id, !workingIds.has(professional.id))}>
+              <SubmitButton tone={workingIds.has(professional.id) ? undefined : "keep"}
+                className={workingIds.has(professional.id) ? "agenda-card-button agenda-cancel-button" : undefined}>
+                {workingIds.has(professional.id) ? "Fechar dia" : "Iniciar dia"}
+              </SubmitButton>
+            </form>}
+          </div>}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
