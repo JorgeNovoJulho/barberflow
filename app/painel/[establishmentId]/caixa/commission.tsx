@@ -1,3 +1,7 @@
+import QRCode from "qrcode";
+import { createHash } from "node:crypto";
+import { showcasePix } from "../../../../lib/pix";
+import { CopyPix } from "../assinatura/copy-pix";
 import Link from "next/link";
 import { bookingCurrency } from "../../../../lib/public-booking";
 import { isUuid } from "../../../../lib/establishments";
@@ -54,9 +58,10 @@ export async function CommissionClosing({ shop, args }: { shop: string; args: { 
       </> : <p role="alert">Recibo indisponível para este estabelecimento.</p>}
     </section>;
   }
-  const [result, history] = await Promise.all([
+  const [result, history, payoutResult] = await Promise.all([
     supabase?.rpc("barberflow_commission_report", { shop_id: shop, period, reference_day: day || null }),
     supabase?.rpc("barberflow_commission_receipts", { shop_id: shop }),
+    supabase?.rpc("barberflow_owner_professional_payouts", { shop_id: shop }),
   ]);
   const report = result?.data as Report | null;
   return <section className="section">
@@ -73,14 +78,29 @@ export async function CommissionClosing({ shop, args }: { shop: string; args: { 
     {report ? <>
       <p>{dayLabel(report.first)} a {dayLabel(report.last)}</p>
       {report.orders.length === 0 && <p>Nenhuma comanda fechada no período.</p>}
-      {report.professionals.map((person) => {
+      {report.professionals.map(async (person) => {
         const orders = report.orders.filter((order) => order.professional_id === person.id);
         if (!orders.length) return null;
         const pending = orders.reduce((sum, order) => sum + (!order.receipt_id && order.service_commission !== null && order.product_commission !== null
           ? order.service_commission + order.product_commission : 0), 0);
+        const payout = (payoutResult?.data as { professional: string; pix_key: string; beneficiary: string; city: string }[] | null)?.find(item => item.professional === person.id);
+        const reference = createHash("sha256").update(JSON.stringify([shop, person.id, report.first, report.last, pending, orders.filter(order => !order.receipt_id).map(order => order.id)])).digest("hex");
+        const pix = payout && pending > 0 ? showcasePix({
+          id: reference, pix_key: payout.pix_key, merchant: payout.beneficiary, city: payout.city, total_cents: pending,
+        }) : null;
+        const qr = pix ? await QRCode.toDataURL(pix, { scale: 5, margin: 4, errorCorrectionLevel: "M" }) : null;
         return <section className="card panel-form" key={person.id}>
           <h2>{person.name}</h2>
           <p><strong>Comissão elegível sem recibo {money(pending)}</strong></p>
+          {pix && qr && <details className="finance-print-hide">
+            <summary>Pagar comissão por Pix · {money(pending)}</summary>
+            <p>Confira no banco o titular {payout?.beneficiary} e o valor antes de pagar. Registre a quitação após o pagamento.</p>
+            <img src={qr} alt="QR Code Pix do repasse" width={250} height={250} loading="lazy" style={{ maxWidth: "100%", height: "auto" }} />
+            <label>Pix Copia e Cola <textarea rows={3} readOnly value={pix} /></label>
+            <CopyPix code value={pix} />
+          </details>}
+          {pending > 0 && !pix && payoutResult?.error && <p role="alert">Não foi possível consultar os dados Pix do repasse.</p>}
+          {pending > 0 && !pix && payoutResult?.data && <Link href={`/painel/${shop}/profissionais#profissional-${person.id}`}>Configurar Pix do profissional</Link>}
           <Orders orders={orders} timezone={report.timezone} />
           {pending > 0 && <form className="account-form" action={saveCommission.bind(null, shop, period, day, null, pending)}>
             <input type="hidden" name="professional" value={person.id} />
