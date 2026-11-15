@@ -97,11 +97,11 @@ export default async function TeamAgenda({ params, searchParams }: {
   }
   const walkIns = individual.data ? await supabase.rpc("barberflow_my_walk_ins", { shop_id: shop }) : null;
   const registered = individual.data && clientAccess.data === true
-    ? await supabase.from("barberflow_clients").select("id,name,phone,active,photo_path")
+    ? await supabase.from("barberflow_clients").select("id,name,phone,active,client_number,photo_path")
       .eq("establishment_id", shop).order("name").order("id") : null;
   const registeredPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
-  const registeredClients = (registered?.data ?? []).map(({ id, name, phone, active, photo_path }) =>
-    ({ id, name, phone, active, photo: registeredPhotos.get(photo_path ?? "") }));
+  const registeredClients = (registered?.data ?? []).map(({ id, name, phone, active, client_number, photo_path }) =>
+    ({ id, name, phone, active, client_number, photo: registeredPhotos.get(photo_path ?? "") }));
   const catalog = individual.data ? await supabase.rpc("barberflow_walk_in_products", { shop_id: shop }) : null;
   const walkInProducts = (catalog?.data ?? []) as { id: string; name: string; description: string | null; price_cents: number }[];
   const catalogLabel = (item: { name: string; price_cents: number; description?: string | null }) =>

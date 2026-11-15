@@ -654,3 +654,14 @@ summary.command-action::-webkit-details-marker { display: none; }
 .client-frequency { display: grid; gap: .5rem; padding: 0; list-style: none; }
 .client-frequency li { display: grid; grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
 .client-frequency meter { width: 100%; accent-color: #16634e; }
+
+.walk-in-client-picker fieldset { min-inline-size: 0; }
+.walk-in-client-picker .walk-in-client-option {
+  display: grid;
+  grid-template-columns: auto 2.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  padding-block: .4rem;
+}
+.walk-in-client-text { min-inline-size: 0; overflow-wrap: anywhere; }
+.walk-in-client-text small { display: block; }

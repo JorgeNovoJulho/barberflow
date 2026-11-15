@@ -90,11 +90,11 @@ export async function Checkout({shop,args,professional=false}:{
   ]) : canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
   const canSelectClient = canEdit && (!professional ||
     (await supabase.rpc("barberflow_team_can_edit_clients", { shop })).data === true);
-  const registered = canSelectClient ? await supabase.from("barberflow_clients").select("id,name,phone,active,photo_path")
+  const registered = canSelectClient ? await supabase.from("barberflow_clients").select("id,name,phone,active,client_number,photo_path")
     .eq("establishment_id",shop).order("name").order("id") : null;
   const clientPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
-  const clients = (registered?.data ?? []).map(({id,name,phone,active,photo_path}) =>
-    ({id,name,phone,active,photo:clientPhotos.get(photo_path ?? "")}));
+  const clients = (registered?.data ?? []).map(({id,name,phone,active,client_number,photo_path}) =>
+    ({id,name,phone,active,client_number,photo:clientPhotos.get(photo_path ?? "")}));
   const chargeFeedback = args.estado === "pix_missing"
     ? "A comanda foi mantida aberta. Cadastre a chave Pix do estabelecimento para gerar a cobrança, ou escolha Débito ou Crédito."
     : args.estado === "method"
