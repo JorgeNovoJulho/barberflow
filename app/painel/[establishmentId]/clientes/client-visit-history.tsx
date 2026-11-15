@@ -3,7 +3,10 @@ import { ClientAvatar } from "../appointment-card";
 import { closedAtLabel } from "../comandas/filters";
 import type { Client } from "./client-form";
 
+type RankedItem = { name: string; quantity: number; position: number };
+
 export type VisitDetails = {
+  top_services?: RankedItem[]; top_products?: RankedItem[];
   visits: { id: string; starts: string; service: string; professional: string; paid_cents: number;
     additional_services: string[]; products: { name: string; quantity: number }[] }[];
   frequency: { weekday: number; hour: number; visits: number }[];
@@ -19,6 +22,15 @@ export function ClientIdentity({ client, photo }: { client: Client; photo?: stri
   </>;
 }
 
+function ClientRanking({ title, items, unit }: { title: string; items?: RankedItem[]; unit: string }) {
+  return <section>
+    <h3>{title}</h3>
+    {items?.length ? <ul className="finance-entry-list">{items.map(item => <li key={item.position}>
+      <strong>{item.position}º · {item.name}</strong> · {item.quantity} {unit}
+    </li>)}</ul> : <p>Sem registros para o ranking.</p>}
+  </section>;
+}
+
 export function ClientVisitHistory({ name, details, error }: { name: string; details: VisitDetails | null; error: boolean }) {
   const maximum = Math.max(1, ...(details?.frequency ?? []).map(row => row.visits));
   return <section className="panel-form" id="historico">
@@ -31,6 +43,10 @@ export function ClientVisitHistory({ name, details, error }: { name: string; det
         <p>Total pago · <strong>{bookingCurrency.format(visit.paid_cents / 100)}</strong></p>
       </li>)}
     </ul> : <p>Nenhum atendimento concluído vinculado.</p>}
+    {!error && <div className="form-columns">
+      <ClientRanking title="Serviços mais utilizados" items={details?.top_services} unit="atendimento(s)" />
+      <ClientRanking title="Produtos mais comprados" items={details?.top_products} unit="un." />
+    </div>}
     {!error && <section>
       <h3>Dias e horários mais frequentes neste mês</h3>
       {details?.frequency.length ? <ul className="client-frequency">

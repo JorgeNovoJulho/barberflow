@@ -85,7 +85,7 @@ export default async function Clients({ params, searchParams }: {
         </dl>
         <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
         <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
-        {chosen?.id === client.id && <ClientVisitHistory name={chosen.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
+        {chosen?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
         {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
       </li>;
       })}</ul> : <p>Nenhum cliente encontrado.</p>}

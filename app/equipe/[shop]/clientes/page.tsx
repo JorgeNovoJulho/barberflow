@@ -46,7 +46,7 @@ export default async function TeamClients({ params, searchParams }: {
       <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
       <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
       <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
-        {selected?.id === client.id && <ClientVisitHistory name={selected.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
+        {selected?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
     </li>)}</ul> : <p>Nenhum cliente encontrado.</p>}
     {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}
   </section>;
