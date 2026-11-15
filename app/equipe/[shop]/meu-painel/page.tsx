@@ -213,7 +213,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           <p><strong>Avulso · {status}</strong></p><h3>{entry.client}</h3>
           {entry.price_cents != null && <p>{money(entry.price_cents)}</p>}
           {entry.cancellation_reason && <p>Motivo do cancelamento: {entry.cancellation_reason}</p>}
-          <Link className="secondary" href={`/equipe/${shop}/avulsos?comanda=${entry.id}`}>Ver comanda avulsa</Link>
+          <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/avulsos?comanda=${entry.id}`}>Ver comanda avulsa</Link>
         </li>;
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card team-professional-card" data-tone={index % 4} data-state={entry.state} key={entry.id}>
@@ -222,7 +222,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>{entry.phone}</a>}
           {entry.state === "cancelled" && <p><strong>Motivo do cancelamento</strong><br />{entry.cancellation_reason ?? "Motivo não informado."}</p>}
-          {entry.state === "completed" && <Link className="secondary" href={`/equipe/${shop}/comanda/${entry.id}`}>Ver comanda</Link>}
+          {entry.state === "completed" && <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/comanda/${entry.id}`}>Ver comanda</Link>}
           {(entry.state === "scheduled" || entry.state === "pending") && <div className="finance-entry-actions">
             {entry.state === "scheduled" && (entry.checked_in || entry.starts.startsWith(panel.today)) && ((entry.checked_in || checkedIn.has(entry.id))
               ? <Link className="primary" href={`/equipe/${shop}/comanda/${entry.id}`}>Abrir comanda</Link>

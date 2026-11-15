@@ -9,7 +9,7 @@ export function PaymentChoices({ children }: { children: ReactNode }) {
 
   return <>
     <div key={version} ref={options}>{children}</div>
-    <button type="button" className="secondary finance-tab" data-tone="blue" onClick={() => {
+    <button type="button" className="secondary finance-tab command-action payment-action" data-tone="blue" onClick={() => {
       setVersion(current => current + 1);
       setShowNotice(true);
       requestAnimationFrame(() => options.current?.querySelector("summary")?.focus());

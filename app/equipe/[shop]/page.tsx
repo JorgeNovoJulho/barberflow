@@ -135,7 +135,7 @@ export default async function TeamAgenda({ params, searchParams }: {
           return <details key={String(label)}><summary>{label} · {rows.length}</summary>
             {rows.length ? rows.map(row => <details key={row.id}>
               <summary>{row.number} · {row.customer} · {bookingCurrency.format(row.total / 100)}</summary>
-              <Link href={`/equipe/${shop}/avulsos?comanda=${row.id}`}>Ver comanda</Link>
+              <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/avulsos?comanda=${row.id}`}>Ver comanda</Link>
               {row.items?.length ? <ul>{row.items.map((item, index) =>
                 <li key={index}>{item.name} · {item.units} un. · {bookingCurrency.format(item.price * item.units / 100)}</li>
               )}</ul> : <p>Detalhes dos itens indisponíveis.</p>}

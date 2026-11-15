@@ -23,6 +23,6 @@ export function CashReceived({ total }: { total: number }) {
         {change === 0 && <small>Valor exato recebido</small>}
       </div>
     </div>
-    <button className="primary action-keep" name="method" value="cash" disabled={change === null || change < 0}>Confirmar recebimento em dinheiro</button>
+    <button className="primary action-keep command-action payment-action" name="method" value="cash" disabled={change === null || change < 0}>Confirmar recebimento em dinheiro</button>
   </>;
 }

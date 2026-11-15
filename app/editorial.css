@@ -605,3 +605,31 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .cash-payment-result { display: grid; align-content: center; gap: .15rem; padding: .65rem .85rem; border: 1px solid #b7c5df; border-radius: .65rem; background: #fff; }
 .cash-payment-result[data-state="ready"] { background: #def4e8; border-color: #8ac7a6; color: #124a35; }
 .cash-payment-result[data-state="short"] { background: #fff0cf; border-color: #d4a65c; color: #683d08; }
+
+.command-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-block-size: 3rem;
+  max-inline-size: 100%;
+  padding: .65rem 1rem;
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.25;
+}
+.command-action.finance-tab {
+  background: var(--finance-tab-bg);
+  border-color: var(--finance-tab-border);
+  color: var(--finance-tab-text);
+}
+.command-action.payment-action {
+  inline-size: 100%;
+  margin-inline: 0;
+}
+summary.command-action {
+  cursor: pointer;
+  list-style: none;
+}
+summary.command-action::-webkit-details-marker { display: none; }
+.command-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

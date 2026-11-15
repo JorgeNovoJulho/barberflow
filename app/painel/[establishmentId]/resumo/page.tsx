@@ -229,7 +229,7 @@ export default async function DashboardPage({ params, searchParams }: {
               })()}
           </details>}
           {label === "Faturamento registrado" && <p className="account-links">
-            <Link className="secondary" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
+            <Link className="secondary finance-tab command-action" data-tone="blue" href={`/painel/${shop}/comandas?periodo=${selected.days}`}>Ver comandas</Link>
             <Link className="secondary" href={`/painel/${shop}/vitrine`}>Ver pedidos</Link>
           </p>}
         </div>)}

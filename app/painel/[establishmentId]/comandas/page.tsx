@@ -69,7 +69,7 @@ export default async function OrdersPage({ params, searchParams }: {
         <h2>{order.client_name}</h2>
         <p>{order.service_name} · {order.professional_name}</p>
         <p>{open && "Total parcial: "}<strong>{bookingCurrency.format(order.total_cents / 100)}</strong></p>
-        <Link className="secondary" href={`${base}/comanda/${order.appointment_id}?${filters(page)}`}>Ver comanda de {order.client_name}</Link>
+        <Link className="secondary finance-tab command-action" data-tone="blue" href={`${base}/comanda/${order.appointment_id}?${filters(page)}`}>Ver comanda de {order.client_name}</Link>
       </li>)}</ul>
       {lastPage > 1 && <nav className="account-links" aria-label="Paginação das comandas">
         {page > 1 && <Link className="secondary" href={path + "?" + filters(page - 1)}>Página anterior</Link>}

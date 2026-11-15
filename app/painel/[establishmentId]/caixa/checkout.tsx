@@ -150,10 +150,10 @@ export async function Checkout({shop,args,professional=false}:{
         <label>Valor recebido (R$) <input name="received" inputMode="decimal" required maxLength={9} defaultValue={((sale.service_cents+sale.product_cents)/100).toFixed(2).replace(".",",")} /></label>
         <label>Identificador do pagamento <input name="reference" required minLength={6} maxLength={100} /></label>
         <label><input type="checkbox" name="acknowledged" required /> Conferi o pagamento e o valor recebido.</label>
-        <button className="primary">Confirmar recebimento</button>
+        <SubmitButton className="command-action payment-action" tone="keep">Confirmar recebimento</SubmitButton>
       </form>}
       {sale.state === "pending" && <details>
-        <summary className="secondary finance-tab" data-tone="blue">Alterar forma de pagamento</summary>
+        <summary className="secondary finance-tab command-action payment-action" data-tone="blue">Alterar forma de pagamento</summary>
         <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
           <input type="hidden" name="operation" value="change_payment" />
           <label><input type="checkbox" name="acknowledged" required />

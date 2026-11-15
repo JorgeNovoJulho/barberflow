@@ -203,7 +203,7 @@ export default async function Finance({ params, searchParams }: {
               <div><dt>Recebido</dt><dd>{money(bill.received_cents)}</dd></div>
               <div><dt>Em aberto</dt><dd>{money(remaining)}</dd></div>
             </dl>
-            <p><Link href={'/painel/' + shop + '/comanda/' + bill.appointment_id + '#recebimento'}>Abrir comanda e opções de pagamento</Link></p>
+            <p><Link className="secondary finance-tab command-action" data-tone="blue" href={'/painel/' + shop + '/comanda/' + bill.appointment_id + '#recebimento'}>Abrir comanda e opções de pagamento</Link></p>
             {openCardCharges.has(bill.appointment_id) && <p>Consulte a cobrança por cartão em aberto na comanda.</p>}
             {remaining > 0 && !controls?.error && !openCardCharges.has(bill.appointment_id) && <details><summary>Registrar recebimento</summary>
               <form className="account-form" action={recordPayment.bind(null, shop, bill.appointment_id, crypto.randomUUID())}>
