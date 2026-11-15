@@ -685,3 +685,6 @@ summary.command-action::-webkit-details-marker { display: none; }
   align-items: stretch;
 }
 .split-cash-fields > label { min-inline-size: 0; }
+
+.split-cash-fields .cash-payment-result[data-state="short"] { background: #ffe5e8; border-color: #bd5262; color: #781c2b; }
+.split-cash-fields .cash-payment-result[data-state="change"] { background: #fff0cf; border-color: #d4a65c; color: #683d08; }

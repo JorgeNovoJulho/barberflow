@@ -57,8 +57,8 @@ export function SplitPayment({ total, id, pix, action }: {
         <input className="split-cash-received" data-empty={!received.trim()} name="cash" inputMode="decimal"
           value={received} onChange={event => setReceived(event.target.value)} required />
       </label>
-      <div className="cash-payment-result" data-state={change === null ? "empty" : change < 0 ? "short" : "ready"} role="status">
-        <span>{change !== null && change < 0 ? "Falta receber" : "Troco a devolver"}</span>
+      <div className="cash-payment-result" data-state={change === null ? "empty" : change < 0 ? "short" : change > 0 ? "change" : "ready"} role="status">
+        <span>{change !== null && change < 0 ? "Falta receber" : change === 0 ? "Valor exato" : "Troco a devolver"}</span>
         <strong>{change === null ? "—" : money(Math.abs(change))}</strong>
       </div>
     </div>;
