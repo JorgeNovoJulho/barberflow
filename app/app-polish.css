@@ -306,9 +306,15 @@ main > :not(.editorial-landing) .card h3 + p { margin-block-start: .25rem; }
 .directory-action:hover { filter: brightness(1.15); }
 @media (max-width: 680px) {
   .directory-actions { width: 100%; }
-  .directory-actions .directory-action { width: 2.85rem; height: 2.85rem; }
-  .directory-action > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
-  .directory-action:is(:hover,:focus-visible)::after { content: attr(data-tip); position: absolute; bottom: calc(100% + .3rem); left: 0; background: #1a2336; color: white; border-radius: .35rem; padding: .35rem .55rem; white-space: nowrap; z-index: 2; }
+  .directory-actions .directory-action {
+    box-sizing: border-box;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    min-height: 2.85rem;
+    padding: .55rem .8rem;
+  }
+  .directory-action > span { min-width: 0; overflow-wrap: anywhere; }
 }
 .post-photo-previews { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,8rem),1fr)); list-style: none; gap: .6rem; padding: 0; }
 .post-photo-previews li { display: grid; gap: .35rem; min-width: 0; overflow-wrap: anywhere; font-size: .8rem; }
