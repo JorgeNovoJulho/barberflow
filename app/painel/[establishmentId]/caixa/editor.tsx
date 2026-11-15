@@ -13,7 +13,7 @@ function options(catalog:CatalogItem[],saved:Item[]) {
   return prices;
 }
 
-export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,pixReady}:{shop:string;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean}) {
+export function SaleEditor({shop,professional,id,sale,services,products,feedback,pixMissing,pixReady}:{shop:string;professional:boolean;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean}) {
   const savedServices = sale?.items.filter(item=>item.kind==="service") ?? [];
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
@@ -27,7 +27,7 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,p
   const productTotal = productIds.reduce((sum,id,i)=>sum+(productOptions.get(id)?.price_cents ?? 0)*units[i],0);
   const money = (cents:number)=>bookingCurrency.format(cents/100);
   const update = <T,>(values:T[],i:number,value:T)=>values.map((item,index)=>index===i ? value : item);
-  return <form className="account-form card panel-form" action={saveSale.bind(null,shop,id,sale?.revision ?? 0)}>
+  return <form className="account-form card panel-form" action={saveSale.bind(null,shop,id,sale?.revision ?? 0,professional)}>
     <h2>{sale ? "Comanda "+sale.number : "Nova comanda"}</h2>
     {!sale && <p>O número será gerado ao salvar a comanda.</p>}
     <div className="form-columns"><label>Nome do cliente <input name="customer" required maxLength={120} value={customer} onChange={event=>setCustomer(event.target.value)} className={!customer.trim() ? "sale-required-field" : undefined} /></label>
@@ -50,7 +50,7 @@ export function SaleEditor({shop,id,sale,services,products,feedback,pixMissing,p
     <div aria-live="polite"><p>Serviços {money(serviceTotal)} · Produtos {money(productTotal)}</p><p><strong>Total {money(serviceTotal+productTotal)}</strong></p></div>
     <div id="cobranca">
       {feedback && <p role="status" data-feedback={pixReady ? "success" : "warning"}>{feedback}</p>}
-      {pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
+      {!professional && pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
       <label>Forma de pagamento ao cobrar <select name="method" defaultValue={sale?.method ?? "pix"}>
         <option value="">Selecione a forma de pagamento</option>
         <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>

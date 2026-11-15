@@ -6,9 +6,9 @@ import { isUuid,parsePrice } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 import { maxSaleItemsPerType, type Sale } from "./model";
 
-export async function saveSale(shop:string,id:string,revision:number,form:FormData) {
+export async function saveSale(shop:string,id:string,revision:number,professional:boolean,form:FormData) {
   if (!isUuid(shop) || !isUuid(id)) redirect("/painel");
-  const path = `/painel/${shop}/caixa?comanda=${id}`;
+  const path = professional ? `/equipe/${shop}/avulsos?comanda=${id}` : `/painel/${shop}/caixa?comanda=${id}`;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next:path }));
   const value = (key:string)=>String(form.get(key) ?? "").trim();
@@ -22,7 +22,7 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
   const chargePath = path + (closingSaved ? "&modo=fechar" : "");
   let saved: Sale | null = null;
   if (closingSaved) {
-    const result = await supabase.rpc("barberflow_counter_sale",{shop_id:shop,sale_id:id});
+    const result = await supabase.rpc(professional ? "barberflow_professional_walk_in" : "barberflow_counter_sale",{shop_id:shop,sale_id:id});
     saved = result.data as Sale | null;
     if (result.error || !saved || saved.state !== "open" || saved.revision !== revision) {
       redirect(chargePath + "&estado=changed#cobranca");
@@ -45,7 +45,7 @@ export async function saveSale(shop:string,id:string,revision:number,form:FormDa
   const overview = `/painel/${shop}/resumo`;
   revalidatePath(overview);
   if (!error && data === "ok" && operation === "save") {
-    redirect(overview + "?comanda=salva#comandas-abertas");
+    redirect(professional ? path + "&estado=ok" : overview + "?comanda=salva#comandas-abertas");
   }
   if (!error && data === "pix_missing" && operation === "charge" && !closingSaved) {
     // Preserve the draft before leaving to configure the establishment's receiving account.
@@ -94,4 +94,16 @@ export async function saveCommission(shop: string, period: string, day: string, 
     else query.set("estado", "comissao_falha");
   }
   redirect(`/painel/${shop}/caixa?${query}`);
+}
+
+
+export async function closeCash(shop: string) {
+  if (!isUuid(shop)) redirect("/painel");
+  const path = `/painel/${shop}/caixa?aba=fechamento`;
+  const supabase = await supabaseServer();
+  if (!supabase || !(await supabase.auth.getUser()).data.user) {
+    redirect("/login?" + new URLSearchParams({ next: path }));
+  }
+  const { data, error } = await supabase.rpc("barberflow_close_cash", { shop_id: shop });
+  redirect(path + "&estado=" + encodeURIComponent(error ? "falha" : String(data ?? "falha")));
 }
