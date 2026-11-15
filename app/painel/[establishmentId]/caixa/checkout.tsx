@@ -174,12 +174,12 @@ export async function Checkout({shop,args,professional=false}:{
       </details>}
       {sale.state === "paid" && <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={professional ? walkIns : path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
     </div>}
-    {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary className="secondary action-cancel">Cancelar comanda</summary>
+    {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary className="secondary command-action payment-action checkout-cancel">Cancelar comanda</summary>
       <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
         <input type="hidden" name="operation" value="cancel" />
         {professional && <label>Motivo do cancelamento <textarea name="reference" required maxLength={500} /></label>}
         <label><input type="checkbox" name="acknowledged" required /> Confirmo o cancelamento desta comanda. Se já houve pagamento, vou conferir a transação antes de cancelar.</label>
-        <button className="secondary action-cancel">Confirmar cancelamento</button>
+        <SubmitButton className="command-action payment-action checkout-cancel">Confirmar cancelamento</SubmitButton>
       </form>
     </details>}
     {opens && <>

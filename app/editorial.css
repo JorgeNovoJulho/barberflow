@@ -674,3 +674,6 @@ summary.command-action::-webkit-details-marker { display: none; }
 .checkout-item-group[data-tone="teal"] { --checkout-group-bg: #e4f5f3; }
 .checkout-item-group legend { font-weight: 700; }
 .account-form .split-cash-received[data-empty="true"] { background: #ffe5e8; border-color: #bf4557; }
+
+.command-action.checkout-cancel { background: #ad2037; border-color: #ad2037; color: #fff; }
+.command-action.checkout-cancel:hover:not(:disabled) { background: #89182b; border-color: #89182b; color: #fff; }
