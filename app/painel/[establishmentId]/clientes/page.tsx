@@ -72,12 +72,11 @@ export default async function Clients({ params, searchParams }: {
         </div>
         <button className="secondary" type="submit">Filtrar</button>
       </form>
-      {chosen && <ClientVisitHistory name={chosen.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
       {clients.length ? <ul className="cards">{clients.map((client, index) => {
         const name = client.name.trim().split(/\s+/)[0];
         const message = `Olá, ${name}! Aqui é da equipe de ${establishment.name}. Gostaria de agendar seu próximo atendimento?`;
         const contact = client.active && whatsappUrl(client.phone, [message, bookingLink].filter(Boolean).join("\n"));
-        return <li className="card team-professional-card" data-tone={index % 4} key={client.id}>
+        return <li className="card team-professional-card" data-tone={index % 4} key={client.id} id={`cliente-${client.id}`}>
         <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
         <dl className="order-totals">
           <div><dt>Última visita</dt><dd>{client.last_visit?.split("-").reverse().join("/") ?? "Sem visita concluída"}</dd></div>
@@ -85,7 +84,8 @@ export default async function Clients({ params, searchParams }: {
           <div><dt>Total em comandas fechadas</dt><dd>{bookingCurrency.format(client.billed_cents / 100)}</dd></div>
         </dl>
         <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
-        <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + "#historico"}>Ver histórico</Link>
+        <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
+        {chosen?.id === client.id && <ClientVisitHistory name={chosen.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
         {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
       </li>;
       })}</ul> : <p>Nenhum cliente encontrado.</p>}

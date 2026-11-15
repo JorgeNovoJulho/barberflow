@@ -21,7 +21,7 @@ export function ClientIdentity({ client, photo }: { client: Client; photo?: stri
 
 export function ClientVisitHistory({ name, details, error }: { name: string; details: VisitDetails | null; error: boolean }) {
   const maximum = Math.max(1, ...(details?.frequency ?? []).map(row => row.visits));
-  return <section className="card panel-form" id="historico">
+  return <section className="panel-form" id="historico">
     <h2>Histórico de {name}</h2>
     {error ? <p role="alert">Não foi possível consultar o histórico.</p> : details?.visits.length ? <ul className="finance-entry-list">
       {details.visits.map(visit => <li key={visit.id}>
