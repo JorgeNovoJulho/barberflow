@@ -126,7 +126,7 @@ export default async function TeamAgenda({ params, searchParams }: {
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
       </details>}
-    {walkIns && <section className="card">
+    {walkIns && <section className="card" id="comandas-avulsas">
       <h2>Comandas avulsas</h2>
       {walkIns.error ? <p role="alert">Não foi possível consultar os avulsos.</p> :
         [["Comandas abertas", ["open", "pending"]], ["Comandas fechadas", ["paid"]], ["Canceladas", ["cancelled"]]].map(([label, states]) => {
