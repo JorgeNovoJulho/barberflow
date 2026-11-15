@@ -31,7 +31,7 @@ const nationalDates: Record<string, string> = {
 
 type AgendaLocation = { city?: string; region?: string };
 
-function AgendaDate({ date, location, count }: { date: string; location?: AgendaLocation; count?: number }) {
+function AgendaDate({ date, location, count, inHeader = false }: { date: string; location?: AgendaLocation; count?: number; inHeader?: boolean }) {
   const weekday = new Date(date + "T12:00:00Z").getUTCDay();
   const monthDay = date.slice(5);
   const saoPaulo = location?.region?.trim().toUpperCase() === "SP";
@@ -42,6 +42,10 @@ function AgendaDate({ date, location, count }: { date: string; location?: Agenda
     : votorantim && monthDay === "12-08" ? { scope: "municipal", name: "Aniversário de Votorantim" }
     : votorantim && date === "2026-06-04" ? { scope: "municipal", name: "Corpus Christi" }
     : undefined;
+  if (inHeader) return <div className="professional-today">
+    <time dateTime={date} data-sunday={weekday === 0}>{dayLabel(date)} - {weekdays[weekday]}</time>
+    {holiday && <span>Feriado {holiday.scope} · {holiday.name}</span>}
+  </div>;
   const Heading = count === undefined ? "h3" : "summary";
   return <Heading className="professional-agenda-date" data-holiday={!!holiday} data-sunday={weekday === 0}>
     <time dateTime={date}>{dayLabel(date)} {weekdays[weekday]}</time>
@@ -156,7 +160,11 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <div className="professional-cover">{media(panel.cover) && <img src={media(panel.cover)} alt="" decoding="async" />}</div>
       {media(panel.photo) && <img className="professional-photo" src={media(panel.photo)} alt="" loading="lazy" width={72} height={72} />}
       <p className="eyebrow">{panel.business}</p>
-      <h1>Meu dia</h1><h2>{panel.name}</h2>
+      <div className="professional-today-heading">
+        <h1>Meu dia</h1>
+        <AgendaDate date={panel.today} location={bookingContext.data} inHeader />
+      </div>
+      <h2>{panel.name}</h2>
       <p>{panel.services.length ? panel.services.join(" · ") : "Sem serviços vinculados."}</p>
       <p>Comissão de serviços {panel.service_rate / 100}% · Comissão de produtos {panel.product_rate / 100}%</p>
       <p><strong>{panel.shop_open === false ? (panel.walk_in_active ? "Em atendimento avulso" : "Indisponível para agendamentos") : panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>

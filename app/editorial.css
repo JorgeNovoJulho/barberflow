@@ -633,3 +633,20 @@ summary.command-action {
 }
 summary.command-action::-webkit-details-marker { display: none; }
 .command-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.professional-today-heading, .professional-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .8rem;
+}
+.professional-today-heading h1 { margin: 0; }
+.professional-today time, .professional-today span {
+  padding: .35rem .65rem;
+  border-radius: .5rem;
+  background: #edf1f8;
+  color: #263650;
+  font-weight: 700;
+}
+.professional-today time[data-sunday="true"] { background: #e6eaff; color: #312571; }
+.professional-today span { background: #ffebbb; color: #643703; }
