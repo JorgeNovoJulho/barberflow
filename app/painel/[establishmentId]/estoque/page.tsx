@@ -99,7 +99,8 @@ export default async function Stock({ params, searchParams }: {
   const warningsByProduct = new Map(flagged.map(({ product, warnings }) => [product.id, warnings]));
   return <section className="container section stock-workspace">
     <nav className="account-links" aria-label="Estabelecimento">
-      <Link href="/painel">Meus estabelecimentos</Link><Link href={`/painel/${shop}/agenda`}>Agenda</Link>
+      {delegated ? <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/meu-painel`}>Voltar ao Meu dia</Link> :
+        <><Link href="/painel">Meus estabelecimentos</Link><Link href={`/painel/${shop}/agenda`}>Agenda</Link></>}
     </nav>
     <header className="operational-heading">
       <p className="eyebrow">{business.name}</p><h1>Estoque</h1>

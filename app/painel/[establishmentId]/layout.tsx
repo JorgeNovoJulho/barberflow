@@ -19,11 +19,12 @@ export default async function EstablishmentLayout({ children, params }: {
   const supabase = isUuid(shop) ? await supabaseServer() : null;
   const business = await supabase?.from("barberflow_establishments").select("name,owner_id,profile_details").eq("id", shop).maybeSingle();
   if (!supabase || !business?.data) return children;
+  const user = (await supabase.auth.getUser()).data.user;
+  if (user?.id !== business.data.owner_id) return children;
   const { data: planData } = await supabase.rpc("barberflow_subscription_status", { shop });
   const plan = planData as SubscriptionStatus | null;
   const today = saoPauloToday();
   const expiry = plan?.ends_before ? offsetDay(plan.ends_before, -1).split("-").reverse().join("/") : null;
-  const user = (await supabase.auth.getUser()).data.user;
   const [bookings, orders, notices, payment] = await Promise.all([
     supabase.from("barberflow_schedule").select("id", { count: "exact", head: true })
       .eq("establishment_id", shop).or("booked_by.not.is.null,guest_online.eq.true").not("booking_created_at", "is", null).is("booking_read_at", null).is("booking_cleared_at", null),
