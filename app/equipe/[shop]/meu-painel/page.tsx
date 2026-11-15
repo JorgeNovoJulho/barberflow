@@ -29,12 +29,22 @@ const nationalDates: Record<string, string> = {
   "11-15": "Proclamação da República", "11-20": "Consciência Negra", "12-25": "Natal",
 };
 
-function AgendaDate({ date }: { date: string }) {
+type AgendaLocation = { city?: string; region?: string };
+
+function AgendaDate({ date, location }: { date: string; location?: AgendaLocation }) {
   const weekday = new Date(date + "T12:00:00Z").getUTCDay();
-  const holiday = nationalDates[date.slice(5)] ?? (date === "2026-04-03" ? "Paixão de Cristo" : undefined);
+  const monthDay = date.slice(5);
+  const saoPaulo = location?.region?.trim().toUpperCase() === "SP";
+  const votorantim = saoPaulo && location?.city?.trim().toLowerCase() === "votorantim";
+  const national = nationalDates[monthDay] ?? (date === "2026-04-03" ? "Paixão de Cristo" : undefined);
+  const holiday = national ? { scope: "nacional", name: national }
+    : saoPaulo && monthDay === "07-09" ? { scope: "estadual", name: "Revolução Constitucionalista" }
+    : votorantim && monthDay === "12-08" ? { scope: "municipal", name: "Aniversário de Votorantim" }
+    : votorantim && date === "2026-06-04" ? { scope: "municipal", name: "Corpus Christi" }
+    : undefined;
   return <h3 className="professional-agenda-date" data-holiday={!!holiday} data-sunday={weekday === 0}>
     <time dateTime={date}>{dayLabel(date)} {weekdays[weekday]}</time>
-    {holiday && <small>Feriado nacional · {holiday}</small>}
+    {holiday && <small>Feriado {holiday.scope} · {holiday.name}</small>}
   </h3>;
 }
 
@@ -188,7 +198,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           </div>}
         </li>;
       };
-      if (agendaPeriod === "dia") return <><AgendaDate date={panel.today} /><ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul></>;
+      if (agendaPeriod === "dia") return <><AgendaDate date={panel.today} location={bookingContext.data} /><ul className="professional-appointments">{visibleAppointments.map(renderCard)}</ul></>;
       const groups = new Map<string, Appointment[]>();
       const month = panel.today.slice(0, 7) + "-01";
       const nextMonth = offsetDay(month, 32).slice(0, 7) + "-01";
@@ -202,7 +212,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         groups.set(date, [...(groups.get(date) ?? []), entry]);
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
-        <section key={date}><AgendaDate date={date} />{!entries.length && <p>Sem agendamentos</p>}
+        <section key={date}><AgendaDate date={date} location={bookingContext.data} />{!entries.length && <p>Sem agendamentos</p>}
           {entries.map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
             <summary>{entry.starts.slice(11, 16)} · {entry.client} · {appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
