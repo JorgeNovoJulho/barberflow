@@ -584,3 +584,24 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 .professional-agenda-date small { display: block; margin-block-start: .25rem; }
 .professional-agenda-date[data-sunday="true"] { background: #e6eaff; color: #312571; }
 .professional-agenda-date[data-holiday="true"] { background: #ffebbb; color: #643703; }
+
+.cash-payment {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: .75rem;
+  padding: 1rem;
+  border-radius: .85rem;
+  background: #f2f4fb;
+  color: #19243d;
+}
+.cash-payment-total { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem 1rem; }
+.cash-payment-total strong, .cash-payment-input input, .cash-payment-result strong {
+  font-size: 1.5rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.cash-payment .cash-payment-input { font-weight: 700; }
+.cash-payment .cash-payment-input input { width: 100%; background: #fff; color: #19243d; border-color: #7d92bf; }
+.cash-payment-result { display: grid; align-content: center; gap: .15rem; padding: .65rem .85rem; border: 1px solid #b7c5df; border-radius: .65rem; background: #fff; }
+.cash-payment-result[data-state="ready"] { background: #def4e8; border-color: #8ac7a6; color: #124a35; }
+.cash-payment-result[data-state="short"] { background: #fff0cf; border-color: #d4a65c; color: #683d08; }
