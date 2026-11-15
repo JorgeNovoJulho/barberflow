@@ -14,7 +14,7 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   const value = (key:string)=>String(form.get(key) ?? "").trim();
   const split = value("operation") === "split";
   const operation = split ? "save" : value("operation");
-  if (["confirm","cancel"].includes(operation) && form.get("acknowledged")!=="on") redirect(path+"&estado=invalid");
+  if (["confirm","cancel","change_payment"].includes(operation) && form.get("acknowledged")!=="on") redirect(path+"&estado=invalid");
   const method = value("method");
   if (operation === "charge" && !["pix", "debit", "credit", "cash"].includes(method)) {
     redirect(path + "&estado=method#cobranca");
@@ -58,6 +58,9 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
       redirect(path + "&estado=" + encodeURIComponent(draft.error ? "falha" : String(draft.data ?? "falha")) + "#cobranca");
     }
     revalidatePath(overview);
+  }
+  if (!error && data === "ok" && operation === "change_payment") {
+    redirect(path + "&modo=fechar&estado=forma_alterada#cobranca");
   }
   const status = error ? "falha" : String(data ?? "falha");
   if (operation === "charge") {

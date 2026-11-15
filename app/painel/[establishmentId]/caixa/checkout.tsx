@@ -23,6 +23,7 @@ const status:Record<string,string> = {
   open_orders:"Feche ou cancele as comandas em aberto para concluir o fechamento.",
   busy:"O caixa está sendo atualizado. Tente novamente.",
   ok:"Comanda atualizada.",
+  forma_alterada:"Escolha outra forma de pagamento ou combine duas formas.",
   recebido:"Recebimento registrado no Financeiro.",
   pix_ready:"Conta Pix configurada. Clique em Gerar cobrança Pix para ver o QR Code e o Pix Copia e Cola.",
   timezone_saved:"Fuso horário atualizado.",
@@ -104,7 +105,7 @@ export async function Checkout({shop,args,professional=false}:{
     </nav>}
     {business?.data && <p className="eyebrow">{business.data.name}</p>}
     <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
-    {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready","closed"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
+    {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready","closed","forma_alterada"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
     {[current,openResult,reportResult,archiveResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
     {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} professional={professional} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
     {closeSaved && sale && <section className="card panel-form" id="cobranca">
@@ -151,6 +152,17 @@ export async function Checkout({shop,args,professional=false}:{
         <label><input type="checkbox" name="acknowledged" required /> Conferi o pagamento e o valor recebido.</label>
         <button className="primary">Confirmar recebimento</button>
       </form>}
+      {sale.state === "pending" && <details>
+        <summary className="secondary finance-tab" data-tone="blue">Alterar forma de pagamento</summary>
+        <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
+          <input type="hidden" name="operation" value="change_payment" />
+          <label><input type="checkbox" name="acknowledged" required />
+            Conferi que o cliente ainda não pagou pela forma atual.
+          </label>
+          {sale.method === "pix" && <p>Um QR Code já compartilhado pode continuar válido. Peça ao cliente que deixe de usá-lo.</p>}
+          <SubmitButton>Voltar à escolha de pagamento</SubmitButton>
+        </form>
+      </details>}
       {sale.state === "paid" && <Link className="secondary" href={professional ? walkIns : path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
     </div>}
     {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary className="secondary action-cancel">Cancelar comanda</summary>
