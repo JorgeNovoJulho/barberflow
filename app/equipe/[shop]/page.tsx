@@ -1,3 +1,4 @@
+import { VisiblePageRefresh } from "../../visible-page-refresh";
 import { BookingForm } from "../../estabelecimento/[slug]/agendar/booking-form";
 import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
 import { offsetDay } from "../../../lib/agenda";
@@ -93,6 +94,7 @@ export default async function TeamAgenda({ params, searchParams }: {
   const catalogLabel = (item: { name: string; price_cents: number; description?: string | null }) =>
     [item.name, bookingCurrency.format(item.price_cents / 100), item.description].filter(Boolean).join(" · ");
   return <section className="container section">
+    <VisiblePageRefresh pauseWithin="form, dialog" />
     <PurchaseUpdates />
     <Link href={individual.data ? `/equipe/${shop}/meu-painel` : "/painel"}>Voltar ao painel</Link>
     <p className="eyebrow">{business.name}</p><h1>Agenda da equipe</h1>

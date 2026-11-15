@@ -31,7 +31,7 @@ const nationalDates: Record<string, string> = {
 
 type AgendaLocation = { city?: string; region?: string };
 
-function AgendaDate({ date, location }: { date: string; location?: AgendaLocation }) {
+function AgendaDate({ date, location, count }: { date: string; location?: AgendaLocation; count?: number }) {
   const weekday = new Date(date + "T12:00:00Z").getUTCDay();
   const monthDay = date.slice(5);
   const saoPaulo = location?.region?.trim().toUpperCase() === "SP";
@@ -42,10 +42,12 @@ function AgendaDate({ date, location }: { date: string; location?: AgendaLocatio
     : votorantim && monthDay === "12-08" ? { scope: "municipal", name: "Aniversário de Votorantim" }
     : votorantim && date === "2026-06-04" ? { scope: "municipal", name: "Corpus Christi" }
     : undefined;
-  return <h3 className="professional-agenda-date" data-holiday={!!holiday} data-sunday={weekday === 0}>
+  const Heading = count === undefined ? "h3" : "summary";
+  return <Heading className="professional-agenda-date" data-holiday={!!holiday} data-sunday={weekday === 0}>
     <time dateTime={date}>{dayLabel(date)} {weekdays[weekday]}</time>
     {holiday && <small>Feriado {holiday.scope} · {holiday.name}</small>}
-  </h3>;
+    {count !== undefined && <small>{count === 1 ? "1 atendimento" : count + " atendimentos"}</small>}
+  </Heading>;
 }
 
 function MetricBars({ rows }: { rows: { label: string; value: number; color: string }[] }) {
@@ -212,12 +214,12 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         groups.set(date, [...(groups.get(date) ?? []), entry]);
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
-        <section key={date}><AgendaDate date={date} location={bookingContext.data} />{!entries.length && <p>Sem agendamentos</p>}
-          {entries.map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
+        <details key={date} className="professional-agenda-group"><AgendaDate date={date} location={bookingContext.data} count={entries.length} />{!entries.length && <p>Sem agendamentos</p>}
+          {entries.sort((a, b) => a.starts.localeCompare(b.starts)).map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
             <summary>{entry.starts.slice(11, 16)} · {entry.client} · {appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
           </details>)}
-        </section>)}</div>;
+        </details>)}</div>;
       })()}
       {agendaPeriod === "dia" && page > 0 && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page-1}#agenda-dia`}>Anterior</Link>}
       {agendaPeriod === "dia" && (page + 1) * 12 < appointments.length && <Link className="secondary" href={`${base}?periodo=${period}&agenda=${agendaPeriod}&pagina=${page+1}#agenda-dia`}>Próxima</Link>}

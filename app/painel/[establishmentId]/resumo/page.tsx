@@ -1,3 +1,4 @@
+import { VisiblePageRefresh } from "../../../visible-page-refresh";
 import { CommissionDue } from "./commission-due";
 import { ActiveProfessionals } from "./active-professionals";
 import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
@@ -134,6 +135,7 @@ export default async function DashboardPage({ params, searchParams }: {
   ] : [];
 
   return <section className="container section">
+    <VisiblePageRefresh pauseWithin="form, dialog" />
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link>
       <Link href={`/painel/${shop}/agenda`}>Agenda</Link>

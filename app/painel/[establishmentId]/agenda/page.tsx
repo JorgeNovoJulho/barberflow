@@ -1,3 +1,4 @@
+import { VisiblePageRefresh } from "../../../visible-page-refresh";
 import { httpsUrl } from "../../../../lib/business-profile";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -116,6 +117,7 @@ export default async function Agenda({ params, searchParams }: {
   const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(monthStart));
 
   return <section className="container section">
+    <VisiblePageRefresh pauseWithin="form, dialog" />
     <nav className="account-links" aria-label="Estabelecimento">
       <Link href="/painel">Meus estabelecimentos</Link>
       <Link href={`/painel/${shop}/profissionais`}>Profissionais</Link>
