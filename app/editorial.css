@@ -424,7 +424,9 @@ body:has(> main > .editorial-landing) > :is(.site-header, .footer) { display: no
 
 .professional-identity .account-links { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .65rem; }
 .professional-identity .account-links > details, .professional-identity .account-links > form { margin: 0; }
-.professional-identity .account-links > a:nth-child(2) { background: #16634e; color: white; }
+.professional-identity .professional-agenda-link { background: #54378c; color: white; }
+.professional-identity .professional-walk-in-link { background: #805112; color: white; }
+.professional-identity .professional-new-link { background: #873354; color: white; }
 .professional-identity .professional-public-link { background: #20528b; color: white; }
 .professional-identity .account-links > details > summary,
 .team-professional-card .agenda-absence-button { background: #ffdf8b; color: #553200; }

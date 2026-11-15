@@ -14,7 +14,7 @@ const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Men
 type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; cancellation_reason?: string | null; booked_by: string | null };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
-  available: boolean; day_started?: boolean; services: string[]; service_rate: number; product_rate: number;
+  available: boolean; shop_open?: boolean; walk_in_active?: boolean; day_started?: boolean; services: string[]; service_rate: number; product_rate: number;
   appointments: Appointment[]; attended: number; absent: number; paid_services: number; sold_products: number;
   hours: { weekday: number; hour: number; quantity: number }[];
   daily: { services: number; products: number; service_units: number; product_units: number; service_commission: number; product_commission: number };
@@ -129,7 +129,6 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   if (counter) {
     panel.paid_services += counter.paid_services;
     panel.sold_products += counter.sold_products;
-    for (const key of Object.keys(panel.daily) as (keyof Panel["daily"])[]) panel.daily[key] += counter.daily[key];
   }
   const base = `/equipe/${shop}/meu-painel`;
   const appointments = (agendaResult.data ?? []) as Appointment[];
@@ -160,12 +159,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <h1>Meu dia</h1><h2>{panel.name}</h2>
       <p>{panel.services.length ? panel.services.join(" · ") : "Sem serviços vinculados."}</p>
       <p>Comissão de serviços {panel.service_rate / 100}% · Comissão de produtos {panel.product_rate / 100}%</p>
-      <p><strong>{panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>
+      <p><strong>{panel.shop_open === false ? (panel.walk_in_active ? "Em atendimento avulso" : "Indisponível para agendamentos") : panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>
       <nav className="account-links" aria-label="Ações do profissional">
-        <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`}>Avulsos</Link>
-        <Link className="primary" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
-        <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
-        {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       {(panel.day_started ?? panel.available) ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
                     <p>{openToday.length} atendimento(s) de hoje com comanda iniciada. {walkIns.error ? "Não foi possível consultar os avulsos." : `${openWalkIns} avulso(s) em aberto.`} As comandas abertas podem ser cobradas após fechar o dia.</p>
@@ -173,7 +168,11 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           <Link className="secondary" href={`/equipe/${shop}#comandas-avulsas`}>Revisar avulsos</Link>
           <SubmitButton>Fechar dia mesmo assim</SubmitButton>
         </form>
-      </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton tone="keep">Iniciar dia</SubmitButton></form>}
+      </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton tone="keep" disabled={panel.shop_open === false}>Iniciar dia</SubmitButton></form>}
+        <Link className="secondary professional-walk-in-link" href={`/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`}>Avulsos</Link>
+        <Link className="secondary professional-agenda-link" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
+        <Link className="secondary professional-new-link" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
+        {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       </nav>
     </header>
     <section className="card">
@@ -190,10 +189,14 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     {estado && <p role={estado === "salvo" ? "status" : "alert"}>{estado === "salvo" ? "Alteração salva." : "Não foi possível concluir a operação."}</p>}
     {counterResult.error && <p role="status">Não foi possível incluir as vendas de balcão nos totais.</p>}
     <div className="professional-daily">
-      <section className="card"><h2>Serviços hoje</h2><p>{panel.daily.service_units} · {money(panel.daily.services)}</p>
-        <strong>A receber {money(panel.daily.service_commission)}</strong></section>
-      <section className="card"><h2>Produtos hoje</h2><p>{panel.daily.product_units} · {money(panel.daily.products)}</p>
-        <strong>A receber {money(panel.daily.product_commission)}</strong></section>
+      <section className="card"><h2>Serviços hoje</h2>
+        <p><strong>Agendamentos</strong> · {panel.daily.service_units} · {money(panel.daily.services)} · A receber {money(panel.daily.service_commission)}</p>
+        {counter && <p><strong>Avulsos</strong> · {counter.daily.service_units} · {money(counter.daily.services)} · A receber {money(counter.daily.service_commission)}</p>}
+      </section>
+      <section className="card"><h2>Produtos hoje</h2>
+        <p><strong>Agendamentos</strong> · {panel.daily.product_units} · {money(panel.daily.products)} · A receber {money(panel.daily.product_commission)}</p>
+        {counter && <p><strong>Avulsos</strong> · {counter.daily.product_units} · {money(counter.daily.products)} · A receber {money(counter.daily.product_commission)}</p>}
+      </section>
     </div>
     <section className="card professional-agenda" id="agenda-dia" aria-labelledby="professional-agenda-title">
       <VisiblePageRefresh pauseWithin="#agenda-dia form" />
