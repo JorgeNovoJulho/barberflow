@@ -5,7 +5,14 @@ import type { Client } from "./client-form";
 
 type RankedItem = { name: string; quantity: number; position: number };
 
+type ClientOrder = {
+  id: string; number: string; starts: string; state: string; service: string; professional: string;
+  closed_at: string | null; total_cents: number; paid_cents: number;
+  services: { name: string; cents: number }[]; products: { name: string; cents: number; quantity: number }[];
+};
+
 export type VisitDetails = {
+  orders?: ClientOrder[];
   top_services?: RankedItem[]; top_products?: RankedItem[];
   visits: { id: string; starts: string; service: string; professional: string; paid_cents: number;
     additional_services: string[]; products: { name: string; quantity: number }[] }[];
@@ -43,6 +50,20 @@ export function ClientVisitHistory({ name, details, error }: { name: string; det
         <p>Total pago · <strong>{bookingCurrency.format(visit.paid_cents / 100)}</strong></p>
       </li>)}
     </ul> : <p>Nenhum atendimento concluído vinculado.</p>}
+    {!error && <section>
+      <h3>Comandas do cliente</h3>
+      {details?.orders?.length ? details.orders.map(order => <details key={order.id}>
+        <summary className="secondary finance-tab command-action" data-tone="blue">Comanda {order.number}</summary>
+        <p><time dateTime={order.starts}>{order.starts.slice(0, 10).split("-").reverse().join("/")} às {order.starts.slice(11, 16)}</time> · {order.professional}</p>
+        <p>{order.state === "cancelled" ? "Cancelada" : order.state === "no_show" ? "Falta" : order.closed_at ? "Fechada em " + closedAtLabel(order.closed_at) : "Em aberto"}</p>
+        <ul className="finance-entry-list">
+          <li>{order.service}</li>
+          {order.services.map((item, index) => <li key={"service-" + index}>{item.name} · {bookingCurrency.format(item.cents / 100)}</li>)}
+          {order.products.map((item, index) => <li key={"product-" + index}>{item.quantity} × {item.name} · {bookingCurrency.format(item.cents / 100)}</li>)}
+        </ul>
+        <p><strong>Total {bookingCurrency.format(order.total_cents / 100)}</strong> · Pago {bookingCurrency.format(order.paid_cents / 100)}</p>
+      </details>) : <p>Nenhuma comanda vinculada ao cadastro.</p>}
+    </section>}
     {!error && <div className="form-columns">
       <ClientRanking title="Serviços mais utilizados" items={details?.top_services} unit="atendimento(s)" />
       <ClientRanking title="Produtos mais comprados" items={details?.top_products} unit="un." />
