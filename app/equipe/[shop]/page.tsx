@@ -130,10 +130,15 @@ export default async function TeamAgenda({ params, searchParams }: {
       <h2>Comandas avulsas</h2>
       {walkIns.error ? <p role="alert">Não foi possível consultar os avulsos.</p> :
         [["Comandas abertas", ["open", "pending"]], ["Comandas fechadas", ["paid"]], ["Canceladas", ["cancelled"]]].map(([label, states]) => {
-          const rows = ((walkIns.data ?? []) as { id: string; number: string; customer: string; state: string }[])
+          const rows = ((walkIns.data ?? []) as { id: string; number: string; customer: string; state: string; total: number; items?: { name: string; units: number; price: number }[] }[])
             .filter(row => states.includes(row.state));
           return <details key={String(label)}><summary>{label} · {rows.length}</summary>
-            {rows.length ? <ul>{rows.map(row => <li key={row.id}>{row.number} · {row.customer}</li>)}</ul> : <p>Nenhuma comanda.</p>}
+            {rows.length ? rows.map(row => <details key={row.id}>
+              <summary>{row.number} · {row.customer} · {bookingCurrency.format(row.total / 100)}</summary>
+              {row.items?.length ? <ul>{row.items.map((item, index) =>
+                <li key={index}>{item.name} · {item.units} un. · {bookingCurrency.format(item.price * item.units / 100)}</li>
+              )}</ul> : <p>Detalhes dos itens indisponíveis.</p>}
+            </details>) : <p>Nenhuma comanda.</p>}
           </details>;
         })}
     </section>}
