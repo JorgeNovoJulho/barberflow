@@ -138,6 +138,11 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const attended = panel.attended + (counter?.attended_open ?? 0);
   const attendanceTotal = attended + panel.absent;
   const attendanceShare = attendanceTotal ? attended / attendanceTotal * 100 : 0;
+  const todayEntries = appointments.filter(entry => entry.starts.startsWith(panel.today));
+  const openToday = todayEntries.filter(entry => entry.state === "scheduled" && (entry.checked_in || checkedIn.has(entry.id)));
+  const next = todayEntries.filter(entry => entry.state === "scheduled")
+    .sort((a, b) => Number(checkedIn.has(b.id) || !!b.checked_in) - Number(checkedIn.has(a.id) || !!a.checked_in)
+      || a.starts.localeCompare(b.starts))[0];
   const publicSlug = bookingContext.data?.slug;
   return <section className="container section professional-workspace">
     <Link href={`/equipe/${shop}`}>Agenda da equipe</Link>
@@ -145,22 +150,35 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <div className="professional-cover">{media(panel.cover) && <img src={media(panel.cover)} alt="" decoding="async" />}</div>
       {media(panel.photo) && <img className="professional-photo" src={media(panel.photo)} alt="" loading="lazy" width={72} height={72} />}
       <p className="eyebrow">{panel.business}</p>
-      <h1>{panel.name}</h1>
+      <h1>Meu dia</h1><h2>{panel.name}</h2>
       <p>{panel.services.length ? panel.services.join(" · ") : "Sem serviços vinculados."}</p>
       <p>Comissão de serviços {panel.service_rate / 100}% · Comissão de produtos {panel.product_rate / 100}%</p>
       <p><strong>{panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>
       <nav className="account-links" aria-label="Ações do profissional">
+        <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`}>Avulsos</Link>
         <Link className="primary" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
         <Link className="secondary" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       {(panel.day_started ?? panel.available) ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
-          <p>Fechar a disponibilidade para novos agendamentos online de hoje?</p>
-          <SubmitButton>Confirmar fechamento</SubmitButton>
+                    <p>{openToday.length} atendimento(s) de hoje com comanda iniciada. As comandas abertas podem ser cobradas após fechar o dia.</p>
+          <Link className="secondary" href={`${base}?agenda=dia#agenda-dia`}>Revisar comandas</Link>
+          <SubmitButton>Fechar dia mesmo assim</SubmitButton>
         </form>
-      </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton>Iniciar Dia</SubmitButton></form>}
+      </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton tone="keep">Iniciar dia</SubmitButton></form>}
       </nav>
     </header>
+    <section className="card">
+      <h2>Próximo atendimento</h2>
+      {next ? <>
+        <p><time className="professional-appointment-time" dateTime={next.starts}>{next.starts.slice(11,16)}</time></p>
+        <p className="subscription-business"><ClientAvatar photo={avatars.get(next.id)} /><strong>{next.client}</strong></p>
+        <p>{next.service}{next.price_cents != null && " · " + money(next.price_cents)}</p>
+        {next.checked_in || checkedIn.has(next.id)
+          ? <Link className="primary action-keep" href={`/equipe/${shop}/comanda/${next.id}`}>Continuar atendimento</Link>
+          : <form action={checkIn.bind(null, shop, next.id, true)}><SubmitButton tone="keep">Iniciar atendimento</SubmitButton></form>}
+      </> : <p>Nenhum atendimento em aberto para hoje.</p>}
+    </section>
     {estado && <p role={estado === "salvo" ? "status" : "alert"}>{estado === "salvo" ? "Alteração salva." : "Não foi possível concluir a operação."}</p>}
     {counterResult.error && <p role="status">Não foi possível incluir as vendas de balcão nos totais.</p>}
     <div className="professional-daily">

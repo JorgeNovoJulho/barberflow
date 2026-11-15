@@ -56,11 +56,11 @@ type Entry = { id: string; professional_name: string; kind: string; state: strin
 type Offering = { professional_id: string; professional_name: string; service_id: string; service_name: string; duration_minutes: number };
 
 export default async function TeamAgenda({ params, searchParams }: {
-  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string; novo?: string }>;
+  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string; novo?: string; avulso?: string }>;
 }) {
   const { shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { dia, estado, novo } = await searchParams;
+  const { dia, estado, novo, avulso } = await searchParams;
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
@@ -125,8 +125,8 @@ export default async function TeamAgenda({ params, searchParams }: {
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
       </details>}
-    {individual.data && wizard && <details className="card team-booking" id="avulso" open={estado === "avulso" || estado === "falha"}>
-      <summary>Avulso</summary>
+    {individual.data && wizard && <details className="card team-booking" id="avulso" open={avulso === "1" || estado === "avulso" || estado === "falha"}>
+      <summary>Avulso</summary><p>Para usar um horário livre, <a href={`/equipe/${shop}?novo=1#novo-atendimento`}>agende pela agenda</a>. Para atender sem reserva ou vender um produto, preencha a comanda avulsa abaixo.</p>
       {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
       {estado === "avulso" && <p role="status">Comanda avulsa criada. Abra o caixa para cobrar.</p>}
       <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
