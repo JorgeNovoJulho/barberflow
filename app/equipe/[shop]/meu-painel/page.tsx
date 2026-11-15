@@ -1,6 +1,6 @@
 import { MyCommissions } from "./my-commissions";
 import { offsetDay } from "../../../../lib/agenda";
-import { appointmentAvatars, ClientAvatar } from "../../../painel/[establishmentId]/appointment-card";
+import { appointmentAvatars, ClientAvatar, internalBookingClients } from "../../../painel/[establishmentId]/appointment-card";
 import Link from "next/link";
 import { VisiblePageRefresh } from "../../../visible-page-refresh";
 import { notFound, redirect } from "next/navigation";
@@ -144,6 +144,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const appointments = (agendaResult.data ?? []) as Appointment[];
   const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(appointments.length / 12) - 1)) : 0;
   const visibleAppointments = appointments.slice(page * 12, page * 12 + 12);
+  const identities = await internalBookingClients(supabase, shop, appointments.filter(entry => !entry.walk_in).map(entry => entry.id));
   const avatars = await appointmentAvatars(supabase, (agendaPeriod === "dia" ? visibleAppointments : appointments).filter(entry => !entry.walk_in));
   const attended = panel.attended + (counter?.attended_open ?? 0);
   const attendanceTotal = attended + panel.absent;
@@ -208,7 +209,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       <h2>Próximo atendimento</h2>
       {next ? <>
         <p><time className="professional-appointment-time" dateTime={next.starts}>{next.starts.slice(11,16)}</time></p>
-        <p className="subscription-business"><ClientAvatar photo={avatars.get(next.id)} /><strong>{next.client}</strong></p>
+        <p className="subscription-business"><ClientAvatar photo={identities.get(next.id)?.photo ?? avatars.get(next.id)} /><strong>{identities.get(next.id)?.name ?? next.client}{identities.has(next.id) && ` · ${identities.get(next.id)?.code}`}</strong></p>
         <p>{next.service}{next.price_cents != null && " · " + money(next.price_cents)}</p>
         {next.checked_in || checkedIn.has(next.id)
           ? <Link className="primary action-keep" href={`/equipe/${shop}/comanda/${next.id}`}>Continuar atendimento</Link>
@@ -252,7 +253,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         return <li className="card team-professional-card" data-tone={index % 4} data-state={entry.state} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
           <span className="professional-appointment-status" data-state={entry.state}>{status}</span>
-          <h3 className="subscription-business"><ClientAvatar photo={avatars.get(entry.id)} />{entry.client}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
+          <h3 className="subscription-business"><ClientAvatar photo={identities.get(entry.id)?.photo ?? avatars.get(entry.id)} />{identities.get(entry.id)?.name ?? entry.client}{identities.has(entry.id) && ` · ${identities.get(entry.id)?.code}`}</h3><p>{entry.service} · {entry.price_cents == null ? "Valor não informado" : money(entry.price_cents)}</p>
           {digits && <a href={`https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`}>{entry.phone}</a>}
           {entry.state === "cancelled" && <p><strong>Motivo do cancelamento</strong><br />{entry.cancellation_reason ?? "Motivo não informado."}</p>}
           {entry.state === "completed" && <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/comanda/${entry.id}`}>Ver comanda</Link>}

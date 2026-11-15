@@ -8,7 +8,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 import { AgendaIcon } from "../agenda-icon";
 import { AppointmentFields } from "./appointment-fields";
-import { appointmentAvatars, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
+import { appointmentAvatars, internalBookingClients, CancelAppointmentForm, CancellationFeedback, ClientAvatar } from "../appointment-card";
 import { archiveCancelled, createEntry, linkCompletedClient, rescheduleEntry, updateEntry } from "./actions";
 
 const messages: Record<string, string> = {
@@ -83,6 +83,7 @@ export default async function Agenda({ params, searchParams }: {
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_clients").select("id,name").eq("establishment_id", shop).eq("active", true).order("name"),
   ]);
+  const identities = await internalBookingClients(supabase, shop, (entries.data ?? []).map(entry => entry.id));
   const avatars = monthly || weekly ? new Map<string, string>() : await appointmentAvatars(supabase, entries.data ?? []);
   const monthlyEntries = new Map<string, NonNullable<typeof entries.data>>();
   if (monthly) {
@@ -225,7 +226,7 @@ export default async function Agenda({ params, searchParams }: {
           <p className="agenda-entry-time">{entry.starts_at.slice(0,10).split("-").reverse().join("/")} · {entryTime(entry.starts_at, day)}–{entryTime(entry.ends_at, day)}</p>
           <h3>{entry.kind === "block" ? "Bloqueio de horário" : entry.service_name}</h3>
           {providerLine(entry)}
-          {entry.client_name && <p className="booking-client"><ClientAvatar photo={avatars.get(entry.id)} /><span>{entry.client_name}{entry.client_phone && ` · ${entry.client_phone}`}</span></p>}
+          {entry.client_name && <p className="booking-client"><ClientAvatar photo={identities.get(entry.id)?.photo ?? avatars.get(entry.id)} /><span>{identities.get(entry.id)?.name ?? entry.client_name}{identities.has(entry.id) && ` · ${identities.get(entry.id)?.code}`}{entry.client_phone && ` · ${entry.client_phone}`}</span></p>}
           {entry.notes && <p>{entry.notes}</p>}
           <div className="agenda-entry-actions">
           {entry.kind === "appointment" && entry.state === "completed" && !entry.client_id && !!clients.data?.length &&

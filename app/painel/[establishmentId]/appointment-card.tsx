@@ -1,3 +1,4 @@
+import { clientPhotoLinks } from "../../../lib/client-photos";
 import { mediaLinks } from "../../cliente/social";
 import { supabaseServer } from "../../../lib/supabase";
 import { SubmitButton } from "../../auth/submit";
@@ -11,6 +12,18 @@ export async function appointmentAvatars(supabase: NonNullable<Awaited<ReturnTyp
   const avatars = new Map((data ?? []).map(({ user_id, avatar }) => [user_id, avatar]));
   const links = await mediaLinks(supabase, [...avatars.values()]);
   return new Map(entries.map(({ id, booked_by }) => [id, links.get(avatars.get(booked_by) ?? "")]));
+}
+
+export async function internalBookingClients(supabase: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>, shop: string, ids: string[]) {
+  const clients = new Map<string, { name: string; code: string; photo?: string }>();
+  if (!ids.length) return clients;
+  const { data } = await supabase.rpc("barberflow_internal_booking_clients", { shop, appointments: ids });
+  const rows = (data ?? []) as { appointment_id: string; name: string; client_number: number; photo_path?: string }[];
+  const photos = await clientPhotoLinks(supabase, rows);
+  for (const row of rows) clients.set(row.appointment_id, {
+    name: row.name, code: "C" + String(row.client_number).padStart(3, "0"), photo: photos.get(row.photo_path ?? ""),
+  });
+  return clients;
 }
 
 export function ClientAvatar({ photo }: { photo?: string }) {
