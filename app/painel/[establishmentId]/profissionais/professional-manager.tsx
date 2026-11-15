@@ -216,7 +216,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
           {!delegated && !payouts?.error && (() => {
             const payout = payoutById.get(professional.id);
             return <details id={`repasse-${professional.id}`} open={repasse === professional.id || undefined}>
-              <summary>Pagamento de comissões</summary>
+              <summary className="secondary finance-tab command-action payment-action" data-tone="green">Pagamento de comissões</summary>
               {repasse === professional.id && estado === "repasse-salvo" && <p role="status">Dados salvos.</p>}
               {repasse === professional.id && estado === "repasse-invalido" && <p role="alert">Confira as datas e a chave Pix. Para celular, informe o DDD.</p>}
               <form className="account-form" action={savePayout.bind(null, professional.id)}>
@@ -236,7 +236,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
           })()}
           {!delegated && members.some(member => member.professional_id === professional.id && member.accepted_at) &&
             <details id={`permissoes-${professional.id}`}>
-              <summary className="secondary finance-tab command-action" data-tone="blue">Permissões do profissional</summary>
+              <summary className="secondary finance-tab command-action payment-action" data-tone="blue">Permissões do profissional</summary>
               <p>Marque as funções que esta conta pode usar e salve para atualizar o painel profissional.</p>
               {members.filter(member => member.professional_id === professional.id && member.accepted_at).map(member =>
                 <form key={member.id} className="account-form" action={updateTeamPermissions.bind(null, shop, professional.id, member.id)}>
@@ -248,11 +248,11 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
                   <SubmitButton tone="keep">Salvar permissões</SubmitButton>
                 </form>)}
             </details>}
-          <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
+          <details><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
-            <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
+            <SubmitButton className="command-action payment-action" tone={accessByProfessional.get(professional.id)?.blocked ? "keep" : "cancel"}>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
           </form>}
-          <details><summary>Serviços vinculados · {selected.size}</summary>
+          <details><summary className="secondary finance-tab command-action payment-action" data-tone="teal">Serviços vinculados · {selected.size}</summary>
             {available.length ? <form className="account-form" action={saveAssignments.bind(null, shop, professional.id, delegated)}>
               {available.map((service) => <label key={service.id}>
                 <input type="checkbox" name="service" value={service.id} defaultChecked={selected.has(service.id)} /> {service.name}{service.active ? "" : " (arquivado)"}
@@ -260,7 +260,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               <SubmitButton>Salvar vínculos</SubmitButton>
             </form> : <p>Cadastre pelo menos um serviço ativo no catálogo.</p>}
           </details>
-          <details><summary>Horários de trabalho · {professional.inherit_business_hours ? "Segue o estabelecimento" : "Expediente próprio"}</summary>
+          <details><summary className="secondary finance-tab command-action payment-action" data-tone="amber">Horários de trabalho · {professional.inherit_business_hours ? "Segue o estabelecimento" : "Expediente próprio"}</summary>
             {professional.inherit_business_hours ? <p>{delegated ? "O expediente é definido pelo estabelecimento." : <Link href={`/painel/${shop}/publicacao`}>Editar o horário do estabelecimento</Link>}</p>
               : weekdays.map((name, day) => <DayForm delegated={delegated} key={name} shop={shop} professional={professional.id} day={day} hours={schedule.get(day)} />)}
           </details>

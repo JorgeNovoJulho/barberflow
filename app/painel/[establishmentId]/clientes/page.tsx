@@ -83,10 +83,10 @@ export default async function Clients({ params, searchParams }: {
           <div><dt>Atendimentos concluídos</dt><dd>{client.visits}</dd></div>
           <div><dt>Total em comandas fechadas</dt><dd>{bookingCurrency.format(client.billed_cents / 100)}</dd></div>
         </dl>
-        <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
-        <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
+        <details><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
+        <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
         {chosen?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
-        {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
+        {contact && <a className="secondary finance-tab command-action payment-action" data-tone="green" href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a>}
       </li>;
       })}</ul> : <p>Nenhum cliente encontrado.</p>}
       {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}

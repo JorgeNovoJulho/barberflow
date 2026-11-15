@@ -44,8 +44,8 @@ export default async function TeamClients({ params, searchParams }: {
     {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client, index) =>
       <li className="card team-professional-card" data-tone={index % 4} key={client.id} id={`cliente-${client.id}`}>
       <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
-      <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
-      <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
+      <details><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
+      <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
         {selected?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
     </li>)}</ul> : <p>Nenhum cliente encontrado.</p>}
     {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}
