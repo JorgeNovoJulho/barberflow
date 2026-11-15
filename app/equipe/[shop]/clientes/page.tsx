@@ -6,10 +6,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { ClientForm, type Client } from "../../../painel/[establishmentId]/clientes/client-form";
 import { PanelStatus } from "../../../painel/status";
 
-const states: Record<string, string> = {
-  pending: "Aguardando confirmação", scheduled: "Agendado", completed: "Concluído",
-  cancelled: "Cancelado", no_show: "Não compareceu",
-};
+import { ClientIdentity, ClientVisitHistory, type VisitDetails } from "../../../painel/[establishmentId]/clientes/client-visit-history";
 
 export default async function TeamClients({ params, searchParams }: {
   params: Promise<{ shop: string }>; searchParams: Promise<{ busca?: string; cliente?: string; estado?: string }>;
@@ -25,18 +22,18 @@ export default async function TeamClients({ params, searchParams }: {
 
   const { busca, cliente, estado } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
-  const query = supabase.from("barberflow_clients").select("id,name,phone,preferences,notes,active,email,instagram,facebook,tiktok,youtube,photo_path")
+  const query = supabase.from("barberflow_clients").select("id,name,phone,preferences,notes,active,email,instagram,facebook,tiktok,youtube,photo_path,client_number,created_at")
     .eq("establishment_id", shop).order("name").order("id").limit(100);
   if (search) query.ilike("name", "%" + search.replace(/[\\%_]/g, "\\$&") + "%");
   const { data, error } = await query;
   const clients = (data ?? []) as Client[];
   const photos = await clientPhotoLinks(supabase, clients);
   const selected = clients.find(({ id }) => id === cliente);
-  const history = selected ? await supabase.rpc("barberflow_team_client_history", { shop, client: selected.id }) : null;
-  const visits = (history?.data ?? []) as { id: string; service_name: string; state: string; starts_at: string }[];
+  const history = selected ? await supabase.rpc("barberflow_client_visit_details", { shop, client: selected.id }) : null;
+
 
   return <section className="container section">
-    <nav className="account-links" aria-label="Equipe"><Link href="/painel">Painel</Link><Link href={base}>Agenda da equipe</Link></nav>
+    <nav className="account-links" aria-label="Equipe"><Link className="secondary finance-tab command-action" data-tone="blue" href={base + "/meu-painel"}>Voltar ao Meu dia</Link><Link href={base}>Agenda da equipe</Link></nav>
     <h1>Clientes da equipe</h1>
     <PanelStatus status={estado} />
     <details className="card panel-form"><summary>Novo cliente</summary><ClientForm shop={shop} team /></details>
@@ -44,17 +41,12 @@ export default async function TeamClients({ params, searchParams }: {
       <label>Buscar por nome <input name="busca" maxLength={120} defaultValue={search} /></label>
       <button className="secondary" type="submit">Buscar</button>
     </form>
-    {selected && <section className="card panel-form" id="historico">
-      <h2>Histórico de {selected.name}</h2>
-      {history?.error ? <p role="alert">Não foi possível consultar o histórico.</p> : visits.length ? <ul>{visits.map((item) => <li key={item.id}>
-        {item.starts_at.slice(0, 10).split("-").reverse().join("/")} · {item.service_name} · {states[item.state]}
-      </li>)}</ul> : <p>Nenhum atendimento vinculado.</p>}
-    </section>}
-    {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client) => <li className="card" key={client.id}>
-      <h2>{client.name}</h2>
-      <p>{client.active ? "Ativo" : "Inativo"}{client.phone && ` · ${client.phone}`}</p>
+    {selected && <ClientVisitHistory name={selected.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
+    {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client, index) =>
+      <li className="card team-professional-card" data-tone={index % 4} key={client.id}>
+      <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
       <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
-      <Link href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + "#historico"}>Ver histórico</Link>
+      <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + "#historico"}>Ver histórico</Link>
     </li>)}</ul> : <p>Nenhum cliente encontrado.</p>}
     {clients.length === 100 && <p>Exibindo os primeiros 100 resultados. Use a busca para localizar outros clientes.</p>}
   </section>;

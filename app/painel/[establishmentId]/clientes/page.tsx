@@ -14,9 +14,7 @@ const returnOptions = [15, 20, 30, 45, 60, 90];
 const sorting = { visit: "Última visita", spend: "Maior faturamento", recent: "Cadastro recente", name: "Nome" };
 
 
-const states: Record<string, string> = {
-  pending: "Aguardando confirmação", scheduled: "Agendado", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu",
-};
+import { ClientIdentity, ClientVisitHistory, type VisitDetails } from "./client-visit-history";
 
 export default async function Clients({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
@@ -39,14 +37,17 @@ export default async function Clients({ params, searchParams }: {
   const { data, error } = await supabase.rpc("barberflow_client_directory", {
     shop, search_text: search, return_days: returnDays, sort_by: sort,
   });
-  const clients = (data ?? []) as DirectoryClient[];
+  const directory = (data ?? []) as DirectoryClient[];
+  const metadata = directory.length ? await supabase.from("barberflow_clients").select("id,client_number,created_at")
+    .eq("establishment_id", shop).in("id", directory.map(client => client.id)) : null;
+  const byId = new Map((metadata?.data ?? []).map(item => [item.id, item]));
+  const clients = directory.map(client => ({ ...client, ...byId.get(client.id) }));
   const photos = await clientPhotoLinks(supabase, clients);
   const origin = authOrigin();
   const bookingLink = establishment.published && establishment.slug && origin.startsWith("https://")
     ? new URL(`/estabelecimento/${establishment.slug}/agendar`, origin).href : "";
   const chosen = cliente && isUuid(cliente) ? clients.find((item) => item.id === cliente) : undefined;
-  const history = chosen ? await supabase.from("barberflow_schedule").select("id,service_name,state,starts_at")
-    .eq("establishment_id", shop).eq("client_id", chosen.id).order("starts_at", { ascending: false }).limit(25) : null;
+  const history = chosen ? await supabase.rpc("barberflow_client_visit_details", { shop, client: chosen.id }) : null;
 
   return <section className="container section">
     <nav className="account-links" aria-label="Estabelecimento">
@@ -71,27 +72,20 @@ export default async function Clients({ params, searchParams }: {
         </div>
         <button className="secondary" type="submit">Filtrar</button>
       </form>
-      {chosen && <section className="card panel-form" id="historico">
-        <h2>Histórico de {chosen.name}</h2>
-        {history?.error ? <p role="alert">Não foi possível carregar o histórico.</p>
-          : history?.data?.length ? <ul>{history.data.map((item) => <li key={item.id}>
-            {item.starts_at.slice(0, 10).split("-").reverse().join("/")} · {item.service_name} · {states[item.state]}
-          </li>)}</ul> : <p>Nenhum atendimento vinculado.</p>}
-      </section>}
-      {clients.length ? <ul className="cards">{clients.map((client) => {
+      {chosen && <ClientVisitHistory name={chosen.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}
+      {clients.length ? <ul className="cards">{clients.map((client, index) => {
         const name = client.name.trim().split(/\s+/)[0];
         const message = `Olá, ${name}! Aqui é da equipe de ${establishment.name}. Gostaria de agendar seu próximo atendimento?`;
         const contact = client.active && whatsappUrl(client.phone, [message, bookingLink].filter(Boolean).join("\n"));
-        return <li className="card" key={client.id}>
-        <h3>{client.name}</h3>
-        <p>{client.active ? "Ativo" : "Inativo"}{client.phone && ` · ${client.phone}`}</p>
+        return <li className="card team-professional-card" data-tone={index % 4} key={client.id}>
+        <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
         <dl className="order-totals">
           <div><dt>Última visita</dt><dd>{client.last_visit?.split("-").reverse().join("/") ?? "Sem visita concluída"}</dd></div>
           <div><dt>Atendimentos concluídos</dt><dd>{client.visits}</dd></div>
           <div><dt>Total em comandas fechadas</dt><dd>{bookingCurrency.format(client.billed_cents / 100)}</dd></div>
         </dl>
         <details><summary>Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} /></details>
-        <Link href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + "#historico"}>Ver histórico</Link>
+        <Link className="secondary finance-tab command-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, retorno: String(returnDays), ordem: sort, cliente: client.id }) + "#historico"}>Ver histórico</Link>
         {contact && <p><a href={contact} target="_blank" rel="noopener noreferrer">Abrir WhatsApp de {name}</a></p>}
       </li>;
       })}</ul> : <p>Nenhum cliente encontrado.</p>}

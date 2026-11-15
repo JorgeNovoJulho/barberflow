@@ -3,7 +3,7 @@ import { SubmitButton } from "../../../auth/submit";
 import { saveClient } from "./actions";
 
 export type Client = { id: string; name: string; phone: string; preferences: string; notes: string; active: boolean;
-  email?: string; instagram?: string; facebook?: string; tiktok?: string; youtube?: string; photo_path?: string };
+  email?: string; instagram?: string; facebook?: string; tiktok?: string; youtube?: string; photo_path?: string; client_number?: number; created_at?: string | null };
 
 export function ClientForm({ shop, client, photo, team = false }: { shop: string; client?: Client; photo?: string; team?: boolean }) {
   return <form className="account-form" action={saveClient.bind(null, shop, client?.id ?? null, team)}>

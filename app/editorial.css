@@ -650,3 +650,7 @@ summary.command-action::-webkit-details-marker { display: none; }
 }
 .professional-today time[data-sunday="true"] { background: #e6eaff; color: #312571; }
 .professional-today span { background: #ffebbb; color: #643703; }
+
+.client-frequency { display: grid; gap: .5rem; padding: 0; list-style: none; }
+.client-frequency li { display: grid; grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
+.client-frequency meter { width: 100%; accent-color: #16634e; }
