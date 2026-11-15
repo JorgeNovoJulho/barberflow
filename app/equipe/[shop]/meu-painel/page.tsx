@@ -119,7 +119,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_agenda_period", { shop_id: shop, agenda_period: agendaPeriod }),
     supabase.rpc("barberflow_team_booking_context", { shop_id: shop }),
-    supabase.rpc("barberflow_my_walk_ins", { shop_id: shop }),
+    supabase.rpc("barberflow_my_open_walk_in_count", { shop_id: shop }),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
@@ -140,7 +140,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const attendanceTotal = attended + panel.absent;
   const attendanceShare = attendanceTotal ? attended / attendanceTotal * 100 : 0;
   const todayEntries = appointments.filter(entry => entry.starts.startsWith(panel.today));
-  const openWalkIns = ((walkIns.data ?? []) as { state: string }[]).filter(row => row.state === "open" || row.state === "pending").length;
+  const openWalkIns = Number(walkIns.data ?? 0);
   const openToday = todayEntries.filter(entry => entry.state === "scheduled" && (entry.checked_in || checkedIn.has(entry.id)));
   const next = todayEntries.filter(entry => entry.state === "scheduled")
     .sort((a, b) => Number(checkedIn.has(b.id) || !!b.checked_in) - Number(checkedIn.has(a.id) || !!a.checked_in)
@@ -168,7 +168,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       {(panel.day_started ?? panel.available) ? <details><summary className="secondary">Fechar Dia</summary>
         <form action={changeDay.bind(null, shop, false)}>
-                    <p>{openToday.length} atendimento(s) de hoje com comanda iniciada. {walkIns.error ? "Não foi possível consultar os avulsos." : `${openWalkIns} avulso(s) em aberto na lista recente.`} As comandas abertas podem ser cobradas após fechar o dia.</p>
+                    <p>{openToday.length} atendimento(s) de hoje com comanda iniciada. {walkIns.error ? "Não foi possível consultar os avulsos." : `${openWalkIns} avulso(s) em aberto.`} As comandas abertas podem ser cobradas após fechar o dia.</p>
           <Link className="secondary" href={`${base}?agenda=dia#agenda-dia`}>Revisar atendimentos</Link>
           <Link className="secondary" href={`/equipe/${shop}#comandas-avulsas`}>Revisar avulsos</Link>
           <SubmitButton>Fechar dia mesmo assim</SubmitButton>
