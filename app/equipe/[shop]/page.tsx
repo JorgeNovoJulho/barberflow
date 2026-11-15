@@ -28,12 +28,12 @@ async function setState(shop: string, id: string, day: string, state: string) {
   redirect(path + "&estado=" + (data && !error ? "salvo" : "falha"));
 }
 
-async function bookForTeam(shop: string, form: FormData) {
+async function bookForTeam(shop: string, hasProfessionalPanel: boolean, form: FormData) {
   "use server";
   const day = String(form.get("day") ?? "");
   if (!validDay(day)) notFound();
   form.set("start", String(form.get("slot") ?? ""));
-  return createEntry(shop, day, "appointment", true, form);
+  return createEntry(shop, day, "appointment", true, form, hasProfessionalPanel);
 }
 
 async function createWalkIn(shop: string, day: string, request: string, form: FormData) {
@@ -54,7 +54,8 @@ async function createWalkIn(shop: string, day: string, request: string, form: Fo
     : await client?.rpc("barberflow_create_walk_in", {
     shop_id: shop, sale_id: request, customer: form.get("name"), contact: form.get("phone"), selections,
   });
-  redirect(`/equipe/${shop}?dia=${day}&novo=1&estado=${result?.data === "ok" ? "avulso" : "falha"}#avulso`);
+  if (result?.data === "ok") redirect(`/equipe/${shop}/meu-painel?estado=avulso-criado#meu-dia`);
+  redirect(`/equipe/${shop}?dia=${day}&avulso=1&estado=falha#avulso`);
 }
 
 type Entry = { id: string; professional_name: string; kind: string; state: string; starts_at: string; ends_at: string;
@@ -136,8 +137,20 @@ export default async function TeamAgenda({ params, searchParams }: {
       <details className="card team-booking" id="novo-atendimento" open={novo === "1"}><summary>Novo atendimento</summary>
         <BookingForm teamShop={shop} allowWalkIn={Boolean(individual.data)} slug={wizard.slug ?? ""} services={wizard.services}
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
-          today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
+          today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop, !!individual.data)} requestId={crypto.randomUUID()} />
       </details>}
+    {individual.data && wizard && <details className="card team-booking team-walk-in" id="avulso" open={avulso === "1" || estado === "falha"}>
+      <summary>Avulso</summary><p>Para usar um horário livre, <a href={`/equipe/${shop}?novo=1#novo-atendimento`}>agende pela agenda</a>. Para atender sem reserva ou vender um produto, preencha a comanda avulsa abaixo.</p>
+      {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
+      <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
+        {registered?.error && <p role="alert">Não foi possível consultar os clientes cadastrados.</p>}
+        <WalkInCustomer clients={registeredClients} canSelect={clientAccess.data === true} />
+        <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
+        <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
+        <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>
+        <SubmitButton>Criar comanda avulsa</SubmitButton>
+      </form>
+    </details>}
     {walkIns && <section className="card" id="comandas-avulsas">
       <h2>Comandas avulsas</h2>
       {walkIns.error ? <p role="alert">Não foi possível consultar os avulsos.</p> :
@@ -155,19 +168,6 @@ export default async function TeamAgenda({ params, searchParams }: {
           </details>;
         })}
     </section>}
-    {individual.data && wizard && <details className="card team-booking" id="avulso" open={avulso === "1" || estado === "avulso" || estado === "falha"}>
-      <summary>Avulso</summary><p>Para usar um horário livre, <a href={`/equipe/${shop}?novo=1#novo-atendimento`}>agende pela agenda</a>. Para atender sem reserva ou vender um produto, preencha a comanda avulsa abaixo.</p>
-      {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
-      {estado === "avulso" && <p role="status">Comanda avulsa criada. Abra o caixa para cobrar.</p>}
-      <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
-        {registered?.error && <p role="alert">Não foi possível consultar os clientes cadastrados.</p>}
-        <WalkInCustomer clients={registeredClients} canSelect={clientAccess.data === true} />
-        <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
-        <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
-        <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>
-        <SubmitButton>Criar comanda avulsa</SubmitButton>
-      </form>
-    </details>}
     {agenda.error ? <p role="alert">Não foi possível consultar a agenda.</p> : entries.length ? <ul className="professional-appointments">
       {entries.map((item) => <li className="card" data-state={item.state} key={item.id}>
         <h2>{item.kind === "block" ? "Horário bloqueado" : item.service_name}</h2>

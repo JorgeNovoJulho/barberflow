@@ -215,7 +215,11 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           : <form action={checkIn.bind(null, shop, next.id, true)}><SubmitButton tone="keep">Iniciar atendimento</SubmitButton></form>}
       </> : <p>Nenhum atendimento em aberto para hoje.</p>}
     </section>
-    {estado && <p role={estado === "salvo" ? "status" : "alert"}>{estado === "salvo" ? "Alteração salva." : "Não foi possível concluir a operação."}</p>}
+    {estado && <p role={["salvo", "agendamento-criado", "avulso-criado"].includes(estado) ? "status" : "alert"}>
+      {estado === "agendamento-criado" ? "Atendimento cadastrado com sucesso." :
+        estado === "avulso-criado" ? "Comanda avulsa criada com sucesso." :
+        estado === "salvo" ? "Alteração salva." : "Não foi possível concluir a operação."}
+    </p>}
     {counterResult.error && <p role="status">Não foi possível incluir as vendas de balcão nos totais.</p>}
     <div className="professional-daily">
       <section className="card"><h2>Serviços hoje</h2>

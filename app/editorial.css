@@ -665,3 +665,5 @@ summary.command-action::-webkit-details-marker { display: none; }
 }
 .walk-in-client-text { min-inline-size: 0; overflow-wrap: anywhere; }
 .walk-in-client-text small { display: block; }
+
+.team-booking.team-walk-in > summary { background: #fff0d6; color: #733e09; }

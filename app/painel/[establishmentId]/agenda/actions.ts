@@ -25,7 +25,7 @@ async function context(shop: string, day: string, team = false) {
   } };
 }
 
-export async function createEntry(shop: string, day: string, kind: "appointment" | "block", team: boolean, form: FormData) {
+export async function createEntry(shop: string, day: string, kind: "appointment" | "block", team: boolean, form: FormData, returnToProfessional = false) {
   const { supabase, finish } = await context(shop, day, team);
   const professional = field(form, "professional");
   const service = field(form, "service");
@@ -53,6 +53,11 @@ export async function createEntry(shop: string, day: string, kind: "appointment"
   if (error?.code === "BF001") return finish("limite-plano");
   if (error?.code === "23P01") return finish("conflito");
   if (error?.code === "22023") return finish("indisponivel");
+  if (!error && team && returnToProfessional) {
+    revalidatePath(`/equipe/${shop}`);
+    revalidatePath(`/equipe/${shop}/meu-painel`);
+    redirect(`/equipe/${shop}/meu-painel?estado=agendamento-criado#meu-dia`);
+  }
   return finish(error ? "falha" : "salvo");
 }
 
