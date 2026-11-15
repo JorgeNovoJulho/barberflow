@@ -11,9 +11,21 @@ import { moveProfessional, saveAssignments, saveWorkingDay, setManagedProfession
 import { httpsUrl } from "../../../../lib/business-profile";
 import { productImageTypes } from "../../../../lib/product-media";
 import { TeamInvite } from "./team-invite";
-import { revokeTeamAccess } from "./team-actions";
+import { revokeTeamAccess, updateTeamPermissions } from "./team-actions";
 
 const weekdays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+const teamPermissions = {
+  see_all: "Ver a agenda de todos os profissionais",
+  manage_all: "Criar, remarcar e alterar agendamentos de todos",
+  manage_clients: "Ver e editar a base de clientes",
+  manage_services: "Gerenciar serviços e preços",
+  manage_professionals: "Gerenciar profissionais, horários e imagens",
+  read_finance: "Ver financeiro e relatórios",
+} as const;
+type TeamMember = Record<keyof typeof teamPermissions, boolean> & {
+  id: string; email: string; professional_id: string | null; expires_at: string; accepted_at: string | null;
+};
 
 type Professional = { id: string; name: string; description: string; active: boolean; photo_url: string; commission_bps: number; product_commission_bps: number; inherit_business_hours: boolean;
   instagram: string; facebook: string; tiktok: string; youtube: string; whatsapp: string };
@@ -145,6 +157,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
     });
     redirect(`/painel/${shop}/profissionais?estado=${result?.data === true ? "salvo" : "falha"}`);
   }
+  const members = (team.data ?? []) as TeamMember[];
   const accessByProfessional = new Map(((managed?.data ?? []) as ManagedAccess[]).map((row) => [row.professional_id, row]));
 
   return <section className="container section">
@@ -152,6 +165,8 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
       <Link href={delegated ? `/equipe/${shop}` : "/painel"}>{delegated ? "Voltar à equipe" : "Meus estabelecimentos"}</Link>
       {!delegated && <Link href={`/painel/${shop}/servicos`}>Serviços</Link>}
     </nav>
+    {estado === "permissoes-salvas" && <p role="status">Permissões atualizadas.</p>}
+    {estado === "permissoes-falha" && <p role="alert">Não foi possível atualizar as permissões deste acesso.</p>}
     {estado === "repasse-salvo" && <p role="status">Configuração de repasse salva.</p>}
     {estado === "repasse-invalido" && <p role="alert">Confira a frequência, os dias de pagamento e os dados Pix.</p>}
     {payouts?.error && <p role="alert">Não foi possível carregar as configurações de repasse.</p>}
@@ -218,6 +233,20 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
               </form>
             </details>;
           })()}
+          {!delegated && members.some(member => member.professional_id === professional.id && member.accepted_at) &&
+            <details id={`permissoes-${professional.id}`}>
+              <summary className="secondary finance-tab command-action" data-tone="blue">Permissões do profissional</summary>
+              <p>Marque as funções que esta conta pode usar e salve para atualizar o painel profissional.</p>
+              {members.filter(member => member.professional_id === professional.id && member.accepted_at).map(member =>
+                <form key={member.id} className="account-form" action={updateTeamPermissions.bind(null, shop, professional.id, member.id)}>
+                  <fieldset>
+                    <legend>{accessByProfessional.get(professional.id)?.login || member.email}</legend>
+                    {(Object.keys(teamPermissions) as (keyof typeof teamPermissions)[]).map(key =>
+                      <label key={key}><input type="checkbox" name={key} defaultChecked={member[key]} /> {teamPermissions[key]}</label>)}
+                  </fieldset>
+                  <SubmitButton tone="keep">Salvar permissões</SubmitButton>
+                </form>)}
+            </details>}
           <details><summary>Editar profissional</summary><ProfessionalForm shop={shop} delegated={delegated} professional={professional} access={accessByProfessional.get(professional.id)} /></details>
           {accessByProfessional.has(professional.id) && <form action={setManagedProfessionalBlock.bind(null, shop, professional.id, !accessByProfessional.get(professional.id)?.blocked)}>
             <SubmitButton>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
@@ -242,7 +271,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
           <TeamInvite shop={shop} professionals={(professionals.data ?? []).filter((person) => person.active)} />
         </details>
         {team.error ? <p role="alert">Não foi possível consultar os convites.</p> : team.data?.length ? <ul className="cards">
-          {(team.data as { id: string; email: string; professional_id: string | null; see_all: boolean; manage_all: boolean; manage_clients: boolean; manage_services: boolean; manage_professionals: boolean; read_finance: boolean; expires_at: string; accepted_at: string | null }[]).map((member) => <li className="card" key={member.id}>
+          {members.map((member) => <li className="card" key={member.id}>
             <h3 style={{ overflowWrap: "anywhere" }}>{(member.professional_id && accessByProfessional.get(member.professional_id)?.login) || member.email}</h3>
             <p>{member.accepted_at ? "Aceito" : Date.parse(member.expires_at) <= Date.now() ? "Expirado" : "Pendente"} · {member.manage_all ? "Gerencia todas as agendas" : member.see_all ? "Visualiza todas as agendas" : member.professional_id ? "Gerencia a agenda vinculada" : "Sem acesso à agenda"}</p>
             {member.manage_clients && <p>Gerencia a base de clientes.</p>}

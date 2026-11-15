@@ -38,3 +38,23 @@ export async function revokeTeamAccess(shop: string, member: string) {
   revalidatePath(path);
   redirect(path + "?estado=" + (data && !error ? "acesso-revogado" : "falha"));
 }
+
+
+export async function updateTeamPermissions(shop: string, person: string, member: string, form: FormData) {
+  if (![shop, person, member].every(isUuid)) redirect("/painel");
+  const path = `/painel/${shop}/profissionais`;
+  const client = await supabaseServer();
+  if (!client || !(await client.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path }));
+  const { data, error } = await client.rpc("barberflow_update_team_permissions", {
+    shop, person, member,
+    see_agendas: form.get("see_all") === "on",
+    manage_agendas: form.get("manage_all") === "on",
+    edit_clients: form.get("manage_clients") === "on",
+    edit_services: form.get("manage_services") === "on",
+    edit_professionals: form.get("manage_professionals") === "on",
+    view_finance: form.get("read_finance") === "on",
+  });
+  revalidatePath(path);
+  revalidatePath(`/equipe/${shop}/meu-painel`);
+  redirect(path + "?estado=" + (data === true && !error ? "permissoes-salvas" : "permissoes-falha") + "#permissoes-" + person);
+}

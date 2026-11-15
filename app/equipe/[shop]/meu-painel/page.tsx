@@ -118,12 +118,17 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
-  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns] = await Promise.all([
+  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_agenda_with_walk_ins", { shop_id: shop, agenda_period: agendaPeriod }),
     supabase.rpc("barberflow_team_booking_context", { shop_id: shop }),
     supabase.rpc("barberflow_my_open_walk_in_count", { shop_id: shop }),
+    supabase.rpc("barberflow_professional_team_agenda_access", { shop }),
+    supabase.rpc("barberflow_team_can_edit_clients", { shop }),
+    supabase.rpc("barberflow_team_can_edit_services", { shop }),
+    supabase.rpc("barberflow_team_can_edit_professionals", { shop }),
+    supabase.rpc("barberflow_team_finance_status", { shop }),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
@@ -148,6 +153,13 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const next = todayEntries.filter(entry => entry.state === "scheduled")
     .sort((a, b) => Number(checkedIn.has(b.id) || !!b.checked_in) - Number(checkedIn.has(a.id) || !!a.checked_in)
       || a.starts.localeCompare(b.starts))[0];
+  const delegatedLinks = [
+    [teamAgenda.data === true, "Agenda da equipe", ""],
+    [clients.data === true, "Clientes", "/clientes"],
+    [services.data === true, "Serviços e preços", "/servicos"],
+    [professionals.data === true, "Profissionais", "/profissionais"],
+    [!!finance.data && finance.data !== "denied", "Financeiro e relatórios", "/financeiro"],
+  ] as const;
   const publicSlug = bookingContext.data?.slug;
   return <section className="container section professional-workspace" id="meu-dia">
     <nav className="professional-mobile-nav" aria-label="Atalhos do painel profissional">
@@ -182,6 +194,10 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <Link className="secondary professional-new-link" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       </nav>
+      {delegatedLinks.some(([allowed]) => allowed) && <nav className="account-links" aria-label="Funções delegadas">
+        {delegatedLinks.map(([allowed, label, suffix]) => allowed && <Link key={suffix}
+          className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}${suffix}`}>{label}</Link>)}
+      </nav>}
     </header>
     <section className="card">
       <h2>Próximo atendimento</h2>
