@@ -1,5 +1,6 @@
 "use client";
 
+import { WalkInCustomer, type WalkInClient } from "../../../equipe/[shop]/walk-in-customer";
 import Link from "next/link";
 import { useState } from "react";
 import { bookingCurrency } from "../../../../lib/currency";
@@ -13,13 +14,11 @@ function options(catalog:CatalogItem[],saved:Item[]) {
   return prices;
 }
 
-export function SaleEditor({shop,professional,id,sale,services,products,feedback,pixMissing,pixReady}:{shop:string;professional:boolean;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean}) {
+export function SaleEditor({shop,professional,id,sale,services,products,feedback,pixMissing,pixReady,clients,canSelectClient}:{shop:string;professional:boolean;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean;clients:WalkInClient[];canSelectClient:boolean}) {
   const savedServices = sale?.items.filter(item=>item.kind==="service") ?? [];
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
   const productOptions = options(products,savedProducts);
-  const [customer,setCustomer] = useState(sale?.client_name ?? "");
-  const [phone,setPhone] = useState(sale?.phone ?? "");
   const [serviceIds,setServiceIds] = useState(()=>Array.from({length:Math.max(1,savedServices.length)},(_,i)=>savedServices[i]?.id ?? ""));
   const [productIds,setProductIds] = useState(()=>Array.from({length:Math.max(1,savedProducts.length)},(_,i)=>savedProducts[i]?.id ?? ""));
   const [units,setUnits] = useState(()=>Array.from({length:Math.max(1,savedProducts.length)},(_,i)=>savedProducts[i]?.units ?? 1));
@@ -30,8 +29,8 @@ export function SaleEditor({shop,professional,id,sale,services,products,feedback
   return <form className="account-form card panel-form" action={saveSale.bind(null,shop,id,sale?.revision ?? 0,professional)}>
     <h2>{sale ? "Comanda "+sale.number : "Nova comanda"}</h2>
     {!sale && <p>O número será gerado ao salvar a comanda.</p>}
-    <div className="form-columns"><label>Nome do cliente <input name="customer" required maxLength={120} value={customer} onChange={event=>setCustomer(event.target.value)} className={!customer.trim() ? "sale-required-field" : undefined} /></label>
-      <label>Telefone <input type="tel" name="phone" required maxLength={30} value={phone} onChange={event=>setPhone(event.target.value)} className={!/\d/.test(phone) ? "sale-required-field" : undefined} /></label></div>
+    <WalkInCustomer clients={clients} canSelect={canSelectClient} initialId={sale?.client_id}
+      nameField="customer" initialName={sale?.client_name} initialPhone={sale?.phone} />
     <fieldset><legend>Serviços</legend>{serviceIds.map((value,i)=><label key={i}>Serviço {i+1}
       <select name={"service"+i} value={value} onChange={event=>setServiceIds(update(serviceIds,i,event.target.value))}>
         <option value="">Nenhum</option>{[...serviceOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && serviceIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}

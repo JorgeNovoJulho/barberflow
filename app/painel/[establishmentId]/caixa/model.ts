@@ -5,6 +5,7 @@ export type Sale = {
   id:string; number:string; client_name:string; phone:string; items:Item[]; service_cents:number; product_cents:number;
   state:"open"|"pending"|"paid"|"cancelled"; revision:number; method:"pix"|"debit"|"credit"|"cash"|null;
   amount?:number;
+  client_id?: string | null;
   split_payments?: { method: NonNullable<Sale["method"]>; amount: number }[] | null;
   cancellation_reason?: string | null;
   pix:{ pix_key:string; merchant:string; city:string }|null; paid_at:string|null;

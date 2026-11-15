@@ -42,7 +42,13 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
     shop_id:shop,sale_id:id,expected_revision:revision,customer:saved?.client_name ?? value("customer"),contact:saved?.phone ?? value("phone"),
     selections:saved?.items.map(({kind,id,units})=>({kind,id,units})) ?? selections,operation,payment_method:method || null,payment_reference:operation === "confirm" && method === "cash" ? "cash-" + id : value("reference") || null,received_cents:parsePrice(value(method === "cash" ? "cash" : "received")),
   };
-  const { data,error } = await supabase.rpc("barberflow_save_counter_sale",input);
+  const selected = value("client_id");
+  if (selected && !isUuid(selected)) redirect(path + "&estado=invalid_client");
+  const registeredInput = { shop_id: shop, sale_id: id, expected_revision: revision, selected_client: selected,
+    selections: input.selections, operation, payment_method: input.payment_method };
+  const { data,error } = selected
+    ? await supabase.rpc("barberflow_save_registered_counter_sale", registeredInput)
+    : await supabase.rpc("barberflow_save_counter_sale",input);
   const overview = `/painel/${shop}/resumo`;
   revalidatePath(overview);
   if (!error && data === "ok" && operation === "save") {
@@ -51,7 +57,7 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   }
   if (!error && data === "pix_missing" && operation === "charge" && !closingSaved) {
     // Preserve the draft before leaving to configure the establishment's receiving account.
-    const draft = await supabase.rpc("barberflow_save_counter_sale",{
+    const draft = selected ? await supabase.rpc("barberflow_save_registered_counter_sale",{...registeredInput,operation:"save",payment_method:null}) : await supabase.rpc("barberflow_save_counter_sale",{
       ...input,operation:"save",payment_method:null,
     });
     if (draft.error || draft.data !== "ok") {

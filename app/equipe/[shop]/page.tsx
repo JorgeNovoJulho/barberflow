@@ -1,3 +1,5 @@
+import { WalkInCustomer } from "./walk-in-customer";
+import { clientPhotoLinks } from "../../../lib/client-photos";
 import { VisiblePageRefresh } from "../../visible-page-refresh";
 import { BookingForm } from "../../estabelecimento/[slug]/agendar/booking-form";
 import { bookingCurrency, type PublicProfile } from "../../../lib/public-booking";
@@ -45,7 +47,11 @@ async function createWalkIn(shop: string, day: string, request: string, form: Fo
     ...(isUuid(service) ? [{ kind: "service", id: service, units: 1 }] : []),
     ...(isUuid(product) && Number.isInteger(units) && units >= 1 ? [{ kind: "product", id: product, units }] : []),
   ];
-  const result = await client?.rpc("barberflow_create_walk_in", {
+  const selected = String(form.get("client_id") ?? "");
+  if (selected && !isUuid(selected)) notFound();
+  const result = selected
+    ? await client?.rpc("barberflow_create_registered_walk_in", { shop_id: shop, sale_id: request, selected_client: selected, selections })
+    : await client?.rpc("barberflow_create_walk_in", {
     shop_id: shop, sale_id: request, customer: form.get("name"), contact: form.get("phone"), selections,
   });
   redirect(`/equipe/${shop}?dia=${day}&novo=1&estado=${result?.data === "ok" ? "avulso" : "falha"}#avulso`);
@@ -90,6 +96,12 @@ export default async function TeamAgenda({ params, searchParams }: {
     providers.set(person.id, person);
   }
   const walkIns = individual.data ? await supabase.rpc("barberflow_my_walk_ins", { shop_id: shop }) : null;
+  const registered = individual.data && clientAccess.data === true
+    ? await supabase.from("barberflow_clients").select("id,name,phone,active,photo_path")
+      .eq("establishment_id", shop).order("name").order("id") : null;
+  const registeredPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
+  const registeredClients = (registered?.data ?? []).map(({ id, name, phone, active, photo_path }) =>
+    ({ id, name, phone, active, photo: registeredPhotos.get(photo_path ?? "") }));
   const catalog = individual.data ? await supabase.rpc("barberflow_walk_in_products", { shop_id: shop }) : null;
   const walkInProducts = (catalog?.data ?? []) as { id: string; name: string; description: string | null; price_cents: number }[];
   const catalogLabel = (item: { name: string; price_cents: number; description?: string | null }) =>
@@ -148,8 +160,8 @@ export default async function TeamAgenda({ params, searchParams }: {
       {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
       {estado === "avulso" && <p role="status">Comanda avulsa criada. Abra o caixa para cobrar.</p>}
       <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
-        <label>Nome do cliente <input name="name" required maxLength={120} /></label>
-        <label>WhatsApp <input name="phone" type="tel" required maxLength={30} /></label>
+        {registered?.error && <p role="alert">Não foi possível consultar os clientes cadastrados.</p>}
+        <WalkInCustomer clients={registeredClients} canSelect={clientAccess.data === true} />
         <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
         <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
         <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>

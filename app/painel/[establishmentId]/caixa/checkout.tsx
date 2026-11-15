@@ -1,3 +1,4 @@
+import { clientPhotoLinks } from "../../../../lib/client-photos";
 import { SplitPayment } from "../../../split-payment";
 import { collectSplitCounter } from "../../../split-payment-actions";
 import { CashReceived } from "../../../equipe/[shop]/comanda/[appointment]/cash-received";
@@ -35,6 +36,7 @@ const status:Record<string,string> = {
   stock:"Estoque insuficiente ou produto indisponível. Ajuste os itens antes de cobrar.",
 
   limit:"Todos os números de comanda deste ano foram utilizados.",
+  invalid_client:"Selecione um cliente ativo com WhatsApp cadastrado.",
   denied:"Sua conta não tem acesso à comanda.",
   falha:"Não foi possível concluir a operação. Tente novamente.",
 };
@@ -86,6 +88,13 @@ export async function Checkout({shop,args,professional=false}:{
     supabase.rpc("barberflow_team_booking_context",{shop_id:shop}).then(({data,error})=>({data:data?.services as import("./model").CatalogItem[] | undefined,error})),
     supabase.rpc("barberflow_walk_in_products",{shop_id:shop}),
   ]) : canEdit ? await Promise.all([catalog("barberflow_services"),catalog("barberflow_products")]) : [null,null];
+  const canSelectClient = canEdit && (!professional ||
+    (await supabase.rpc("barberflow_team_can_edit_clients", { shop })).data === true);
+  const registered = canSelectClient ? await supabase.from("barberflow_clients").select("id,name,phone,active,photo_path")
+    .eq("establishment_id",shop).order("name").order("id") : null;
+  const clientPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
+  const clients = (registered?.data ?? []).map(({id,name,phone,active,photo_path}) =>
+    ({id,name,phone,active,photo:clientPhotos.get(photo_path ?? "")}));
   const chargeFeedback = args.estado === "pix_missing"
     ? "A comanda foi mantida aberta. Cadastre a chave Pix do estabelecimento para gerar a cobrança, ou escolha Débito ou Crédito."
     : args.estado === "method"
@@ -107,7 +116,7 @@ export async function Checkout({shop,args,professional=false}:{
     <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
     {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready","closed","forma_alterada"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
     {[current,openResult,reportResult,archiveResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
-    {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} professional={professional} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
+    {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} professional={professional} clients={clients} canSelectClient={canSelectClient} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
     {closeSaved && sale && <section className="card panel-form" id="cobranca">
       <h2>{sale.number} · {sale.client_name || "Cliente não informado"}</h2>
       <SaleDetails sale={sale} />
