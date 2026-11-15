@@ -1,3 +1,4 @@
+import { PaymentChoices } from "../../../../payment-choices";
 import { SplitPayment } from "../../../../split-payment";
 import { collectSplitOrder } from "../../../../split-payment-actions";
 import { redirect } from "next/navigation";
@@ -43,7 +44,7 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
     {status && Object.hasOwn(paymentFeedback, status) && <p role="status">{paymentFeedback[status]}</p>}
     {active ? <section>
       <h3>Cobrança por cartão em aberto{active.sandbox ? " · teste" : ""}</h3>
-      <p>Valor {bookingCurrency.format(active.amount / 100)}. Consulte o provedor antes de oferecer outra forma de pagamento.</p>
+      <p>Valor {bookingCurrency.format(active.amount / 100)}. Consulte o provedor para confirmar se a cobrança foi paga ou expirou antes de trocar a forma de pagamento.</p>
       {liveLink && <div className="account-links">
         <a className="primary" href={liveLink} target="_blank" rel="noopener noreferrer">Abrir checkout de {cardProviders[active.provider]}</a>
         <CopyPix value={liveLink} link />
@@ -54,7 +55,7 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
       <form action={syncCardCheckout.bind(null, shop, receipt)}>
         <SubmitButton disabled={!canUseCards}>Consultar pagamento no provedor</SubmitButton>
       </form>
-    </section> : balance > 0 ? <>
+    </section> : balance > 0 ? <PaymentChoices>
       <SplitPayment total={balance} id={receipt} pix={pix} action={collectSplitOrder.bind(null, shop, receipt, balance, false)} />
       <details name="order-payment-method"><summary className="secondary">Pix</summary>
         {qr && pixCode ? <>
@@ -74,6 +75,6 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
         <p>Total a receber: <strong>{bookingCurrency.format(balance / 100)}</strong></p>
         <form className="account-form" action={confirm.bind(null, shop, receipt, balance, "cash")}><CashReceived total={balance} /></form>
       </details>
-    </> : <p>Comanda quitada.</p>}
+    </PaymentChoices> : <p>Comanda quitada.</p>}
   </div>;
 }

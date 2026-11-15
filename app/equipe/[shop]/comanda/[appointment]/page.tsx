@@ -1,3 +1,4 @@
+import { PaymentChoices } from "../../../../payment-choices";
 import { SplitPayment } from "../../../../split-payment";
 import { collectSplitOrder } from "../../../../split-payment-actions";
 import { CashReceived } from "./cash-received";
@@ -116,20 +117,27 @@ export default async function ProfessionalOrder({ params, searchParams }: {
         </form>
       </details>}
       <details className="card"><summary>Fechar comanda</summary>
-        {qr && code && <details><summary>Pagar com Pix</summary>
+        <PaymentChoices>
+        {qr && code && <details name="order-payment-method"><summary>Pagar com Pix</summary>
           <img src={qr} alt="QR Code Pix da comanda" width={220} height={220} />
           <CopyPix value={code} code />
           <form action={settle.bind(null, shop, appointment, total)}><SubmitButton name="method" value="pix">Confirmar recebimento Pix</SubmitButton></form>
         </details>}
         <SplitPayment total={total} id={appointment} pix={pix} action={collectSplitOrder.bind(null, shop, appointment, total, true)} />
         {!code && <p>Pix indisponível. Confira a configuração do estabelecimento.</p>}
-        <form className="account-form" action={settle.bind(null, shop, appointment, total)}>
-          <SubmitButton name="method" value="debit">Confirmar recebimento no débito</SubmitButton>
-          <SubmitButton name="method" value="credit">Confirmar recebimento no crédito</SubmitButton>
-        </form>
-        <form className="account-form" action={settle.bind(null, shop, appointment, total)}>
-          <CashReceived total={total} />
-        </form>
+        {(["debit", "credit"] as const).map(method => <details name="order-payment-method" key={method}>
+          <summary>{method === "debit" ? "Débito" : "Crédito"}</summary>
+          <p>Valor na maquininha <strong>{money(total)}</strong></p>
+          <form action={settle.bind(null, shop, appointment, total)}>
+            <SubmitButton name="method" value={method}>Confirmar recebimento</SubmitButton>
+          </form>
+        </details>)}
+        <details name="order-payment-method"><summary>Dinheiro</summary>
+          <form className="account-form" action={settle.bind(null, shop, appointment, total)}>
+            <CashReceived total={total} />
+          </form>
+        </details>
+        </PaymentChoices>
       </details>
     </>}
   </section>;
