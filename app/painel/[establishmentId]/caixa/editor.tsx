@@ -36,13 +36,13 @@ export function SaleEditor({shop,professional,id,sale,services,products,feedback
       <select name={"service"+i} value={value} onChange={event=>setServiceIds(update(serviceIds,i,event.target.value))}>
         <option value="">Nenhum</option>{[...serviceOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && serviceIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}
       </select></label>)}
-      {serviceIds.length < maxSaleItemsPerType && <button type="button" className="secondary" onClick={()=>setServiceIds([...serviceIds,""])}>+ Serviços</button>}
+      {serviceIds.length < maxSaleItemsPerType && <button type="button" className="secondary finance-tab" data-tone="purple" onClick={()=>setServiceIds([...serviceIds,""])}>+ Serviços</button>}
     </fieldset>
     <fieldset><legend>Produtos</legend>{productIds.map((value,i)=><div className="form-columns" key={i}><label>Produto {i+1}
       <select name={"product"+i} value={value} onChange={event=>setProductIds(update(productIds,i,event.target.value))}>
         <option value="">Nenhum</option>{[...productOptions.values()].map(item=><option key={item.id} value={item.id} disabled={item.id!==value && productIds.includes(item.id)}>{item.name} · {money(item.price_cents)}</option>)}
       </select></label><label>Quantidade <input type="number" name={"units"+i} min={1} max={10000} required={!!value} disabled={!value} value={units[i] || ""} onChange={event=>setUnits(update(units,i,Number(event.target.value)))} /></label></div>)}
-      {productIds.length < maxSaleItemsPerType && <button type="button" className="secondary" onClick={()=>{
+      {productIds.length < maxSaleItemsPerType && <button type="button" className="secondary finance-tab" data-tone="teal" onClick={()=>{
         setProductIds([...productIds,""]);
         setUnits([...units,1]);
       }}>+ Produtos</button>}
@@ -53,7 +53,7 @@ export function SaleEditor({shop,professional,id,sale,services,products,feedback
       {!professional && pixMissing && sale && <Link className="primary" href={`/painel/${shop}/financeiro/pagamentos?comanda=${id}#conta-pix`}>Configurar Pix e voltar à comanda</Link>}
       <label>Forma de pagamento ao cobrar <select name="method" defaultValue={sale?.method ?? "pix"}>
         <option value="">Selecione a forma de pagamento</option>
-        <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
+        <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option><option value="cash">Dinheiro</option>
       </select></label>
     </div>
     <div className="account-links">

@@ -15,7 +15,7 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   const operation = value("operation");
   if (["confirm","cancel"].includes(operation) && form.get("acknowledged")!=="on") redirect(path+"&estado=invalid");
   const method = value("method");
-  if (operation === "charge" && !["pix", "debit", "credit"].includes(method)) {
+  if (operation === "charge" && !["pix", "debit", "credit", "cash"].includes(method)) {
     redirect(path + "&estado=method#cobranca");
   }
   const closingSaved = operation === "charge" && value("modo") === "fechar";
@@ -39,7 +39,7 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   }
   const input = {
     shop_id:shop,sale_id:id,expected_revision:revision,customer:saved?.client_name ?? value("customer"),contact:saved?.phone ?? value("phone"),
-    selections:saved?.items.map(({kind,id,units})=>({kind,id,units})) ?? selections,operation,payment_method:method || null,payment_reference:value("reference") || null,received_cents:parsePrice(value("received")),
+    selections:saved?.items.map(({kind,id,units})=>({kind,id,units})) ?? selections,operation,payment_method:method || null,payment_reference:operation === "confirm" && method === "cash" ? "cash-" + id : value("reference") || null,received_cents:parsePrice(value(method === "cash" ? "cash" : "received")),
   };
   const { data,error } = await supabase.rpc("barberflow_save_counter_sale",input);
   const overview = `/painel/${shop}/resumo`;

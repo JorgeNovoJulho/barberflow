@@ -1,3 +1,4 @@
+import { CashReceived } from "../../../equipe/[shop]/comanda/[appointment]/cash-received";
 import Link from "next/link";
 import { notFound,redirect } from "next/navigation";
 import QRCode from "qrcode";
@@ -36,7 +37,7 @@ const status:Record<string,string> = {
 };
 const money = (cents:number)=>bookingCurrency.format(cents/100);
 const timezones = { "America/Sao_Paulo":"Brasília (UTC−3)", "America/Manaus":"Manaus (UTC−4)", "America/Rio_Branco":"Rio Branco (UTC−5)", "America/Noronha":"Fernando de Noronha (UTC−2)" };
-const methods = { pix:"Pix",debit:"Débito",credit:"Crédito" };
+const methods = { pix:"Pix",debit:"Débito",credit:"Crédito",cash:"Dinheiro" };
 
 export type CheckoutQuery = { aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string; data?:string; recibo?:string };
 
@@ -110,7 +111,7 @@ export async function Checkout({shop,args,professional=false}:{
         <input type="hidden" name="operation" value="charge" />
         <input type="hidden" name="modo" value="fechar" />
         <label>Forma de pagamento <select name="method" defaultValue="pix">
-          <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option>
+          <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option><option value="cash">Dinheiro</option>
         </select></label>
         <SubmitButton>Gerar cobrança</SubmitButton>
       </form>
@@ -129,7 +130,12 @@ export async function Checkout({shop,args,professional=false}:{
         <label>Pix Copia e Cola <textarea value={pix} rows={4} readOnly /></label>
         <CopyPix value={pix} code />
       </div>}
-      {sale.state==="pending" && <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
+      {sale.state==="pending" && sale.method==="cash" && <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
+        <input type="hidden" name="operation" value="confirm" />
+        <input type="hidden" name="acknowledged" value="on" />
+        <CashReceived total={sale.service_cents+sale.product_cents} />
+      </form>}
+      {sale.state==="pending" && sale.method!=="cash" && <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>
         <p>Confira o recebimento no banco ou na maquininha antes de registrar. Informe o identificador da transação.</p>
         <input type="hidden" name="operation" value="confirm" />
         <label>Valor recebido (R$) <input name="received" inputMode="decimal" required maxLength={9} defaultValue={((sale.service_cents+sale.product_cents)/100).toFixed(2).replace(".",",")} /></label>
