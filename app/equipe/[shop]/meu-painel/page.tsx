@@ -11,7 +11,7 @@ import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 
 const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Mensal" };
-type Appointment = { id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; cancellation_reason?: string | null; booked_by: string | null };
+type Appointment = { walk_in?: boolean; id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; cancellation_reason?: string | null; booked_by: string | null };
 type Panel = {
   name: string; business: string; photo: string | null; cover: string | null; today: string;
   available: boolean; shop_open?: boolean; walk_in_active?: boolean; day_started?: boolean; services: string[]; service_rate: number; product_rate: number;
@@ -117,7 +117,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
-    supabase.rpc("barberflow_professional_agenda_period", { shop_id: shop, agenda_period: agendaPeriod }),
+    supabase.rpc("barberflow_professional_agenda_with_walk_ins", { shop_id: shop, agenda_period: agendaPeriod }),
     supabase.rpc("barberflow_team_booking_context", { shop_id: shop }),
     supabase.rpc("barberflow_my_open_walk_in_count", { shop_id: shop }),
   ]);
@@ -134,11 +134,11 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const appointments = (agendaResult.data ?? []) as Appointment[];
   const page = typeof pagina === "string" && /^\d{1,4}$/.test(pagina) ? Math.min(Number(pagina), Math.max(0, Math.ceil(appointments.length / 12) - 1)) : 0;
   const visibleAppointments = appointments.slice(page * 12, page * 12 + 12);
-  const avatars = await appointmentAvatars(supabase, agendaPeriod === "dia" ? visibleAppointments : appointments);
+  const avatars = await appointmentAvatars(supabase, (agendaPeriod === "dia" ? visibleAppointments : appointments).filter(entry => !entry.walk_in));
   const attended = panel.attended + (counter?.attended_open ?? 0);
   const attendanceTotal = attended + panel.absent;
   const attendanceShare = attendanceTotal ? attended / attendanceTotal * 100 : 0;
-  const todayEntries = appointments.filter(entry => entry.starts.startsWith(panel.today));
+  const todayEntries = appointments.filter(entry => !entry.walk_in && entry.starts.startsWith(panel.today));
   const openWalkIns = Number(walkIns.data ?? 0);
   const openToday = todayEntries.filter(entry => entry.state === "scheduled" && (entry.checked_in || checkedIn.has(entry.id)));
   const next = todayEntries.filter(entry => entry.state === "scheduled")
@@ -200,14 +200,21 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     </div>
     <section className="card professional-agenda" id="agenda-dia" aria-labelledby="professional-agenda-title">
       <VisiblePageRefresh pauseWithin="#agenda-dia form" />
-      <h2 id="professional-agenda-title">Agendamentos · {appointments.length}</h2>
+      <h2 id="professional-agenda-title">Agendamentos · {appointments.filter(entry => !entry.walk_in).length} · Avulsos · {appointments.filter(entry => entry.walk_in).length}</h2>
       <nav className="account-links" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
         <Link key={key} className="secondary" aria-current={agendaPeriod === key ? "page" : undefined}
           href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
-        : !appointments.length && <p>Nenhum agendamento neste período.</p>}
+        : !appointments.length && <p>Nenhum agendamento ou avulso neste período.</p>}
       {(() => { const renderCard = (entry: Appointment, index: number) => {
-        const status = appointmentStatus[entry.state] ?? entry.state;
+        const status = entry.walk_in ? ({ open: "Em aberto", pending: "Aguardando pagamento", paid: "Pago", cancelled: "Cancelado" }[entry.state] ?? entry.state) : (appointmentStatus[entry.state] ?? entry.state);
+        if (entry.walk_in) return <li className="card team-professional-card" data-state="scheduled" key={entry.id}>
+          <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
+          <p><strong>Avulso · {status}</strong></p><h3>{entry.client}</h3>
+          {entry.price_cents != null && <p>{money(entry.price_cents)}</p>}
+          {entry.cancellation_reason && <p>Motivo do cancelamento: {entry.cancellation_reason}</p>}
+          <Link className="secondary" href={`/equipe/${shop}/avulsos?comanda=${entry.id}`}>Ver comanda avulsa</Link>
+        </li>;
         const digits = entry.phone?.replace(/\D/g, "") ?? "";
         return <li className="card team-professional-card" data-tone={index % 4} data-state={entry.state} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
@@ -243,9 +250,9 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         groups.set(date, [...(groups.get(date) ?? []), entry]);
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
-        <details key={date} className="professional-agenda-group"><AgendaDate date={date} location={bookingContext.data} count={entries.length} />{!entries.length && <p>Sem agendamentos</p>}
-          {entries.sort((a, b) => a.starts.localeCompare(b.starts)).map((entry, index) => <details className="agenda-stack" data-state={entry.state} key={entry.id}>
-            <summary>{entry.starts.slice(11, 16)} · {entry.client} · {appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
+        <details key={date} className="professional-agenda-group"><AgendaDate date={date} location={bookingContext.data} count={entries.length} />{!entries.length && <p>Sem agendamentos ou avulsos</p>}
+          {entries.sort((a, b) => a.starts.localeCompare(b.starts)).map((entry, index) => <details className="agenda-stack" data-state={entry.walk_in ? "scheduled" : entry.state} key={entry.id}>
+            <summary>{entry.starts.slice(11, 16)} · {entry.client} · {entry.walk_in ? "Avulso" : appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
           </details>)}
         </details>)}</div>;
