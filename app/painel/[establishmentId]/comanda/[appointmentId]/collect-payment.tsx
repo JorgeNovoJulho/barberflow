@@ -1,3 +1,5 @@
+import { SplitPayment } from "../../../../split-payment";
+import { collectSplitOrder } from "../../../../split-payment-actions";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "../../../../../lib/supabase";
 import { CashReceived } from "../../../../equipe/[shop]/comanda/[appointment]/cash-received";
@@ -53,6 +55,7 @@ export async function CollectPayment({ shop, receipt, balance, pix, cards, statu
         <SubmitButton disabled={!canUseCards}>Consultar pagamento no provedor</SubmitButton>
       </form>
     </section> : balance > 0 ? <>
+      <SplitPayment total={balance} id={receipt} pix={pix} action={collectSplitOrder.bind(null, shop, receipt, balance, false)} />
       <details name="order-payment-method"><summary className="secondary">Pix</summary>
         {qr && pixCode ? <>
           <p>Valor a receber: {bookingCurrency.format(balance / 100)}</p>

@@ -1,3 +1,5 @@
+import { SplitPayment } from "../../../split-payment";
+import { collectSplitCounter } from "../../../split-payment-actions";
 import { CashReceived } from "../../../equipe/[shop]/comanda/[appointment]/cash-received";
 import Link from "next/link";
 import { notFound,redirect } from "next/navigation";
@@ -89,6 +91,8 @@ export async function Checkout({shop,args,professional=false}:{
       ? "Escolha uma forma de pagamento para fechar e cobrar."
       : args.estado && Object.hasOwn(status,args.estado) ? status[args.estado] : undefined;
   const pix = sale?.state==="pending" && sale.method==="pix" && sale.pix ? showcasePix({ ...sale.pix,id:sale.id,total_cents:sale.service_cents+sale.product_cents }) : null;
+  const splitPix = closeSaved && sale
+    ? (await supabase.rpc("barberflow_counter_split_pix",{shop_id:shop,sale_id:sale.id})).data : null;
   const reportUrl = (index:number)=>path+"?"+new URLSearchParams({aba:"fechamento",periodo:period,itens:filter,pagina:String(index)});
   return <section className={closing ? "container section checkout finance-report" : "container section checkout"}>
     {professional ? <Link href={walkIns}>Voltar aos avulsos</Link> : <nav className="account-links finance-tabs finance-print-hide" aria-label="Comandas">
@@ -115,6 +119,8 @@ export async function Checkout({shop,args,professional=false}:{
         </select></label>
         <SubmitButton>Gerar cobrança</SubmitButton>
       </form>
+      <SplitPayment total={sale.service_cents+sale.product_cents} id={sale.id} pix={splitPix}
+        action={collectSplitCounter.bind(null,shop,sale.id,sale.revision,sale.service_cents+sale.product_cents,professional)} />
       <Link className="secondary" href={path+"?comanda="+sale.id}>Editar comanda</Link>
     </section>}
     {id && !sale && !canEdit && !current?.error && <p>Comanda indisponível neste estabelecimento.</p>}
@@ -123,7 +129,9 @@ export async function Checkout({shop,args,professional=false}:{
       <h2>{sale.number} · {{pending:"Aguardando pagamento",paid:"Recebimento registrado",cancelled:"Cancelada"}[sale.state]}</h2>
       <SaleDetails sale={sale} />
       {sale.state === "cancelled" && sale.cancellation_reason && <p>Motivo do cancelamento <strong>{sale.cancellation_reason}</strong></p>}
-      {sale.method && <p>Pagamento por {methods[sale.method]}</p>}
+      {sale.split_payments?.length ? <ul>{sale.split_payments.map(part =>
+        <li key={part.method}>{methods[part.method]} · {money(part.amount)}</li>)}</ul>
+        : sale.method && <p>Pagamento por {methods[sale.method]}</p>}
       {sale.state === "pending" && sale.method === "pix" && !pix && <p role="alert">Não foi possível mostrar o Pix desta comanda. Confira os dados antes de registrar qualquer recebimento.</p>}
       {pix && <div className="panel-form">
         <img src={await QRCode.toDataURL(pix,{scale: 6, margin: 4, errorCorrectionLevel: "M"})} width={240} height={240} alt="QR Code Pix da comanda" />

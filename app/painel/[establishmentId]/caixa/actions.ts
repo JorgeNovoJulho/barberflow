@@ -12,7 +12,8 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next:path }));
   const value = (key:string)=>String(form.get(key) ?? "").trim();
-  const operation = value("operation");
+  const split = value("operation") === "split";
+  const operation = split ? "save" : value("operation");
   if (["confirm","cancel"].includes(operation) && form.get("acknowledged")!=="on") redirect(path+"&estado=invalid");
   const method = value("method");
   if (operation === "charge" && !["pix", "debit", "credit", "cash"].includes(method)) {
@@ -45,6 +46,7 @@ export async function saveSale(shop:string,id:string,revision:number,professiona
   const overview = `/painel/${shop}/resumo`;
   revalidatePath(overview);
   if (!error && data === "ok" && operation === "save") {
+    if (split) redirect(path + "&modo=fechar#cobranca");
     redirect(professional ? path + "&estado=ok" : overview + "?comanda=salva#comandas-abertas");
   }
   if (!error && data === "pix_missing" && operation === "charge" && !closingSaved) {

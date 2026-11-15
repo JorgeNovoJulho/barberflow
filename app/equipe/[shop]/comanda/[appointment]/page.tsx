@@ -1,3 +1,5 @@
+import { SplitPayment } from "../../../../split-payment";
+import { collectSplitOrder } from "../../../../split-payment-actions";
 import { CashReceived } from "./cash-received";
 import QRCode from "qrcode";
 import { showcasePix } from "../../../../../lib/pix";
@@ -119,6 +121,7 @@ export default async function ProfessionalOrder({ params, searchParams }: {
           <CopyPix value={code} code />
           <form action={settle.bind(null, shop, appointment, total)}><SubmitButton name="method" value="pix">Confirmar recebimento Pix</SubmitButton></form>
         </details>}
+        <SplitPayment total={total} id={appointment} pix={pix} action={collectSplitOrder.bind(null, shop, appointment, total, true)} />
         {!code && <p>Pix indisponível. Confira a configuração do estabelecimento.</p>}
         <form className="account-form" action={settle.bind(null, shop, appointment, total)}>
           <SubmitButton name="method" value="debit">Confirmar recebimento no débito</SubmitButton>

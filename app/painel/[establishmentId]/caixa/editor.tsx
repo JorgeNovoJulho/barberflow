@@ -58,6 +58,7 @@ export function SaleEditor({shop,professional,id,sale,services,products,feedback
     </div>
     <div className="account-links">
       <SubmitButton name="operation" value="charge">{pixReady ? "Gerar cobrança Pix" : "Fechar e cobrar"}</SubmitButton>
+      <SubmitButton name="operation" value="split">Combinar duas formas</SubmitButton>
       <SubmitButton name="operation" value="save" tone="keep">Manter aberta</SubmitButton>
       {!sale && <a className="secondary action-cancel" href={`/painel/${shop}/resumo`}>Cancelar</a>}
     </div>
