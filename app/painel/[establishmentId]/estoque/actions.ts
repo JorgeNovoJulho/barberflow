@@ -50,6 +50,9 @@ export async function saveProduct(shop: string, product: string | null, form: Fo
     : await supabase.rpc("barberflow_create_markup_product", { shop, product_name: name, product_sku: "",
       markup, sale_price: price ?? 0, unit_cost: cost, stock_floor: minimum, expiry: expiry || null, initial_units: initial, product_barcode: barcode, product_description: description, in_showcase: showcase });
   if (!product && !error && typeof data === "string" && isUuid(data)) {
+    const { data: owned } = await supabase.from("barberflow_establishments").select("id")
+      .eq("id", shop).eq("owner_id", (await supabase.auth.getUser()).data.user?.id ?? "").maybeSingle();
+    if (!owned) finish("salvo");
     revalidatePath(`/painel/${shop}/estoque`);
     redirect(`/painel/${shop}/estoque/${data}/midia?estado=produto`);
   }

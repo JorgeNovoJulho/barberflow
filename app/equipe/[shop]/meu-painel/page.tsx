@@ -118,7 +118,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
-  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance] = await Promise.all([
+  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance, stock] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_agenda_with_walk_ins", { shop_id: shop, agenda_period: agendaPeriod }),
@@ -129,6 +129,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     supabase.rpc("barberflow_team_can_edit_services", { shop }),
     supabase.rpc("barberflow_team_can_edit_professionals", { shop }),
     supabase.rpc("barberflow_team_finance_status", { shop }),
+    supabase.rpc("barberflow_team_can_manage_products", { shop }),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
@@ -194,9 +195,13 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <Link className="secondary professional-new-link" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       </nav>
-      {delegatedLinks.some(([allowed]) => allowed) && <nav className="account-links" aria-label="Funções delegadas">
+      {(stock.data === true || delegatedLinks.some(([allowed]) => allowed)) && <nav className="account-links" aria-label="Funções delegadas">
         {delegatedLinks.map(([allowed, label, suffix]) => allowed && <Link key={suffix}
           className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}${suffix}`}>{label}</Link>)}
+        {stock.data === true && <>
+          <Link className="secondary finance-tab command-action" data-tone="teal" href={`/painel/${shop}/estoque`}>Estoque e produtos</Link>
+          <Link className="secondary finance-tab command-action" data-tone="amber" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine</Link>
+        </>}
       </nav>}
     </header>
     <section className="card">

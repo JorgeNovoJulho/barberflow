@@ -53,7 +53,12 @@ export default async function Stock({ params, searchParams }: {
   const supabase = await supabaseServer();
   const user = supabase && (await supabase.auth.getUser()).data.user;
   if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: `/painel/${shop}/estoque` }));
-  const { data: business, error } = await supabase.from("barberflow_establishments").select("name").eq("id", shop).maybeSingle();
+  const [{ data: owned, error }, access] = await Promise.all([
+    supabase.from("barberflow_establishments").select("name").eq("id", shop).eq("owner_id", user.id).maybeSingle(),
+    supabase.rpc("barberflow_team_can_manage_products", { shop }),
+  ]);
+  const delegated = !owned && access.data === true;
+  const business = owned ?? (delegated ? (await supabase.rpc("barberflow_my_team_shops")).data?.find((row: { id: string }) => row.id === shop) : null);
   if (error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business) notFound();
   const { estado, busca } = await searchParams;
@@ -101,8 +106,9 @@ export default async function Stock({ params, searchParams }: {
       <p>Produtos, quantidades, validade e movimentações do estabelecimento.</p>
     </header>
     <StockFeedback status={estado} />
-    <Link className="secondary" href={`/painel/${shop}/financeiro/margens`}>Configurar margens de produtos</Link>
-    {products.error || movements.error || marginResult.error ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
+    {delegated ? <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine</Link> :
+      <Link className="secondary" href={`/painel/${shop}/financeiro/margens`}>Configurar margens de produtos</Link>}
+    {products.error || movements.error || (marginResult.error && !delegated) ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
       <dl className="cards stock-metrics">
         <div className="card dashboard-metric"><dt>Produtos à venda</dt><dd>{activeProducts.length}</dd></div>
         <div className="card dashboard-metric"><dt>Unidades em produtos à venda</dt><dd>{activeProducts.reduce((total, item) => total + item.stock, 0).toLocaleString("pt-BR")}</dd></div>
@@ -150,9 +156,9 @@ export default async function Stock({ params, searchParams }: {
         {warningsByProduct.has(product.id) && <ul className="stock-warnings">
           {warningsByProduct.get(product.id)?.map((warning) => <li key={warning}>{warning}</li>)}
         </ul>}
-        <Link className="secondary" href={`/painel/${shop}/estoque/${product.id}/midia`}>Fotos e vídeo</Link>
+        {!delegated && <Link className="secondary" href={`/painel/${shop}/estoque/${product.id}/midia`}>Fotos e vídeo</Link>}
         <details><summary>Editar produto</summary><ProductForm shop={shop} margins={margins} product={product} /></details>
-        {(canOffer || product.promo_units !== null) && <details>
+        {!delegated && (canOffer || product.promo_units !== null) && <details>
           <summary>{product.promo_units !== null ? "Gerenciar promoção" : "Criar promoção por validade"}</summary>
           {canOffer && <form className="account-form" action={saveProductPromotion.bind(null, shop, product.id, false)}>
             <BundlePricingFields cost={product.cost_cents} stock={product.stock} />
@@ -171,7 +177,7 @@ export default async function Stock({ params, searchParams }: {
             <SubmitButton>Registrar movimentação</SubmitButton>
           </form>
         </details>
-        <div className="account-links">
+        {!delegated && <><div className="account-links">
           <form action={changeProductStatus.bind(null, shop, product.id, product.active ? "freeze" : "unfreeze")}>
             <SubmitButton>{product.active ? "Congelar produto" : "Descongelar produto"}</SubmitButton>
           </form>
@@ -181,7 +187,7 @@ export default async function Stock({ params, searchParams }: {
           <form className="account-links" action={changeProductStatus.bind(null, shop, product.id, "delete")}>
             <SubmitButton>Confirmar exclusão</SubmitButton>
           </form>
-        </details>
+        </details></>}
       </li>;
       })}</ul> : <p>{search ? "Nenhum produto corresponde à busca." : "Nenhum produto cadastrado."}</p>}
       <h2 className="panel-form">Últimas movimentações</h2>

@@ -45,13 +45,14 @@ export async function updateTeamPermissions(shop: string, person: string, member
   const path = `/painel/${shop}/profissionais`;
   const client = await supabaseServer();
   if (!client || !(await client.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path }));
-  const { data, error } = await client.rpc("barberflow_update_team_permissions", {
+  const { data, error } = await client.rpc("barberflow_update_team_permissions_with_stock", {
     shop, person, member,
     see_agendas: form.get("see_all") === "on",
     manage_agendas: form.get("manage_all") === "on",
     edit_clients: form.get("manage_clients") === "on",
     edit_services: form.get("manage_services") === "on",
     edit_professionals: form.get("manage_professionals") === "on",
+    edit_products: form.get("manage_products") === "on",
     view_finance: form.get("read_finance") === "on",
   });
   revalidatePath(path);
