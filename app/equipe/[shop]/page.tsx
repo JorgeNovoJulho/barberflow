@@ -89,6 +89,7 @@ export default async function TeamAgenda({ params, searchParams }: {
     person.services.push({ id: row.service_id, name: row.service_name, duration_minutes: row.duration_minutes });
     providers.set(person.id, person);
   }
+  const walkIns = individual.data ? await supabase.rpc("barberflow_my_walk_ins", { shop_id: shop }) : null;
   const catalog = individual.data ? await supabase.rpc("barberflow_walk_in_products", { shop_id: shop }) : null;
   const walkInProducts = (catalog?.data ?? []) as { id: string; name: string; description: string | null; price_cents: number }[];
   const catalogLabel = (item: { name: string; price_cents: number; description?: string | null }) =>
@@ -125,6 +126,17 @@ export default async function TeamAgenda({ params, searchParams }: {
           initialService="" initialPerson="" day={day >= today && day <= limit ? day : today}
           today={today} limit={limit} initialSlots={null} initialName="" action={bookForTeam.bind(null, shop)} requestId={crypto.randomUUID()} />
       </details>}
+    {walkIns && <section className="card">
+      <h2>Comandas avulsas</h2>
+      {walkIns.error ? <p role="alert">Não foi possível consultar os avulsos.</p> :
+        [["Comandas abertas", ["open", "pending"]], ["Comandas fechadas", ["paid"]], ["Canceladas", ["cancelled"]]].map(([label, states]) => {
+          const rows = ((walkIns.data ?? []) as { id: string; number: string; customer: string; state: string }[])
+            .filter(row => states.includes(row.state));
+          return <details key={String(label)}><summary>{label} · {rows.length}</summary>
+            {rows.length ? <ul>{rows.map(row => <li key={row.id}>{row.number} · {row.customer}</li>)}</ul> : <p>Nenhuma comanda.</p>}
+          </details>;
+        })}
+    </section>}
     {individual.data && wizard && <details className="card team-booking" id="avulso" open={avulso === "1" || estado === "avulso" || estado === "falha"}>
       <summary>Avulso</summary><p>Para usar um horário livre, <a href={`/equipe/${shop}?novo=1#novo-atendimento`}>agende pela agenda</a>. Para atender sem reserva ou vender um produto, preencha a comanda avulsa abaixo.</p>
       {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}

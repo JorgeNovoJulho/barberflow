@@ -51,7 +51,7 @@ async function settle(shop: string, appointment: string, expected: number, form:
   const amount = String(form.get("cash") ?? "").replace(",", ".");
   const tendered = /^\d{1,8}(\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : null;
   const { data } = await supabase.rpc("barberflow_professional_settle_order", { shop, appointment, method: form.get("method"), expected, tendered });
-  redirect(path(shop, appointment) + (data ? "?estado=salvo" : "?estado=falha"));
+  redirect(data === true ? `/equipe/${shop}/meu-painel?estado=salvo` : path(shop, appointment) + "?estado=falha");
 }
 
 export default async function ProfessionalOrder({ params, searchParams }: {
