@@ -241,7 +241,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         : !appointments.length && <p>Nenhum agendamento ou avulso neste período.</p>}
       {(() => { const renderCard = (entry: Appointment, index: number) => {
         const status = entry.walk_in ? ({ open: "Em aberto", pending: "Aguardando pagamento", paid: "Pago", cancelled: "Cancelado" }[entry.state] ?? entry.state) : (appointmentStatus[entry.state] ?? entry.state);
-        if (entry.walk_in) return <li className="card team-professional-card" data-state="scheduled" key={entry.id}>
+        if (entry.walk_in) return <li className="card team-professional-card" data-state={entry.state === "paid" ? "completed" : entry.state === "cancelled" ? "cancelled" : "scheduled"} key={entry.id}>
           <time className="professional-appointment-time" dateTime={entry.starts}>{dayLabel(entry.starts)} às {entry.starts.slice(11,16)}</time>
           <p><strong>Avulso · {status}</strong></p><h3>{entry.client}</h3>
           {entry.price_cents != null && <p>{money(entry.price_cents)}</p>}
@@ -284,7 +284,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       };
       return <div className="professional-appointments">{Array.from(groups, ([date, entries]) =>
         <details key={date} className="professional-agenda-group"><AgendaDate date={date} location={bookingContext.data} count={entries.length} />{!entries.length && <p>Sem agendamentos ou avulsos</p>}
-          {entries.sort((a, b) => a.starts.localeCompare(b.starts)).map((entry, index) => <details className="agenda-stack" data-state={entry.walk_in ? "scheduled" : entry.state} key={entry.id}>
+          {entries.sort((a, b) => a.starts.localeCompare(b.starts)).map((entry, index) => <details className="agenda-stack" data-state={entry.walk_in ? entry.state === "paid" ? "completed" : entry.state === "cancelled" ? "cancelled" : "scheduled" : entry.state} key={entry.id}>
             <summary>{entry.starts.slice(11, 16)} · {entry.client} · {entry.walk_in ? "Avulso" : appointmentStatus[entry.state] ?? entry.state}<span className="agenda-stack-close" aria-label="Fechar">×</span></summary>
             <ul className="professional-appointments">{renderCard(entry, index)}</ul>
           </details>)}

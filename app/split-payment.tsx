@@ -19,7 +19,7 @@ function cents(raw: string) {
 export function SplitPayment({ total, id, pix, action }: {
   total: number; id: string; pix: Pix | null; action: (form: FormData) => Promise<void>;
 }) {
-  const [first, setFirst] = useState<Method>("debit");
+  const [first, setFirst] = useState<Method>(pix ? "pix" : "debit");
   const [second, setSecond] = useState<Method>("cash");
   const [amount, setAmount] = useState("");
   const [received, setReceived] = useState("");
@@ -44,33 +44,43 @@ export function SplitPayment({ total, id, pix, action }: {
     return () => { active = false; };
   }, [code]);
 
+  function paymentDetails(method: Method, portion: number) {
+    if (!valid) return null;
+    if (method === "pix") return code && qr?.code === code && <div>
+      <p>Pix de <strong>{money(portion)}</strong></p>
+      <img className="payment-qr" src={qr.image} alt="QR Code Pix da parcela" width={240} height={240} />
+      <CopyPix value={code} code />
+    </div>;
+    if (method !== "cash") return <p>Valor na maquininha ({methods[method]}) <strong>{money(portion)}</strong></p>;
+    return <>
+      <label>Valor recebido em dinheiro (R$)
+        <input className="split-cash-received" data-empty={!received.trim()} name="cash" inputMode="decimal"
+          value={received} onChange={event => setReceived(event.target.value)} required />
+      </label>
+      <p role="status">{change === null ? "Informe o valor recebido em dinheiro." : change < 0 ? "Falta receber " + money(-change) : "Troco a devolver " + money(change)}</p>
+    </>;
+  }
+
+  const choices = Object.entries(methods).map(([key, label]) =>
+    <option key={key} value={key} disabled={key === "pix" && !pix}>{label}</option>);
   return <details name="order-payment-method"><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Combinar duas formas</summary>
     <form className="account-form" action={action} onChange={event => {
       if (!(event.target instanceof HTMLInputElement && event.target.name === "confirmed")) setConfirmed(false);
     }}>
-      <label>Primeira forma <select name="first_method" value={first} onChange={event => setFirst(event.target.value as Method)}>
-        {Object.entries(methods).map(([key, label]) => <option key={key} value={key} disabled={key === "pix" && !pix}>{label}</option>)}
-      </select></label>
-      <label>Valor da primeira parte (R$) <input name="first_amount" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required /></label>
-      <label>Segunda forma <select name="second_method" value={second} onChange={event => setSecond(event.target.value as Method)}>
-        {Object.entries(methods).map(([key, label]) => <option key={key} value={key} disabled={key === "pix" && !pix}>{label}</option>)}
-      </select></label>
-      <p role="status">Valor da segunda parte <strong>{valid ? money(remaining) : "—"}</strong></p>
+      <fieldset className="checkout-item-group" data-tone="purple">
+        <legend>Primeira forma</legend>
+        <label>Forma de pagamento <select name="first_method" value={first} onChange={event => setFirst(event.target.value as Method)}>{choices}</select></label>
+        <label>Valor da primeira parte (R$) <input name="first_amount" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required /></label>
+        {firstAmount !== null && paymentDetails(first, firstAmount)}
+      </fieldset>
+      <fieldset className="checkout-item-group" data-tone="teal">
+        <legend>Segunda forma</legend>
+        <label>Forma de pagamento <select name="second_method" value={second} onChange={event => setSecond(event.target.value as Method)}>{choices}</select></label>
+        <p role="status">Valor da segunda parte <strong>{valid ? money(remaining) : "—"}</strong></p>
+        {paymentDetails(second, remaining)}
+      </fieldset>
       {first === second && <p>Escolha duas formas diferentes.</p>}
-      {valid && <>
-        {code && qr?.code === code && <div>
-          <p>Pix de <strong>{money(first === "pix" ? firstAmount : remaining)}</strong></p>
-          <img className="payment-qr" src={qr.image} alt="QR Code Pix da parte selecionada" width={240} height={240} />
-          <CopyPix value={code} code />
-        </div>}
-        {([first, second] as const).map((method, index) => (method === "debit" || method === "credit") &&
-          <p key={method}>Valor na maquininha ({methods[method]}) <strong>{money(index === 0 ? firstAmount : remaining)}</strong></p>)}
-        {cashAmount !== null && <>
-          <label>Valor recebido em dinheiro (R$) <input name="cash" inputMode="decimal" value={received} onChange={event => setReceived(event.target.value)} required /></label>
-          <p role="status">{change === null ? "Informe o valor recebido." : change < 0 ? "Falta receber " + money(-change) : "Troco a devolver " + money(change)}</p>
-        </>}
-        <label><input type="checkbox" name="confirmed" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} required /> Conferi o recebimento das duas partes.</label>
-      </>}
+      {valid && <label><input type="checkbox" name="confirmed" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} required /> Conferi o recebimento das duas partes.</label>}
       <SubmitButton tone="keep" disabled={!valid || !confirmed || (cashAmount !== null && (change === null || change < 0)) || (hasPix && (!code || qr?.code !== code))}>Confirmar os dois pagamentos</SubmitButton>
     </form>
   </details>;

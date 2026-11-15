@@ -667,3 +667,10 @@ summary.command-action::-webkit-details-marker { display: none; }
 .walk-in-client-text small { display: block; }
 
 .team-booking.team-walk-in > summary { background: #fff0d6; color: #733e09; }
+
+.checkout-item-group { min-inline-size: 0; background: var(--checkout-group-bg); }
+.checkout-item-group[data-tone="purple"] { --checkout-group-bg: #f2ebff; }
+.checkout-item-group[data-tone="amber"] { --checkout-group-bg: #fff2d9; }
+.checkout-item-group[data-tone="teal"] { --checkout-group-bg: #e4f5f3; }
+.checkout-item-group legend { font-weight: 700; }
+.account-form .split-cash-received[data-empty="true"] { background: #ffe5e8; border-color: #bf4557; }
