@@ -52,13 +52,16 @@ export function SplitPayment({ total, id, pix, action }: {
       <CopyPix value={code} code />
     </div>;
     if (method !== "cash") return <p>Valor na maquininha ({methods[method]}) <strong>{money(portion)}</strong></p>;
-    return <>
+    return <div className="split-cash-fields">
       <label>Valor recebido em dinheiro (R$)
         <input className="split-cash-received" data-empty={!received.trim()} name="cash" inputMode="decimal"
           value={received} onChange={event => setReceived(event.target.value)} required />
       </label>
-      <p role="status">{change === null ? "Informe o valor recebido em dinheiro." : change < 0 ? "Falta receber " + money(-change) : "Troco a devolver " + money(change)}</p>
-    </>;
+      <div className="cash-payment-result" data-state={change === null ? "empty" : change < 0 ? "short" : "ready"} role="status">
+        <span>{change !== null && change < 0 ? "Falta receber" : "Troco a devolver"}</span>
+        <strong>{change === null ? "—" : money(Math.abs(change))}</strong>
+      </div>
+    </div>;
   }
 
   const choices = Object.entries(methods).map(([key, label]) =>

@@ -677,3 +677,11 @@ summary.command-action::-webkit-details-marker { display: none; }
 
 .command-action.checkout-cancel { background: #ad2037; border-color: #ad2037; color: #fff; }
 .command-action.checkout-cancel:hover:not(:disabled) { background: #89182b; border-color: #89182b; color: #fff; }
+
+.split-cash-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem;
+  align-items: stretch;
+}
+.split-cash-fields > label { min-inline-size: 0; }
