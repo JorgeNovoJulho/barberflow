@@ -6,7 +6,7 @@ import type { Client } from "./client-form";
 type RankedItem = { name: string; quantity: number; position: number };
 
 type ClientOrder = {
-  id: string; number: string; starts: string; state: string; service: string; professional: string;
+  id: string; number: string; starts: string; state: string; service: string; professional: string | null; matched_by_phone?: boolean;
   closed_at: string | null; total_cents: number; paid_cents: number;
   services: { name: string; cents: number }[]; products: { name: string; cents: number; quantity: number }[];
 };
@@ -52,9 +52,10 @@ export function ClientVisitHistory({ name, details, error }: { name: string; det
     </ul> : <p>Nenhum atendimento concluído vinculado.</p>}
     {!error && <section>
       <h3>Comandas do cliente</h3>
-      {details?.orders?.length ? details.orders.map(order => <details key={order.id}>
+      {details?.orders?.length ? [...details.orders].sort((a, b) => b.starts.localeCompare(a.starts)).map(order => <details key={order.id}>
         <summary className="secondary finance-tab command-action" data-tone="blue">Comanda {order.number}</summary>
-        <p><time dateTime={order.starts}>{order.starts.slice(0, 10).split("-").reverse().join("/")} às {order.starts.slice(11, 16)}</time> · {order.professional}</p>
+        <p><time dateTime={order.starts}>{order.starts.slice(0, 10).split("-").reverse().join("/")} às {order.starts.slice(11, 16)}</time>{order.professional && " · " + order.professional}</p>
+        {order.matched_by_phone && <p>Localizada pelo WhatsApp cadastrado</p>}
         <p>{order.state === "cancelled" ? "Cancelada" : order.state === "no_show" ? "Falta" : order.closed_at ? "Fechada em " + closedAtLabel(order.closed_at) : "Em aberto"}</p>
         <ul className="finance-entry-list">
           <li>{order.service}</li>
