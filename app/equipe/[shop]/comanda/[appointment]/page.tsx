@@ -1,3 +1,4 @@
+import { closedAtLabel } from "../../../../painel/[establishmentId]/comandas/filters";
 import { PaymentChoices } from "../../../../payment-choices";
 import { SplitPayment } from "../../../../split-payment";
 import { collectSplitOrder } from "../../../../split-payment-actions";
@@ -15,7 +16,7 @@ import { SubmitButton } from "../../../../auth/submit";
 
 type Item = { id: string; name: string };
 type Order = {
-  starts?: string; booked_by?: string | null; professional?: string; professional_photo?: string; client: string; phone: string | null; service: string; base: number; state: string; closed: string | null;
+  starts?: string; booked_by?: string | null; professional?: string; professional_photo?: string; client: string; phone: string | null; service: string; base: number; state: string; closed: string | null; paid_at?: string | null;
   products: (Item & { units: number; cents: number })[]; services: (Item & { cents: number })[];
   product_options: Item[]; service_options: Item[];
 };
@@ -100,7 +101,9 @@ export default async function ProfessionalOrder({ params, searchParams }: {
         </form>}
       </li>)}</ul>}
       <p><strong>Total {money(total)}</strong></p>
-      {order.closed && <p>Comanda fechada. A cobrança fica disponível para o caixa.</p>}
+      {order.closed && <p><strong>Fechamento</strong> · <time dateTime={order.closed}>{closedAtLabel(order.closed)}</time></p>}
+      {order.paid_at && <p><strong>Pagamento confirmado</strong> · <time dateTime={order.paid_at}>{closedAtLabel(order.paid_at)}</time></p>}
+      {order.closed && !order.paid_at && <p>Consulte os recebimentos no caixa.</p>}
     </section>
     {editable && <>
       {services.length > 0 && <details className="card"><summary>Adicionar serviço</summary>

@@ -44,7 +44,7 @@ export function SplitPayment({ total, id, pix, action }: {
     return () => { active = false; };
   }, [code]);
 
-  return <details name="order-payment-method"><summary className="secondary">Combinar duas formas</summary>
+  return <details name="order-payment-method"><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Combinar duas formas</summary>
     <form className="account-form" action={action} onChange={event => {
       if (!(event.target instanceof HTMLInputElement && event.target.name === "confirmed")) setConfirmed(false);
     }}>

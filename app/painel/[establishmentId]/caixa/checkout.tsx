@@ -96,7 +96,7 @@ export async function Checkout({shop,args,professional=false}:{
     ? (await supabase.rpc("barberflow_counter_split_pix",{shop_id:shop,sale_id:sale.id})).data : null;
   const reportUrl = (index:number)=>path+"?"+new URLSearchParams({aba:"fechamento",periodo:period,itens:filter,pagina:String(index)});
   return <section className={closing ? "container section checkout finance-report" : "container section checkout"}>
-    {professional ? <Link href={walkIns}>Voltar aos avulsos</Link> : <nav className="account-links finance-tabs finance-print-hide" aria-label="Comandas">
+    {professional ? <Link className="secondary finance-tab command-action" data-tone="teal" href={walkIns}>Voltar aos avulsos</Link> : <nav className="account-links finance-tabs finance-print-hide" aria-label="Comandas">
       <Link className="secondary finance-tab" data-tone="blue" href={`/painel/${shop}/resumo`}>Visão geral</Link>
       <Link className="secondary finance-tab" data-tone="green" href={path}>Comandas abertas</Link>
       <Link className="secondary finance-tab" data-tone="purple" href={path+"?aba=fechadas"}>Comandas fechadas</Link>
@@ -118,11 +118,11 @@ export async function Checkout({shop,args,professional=false}:{
         <label>Forma de pagamento <select name="method" defaultValue="pix">
           <option value="pix">Pix</option><option value="debit">Débito</option><option value="credit">Crédito</option><option value="cash">Dinheiro</option>
         </select></label>
-        <SubmitButton>Gerar cobrança</SubmitButton>
+        <SubmitButton className="command-action payment-action" tone="keep">Gerar cobrança</SubmitButton>
       </form>
       <SplitPayment total={sale.service_cents+sale.product_cents} id={sale.id} pix={splitPix}
         action={collectSplitCounter.bind(null,shop,sale.id,sale.revision,sale.service_cents+sale.product_cents,professional)} />
-      <Link className="secondary" href={path+"?comanda="+sale.id}>Editar comanda</Link>
+      <Link className="secondary finance-tab command-action payment-action" data-tone="amber" href={path+"?comanda="+sale.id}>Editar comanda</Link>
     </section>}
     {id && !sale && !canEdit && !current?.error && <p>Comanda indisponível neste estabelecimento.</p>}
     {sale && sale.state!=="open" && <div className="card panel-form" id="cobranca">
@@ -163,7 +163,7 @@ export async function Checkout({shop,args,professional=false}:{
           <SubmitButton>Voltar à escolha de pagamento</SubmitButton>
         </form>
       </details>}
-      {sale.state === "paid" && <Link className="secondary" href={professional ? walkIns : path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
+      {sale.state === "paid" && <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={professional ? walkIns : path+"?aba=fechadas"}>Ver comandas fechadas</Link>}
     </div>}
     {sale && ["open","pending"].includes(sale.state) && <details className="card panel-form"><summary className="secondary action-cancel">Cancelar comanda</summary>
       <form className="account-form" action={saveSale.bind(null,shop,sale.id,sale.revision,professional)}>

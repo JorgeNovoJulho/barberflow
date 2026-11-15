@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { bookingCurrency } from "../../../../lib/public-booking";
+import { closedAtLabel } from "../comandas/filters";
 import type { Sale } from "./model";
 const money = (cents:number)=>bookingCurrency.format(cents/100);
 
@@ -8,6 +9,7 @@ export function SaleDetails({sale}:{sale:Sale}) {
     <ul>{sale.items.map(item=><li key={item.kind+item.id}>{item.name} · {item.units} × {money(item.price)}</li>)}</ul>
     <p>Serviços {money(sale.service_cents)} · Produtos {money(sale.product_cents)}</p>
     <p><strong>Total {money(sale.service_cents+sale.product_cents)}</strong></p>
+    {sale.paid_at && <p><strong>Fechamento e pagamento</strong> · <time dateTime={sale.paid_at}>{closedAtLabel(sale.paid_at)}</time></p>}
   </>;
 }
 export function SaleList({sales,path}:{sales:Sale[];path:string}) {
