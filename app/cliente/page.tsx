@@ -428,7 +428,7 @@ export default async function ClientPage({ searchParams }: {
         </>}
         {post.author===user.id && <details><summary>Editar ou excluir publicação</summary>
           <PhotoForm path={path} shop={post.shop} photo={post} />
-          <form action={deleteSocialPhoto.bind(null,photo ? (post.shop ? "/cliente?loja="+post.shop : "/cliente?aba=perfil") : path,post.id)}><label><input name="confirm" type="checkbox" required /> Confirmar exclusão</label> <button className="secondary">Excluir publicação</button></form>
+          <form action={deleteSocialPhoto.bind(null,photo ? (post.shop ? "/cliente?loja="+post.shop : "/cliente?aba=perfil") : path,post.id,post.shop)}><label><input name="confirm" type="checkbox" required /> Confirmar exclusão</label> <button className="secondary">Excluir publicação</button></form>
         </details>}
       </li>)}</ul>}
       {photo && posts.length>0 && <>

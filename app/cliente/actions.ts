@@ -147,11 +147,8 @@ export async function publishSocialPost(shop: string | null, requestId: string, 
     return { error: "Selecione até três fotos de 5 MB cada." };
   }
   if (shop) {
-    const [business, access] = await Promise.all([
-      supabase.from("barberflow_establishments").select("id").eq("id", shop).eq("owner_id", user.id).maybeSingle(),
-      supabase.rpc("barberflow_shop_access_state", { shop }),
-    ]);
-    if (!business.data || access.data !== "normal") return { error: "Este estabelecimento não está disponível para publicar." };
+    const { data: allowed } = await supabase.rpc("barberflow_can_manage_shop_feed", { shop });
+    if (allowed !== true) return { error: "Este estabelecimento não está disponível para publicar." };
   }
   const posts = supabase.from("barberflow_social_photos");
   const existing = await posts.select("id").eq("author", user.id).eq("request_id", requestId).maybeSingle();
@@ -193,7 +190,12 @@ export async function saveSocialPhoto(path: string, shop: string | null, photo: 
   const files = form.getAll("photo").filter((entry): entry is File => entry instanceof File && entry.size > 0);
   if (files.length > 3 || files.some(file => file.size > 5 * 1024 * 1024)) finish(path,false);
   const table = supabase.from("barberflow_social_photos");
-  const current = photo ? await table.select("object_path,extra_photos,caption,audience").eq("id",photo).eq("author",user.id).maybeSingle() : null;
+  if (shop && (await supabase.rpc("barberflow_can_manage_shop_feed", { shop })).data !== true) finish(path, false);
+  const scopedPost = (id: string) => shop
+    ? table.select("author,object_path,extra_photos,caption,audience").eq("id", id).eq("shop", shop)
+    : table.select("author,object_path,extra_photos,caption,audience").eq("id", id).eq("author", user.id).is("shop", null);
+  const current = photo ? await scopedPost(photo).maybeSingle() : null;
+  if (files.length && current?.data && current.data.author !== user.id) finish(path, false);
   if (photo && !current?.data) finish(path,false);
   if (!files.length && !caption && !current?.data?.object_path) finish(path,false);
 
@@ -214,7 +216,7 @@ export async function saveSocialPhoto(path: string, shop: string | null, photo: 
   const images = { object_path: uploaded[0] ?? "", extra_photos: uploaded.slice(1) };
   if (photo && current?.data) {
     const { error,data } = await table.update({ caption,audience,...(uploaded.length ? images : {}) })
-      .eq("id",photo).eq("author",user.id).eq("object_path",current.data.object_path)
+      .eq("id",photo).eq("author",current.data.author).eq("object_path",current.data.object_path)
       .eq("caption",current.data.caption).eq("audience",current.data.audience).select("id").maybeSingle();
     if (uploaded.length && (!error || /^[0-9A-Z]{5}$/.test(error.code ?? ""))) {
       const discard = error || !data ? uploaded : [current.data.object_path,...current.data.extra_photos].filter(Boolean);
@@ -227,10 +229,13 @@ export async function saveSocialPhoto(path: string, shop: string | null, photo: 
   finish(path,!error);
 }
 
-export async function deleteSocialPhoto(path: string, photo: string, form: FormData) {
+export async function deleteSocialPhoto(path: string, photo: string, shop: string | null, form: FormData) {
   const { supabase,user } = await socialSession();
   if (!isUuid(photo) || form.get("confirm") !== "on") finish(path,false);
-  const { data,error } = await supabase.from("barberflow_social_photos").delete().eq("id",photo).eq("author",user.id).select("object_path,extra_photos").maybeSingle();
+  if (shop && (!isUuid(shop) || (await supabase.rpc("barberflow_can_manage_shop_feed", { shop })).data !== true)) finish(path, false);
+  const query = supabase.from("barberflow_social_photos").delete().eq("id", photo);
+  const { data,error } = await (shop ? query.eq("shop", shop) : query.eq("author", user.id).is("shop", null))
+    .select("object_path,extra_photos").maybeSingle();
   const objects = data ? [data.object_path,...data.extra_photos].filter(Boolean) : [];
   if (objects.length) await supabase.storage.from(socialBucket).remove(objects);
   if (!error && data) revalidatePath("/cliente");

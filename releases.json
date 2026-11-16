@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.12",
+    "date": "2026-11-16",
+    "title": "Feed e atalhos do painel profissional",
+    "changes": [
+      "Permissão para gerenciar postagens do Feed da loja pelo painel profissional.",
+      "Totais de comentários, curtidas e produtos aguardando retirada.",
+      "Cores por período em Agendamentos, Minhas Comissões e Desempenho."
+    ]
+  },
+  {
     "version": "0.2.11",
     "date": "2026-11-10",
     "title": "Capa e pedidos da vitrine",

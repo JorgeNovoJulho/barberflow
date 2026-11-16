@@ -582,3 +582,16 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--accent-ink); }
 .appointment-checkout .order-layout { grid-template-columns: minmax(0, 1fr); }
 .appointment-checkout .panel-form { max-width: none; }
 .appointment-checkout .collection-options > details { margin-block: .65rem; }
+
+
+.pickup-count {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 1.5em;
+  min-block-size: 1.5em;
+  margin-inline-start: 0.45em;
+  padding-inline: 0.35em;
+  border-radius: 999px;
+  background: #b91c1c;
+  color: #fff;
+}

@@ -54,7 +54,7 @@ export async function MyCommissions({ shop, today, view, year, base }: {
 
   return <section className="card" id="minhas-comissoes" aria-labelledby="commission-title">
     <h2 id="commission-title">Minhas Comissões</h2>
-    <nav className="account-links" aria-label="Período das comissões">
+    <nav className="account-links finance-tabs" aria-label="Período das comissões">
       {periods.map(([key, label, tone]) => <Link key={key} href={url(key)} className="secondary finance-tab"
         data-tone={tone} aria-current={period === key ? "page" : undefined}>{label}</Link>)}
     </nav>

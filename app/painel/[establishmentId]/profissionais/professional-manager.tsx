@@ -21,6 +21,7 @@ const teamPermissions = {
   manage_clients: "Ver e editar a base de clientes",
   manage_services: "Gerenciar serviços e preços",
   manage_professionals: "Gerenciar profissionais, horários e imagens",
+  manage_feed: "Gerenciar postagens do Feed da página pública",
   manage_products: "Gerenciar produtos, estoque e retiradas da vitrine",
   read_finance: "Ver financeiro e relatórios",
 } as const;
@@ -119,7 +120,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
       : supabase.from("barberflow_services").select("id,name,active").eq("establishment_id", shop).is("deleted_at", null).order("name"),
     supabase.from("barberflow_professional_services").select("professional_id,service_id").eq("establishment_id", shop),
     supabase.from("barberflow_professional_hours").select("professional_id,weekday,starts_at,ends_at,break_start,break_end").eq("establishment_id", shop),
-    delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members_with_stock", { shop }),
+    delegated ? Promise.resolve({ data: null, error: null }) : supabase.rpc("barberflow_team_members_with_feed", { shop }),
     delegated ? null : supabase.rpc("barberflow_professional_closed_today", { shop_id: shop }),
     delegated ? null : supabase.rpc("barberflow_managed_professional_roster", { shop_id: shop }),
     delegated ? null : supabase.rpc("barberflow_working_professionals", { shop_id: shop }),

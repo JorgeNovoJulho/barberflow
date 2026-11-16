@@ -7,11 +7,11 @@ import { PostPhotoPicker } from "./post-photo-picker";
 
 type Photo = { id: string; caption: string; audience: string };
 
-function Fields({ shop, photo }: { shop: string | null; photo?: Photo }) {
+function Fields({ shop, photo, manageMedia = true, publicPage = false }: { shop: string | null; photo?: Photo; manageMedia?: boolean; publicPage?: boolean }) {
   return <>
-    <PostPhotoPicker replacing={!!photo} />
+    {manageMedia && <PostPhotoPicker replacing={!!photo} />}
     <label>Texto da publicação <textarea name="caption" maxLength={500} defaultValue={photo?.caption} /></label>
-    <label>Visibilidade <select name="audience" defaultValue={photo?.audience ?? "public"}>
+    <label>Visibilidade <select name="audience" defaultValue={photo?.audience ?? (publicPage ? "web" : "public")}>
       <option value="public">Usuários do TOP BARBER</option>
       {shop && <option value="web">Qualquer visitante da página pública</option>}
       <option value="followers">Somente seguidores</option><option value="private">Somente eu</option>
@@ -20,7 +20,7 @@ function Fields({ shop, photo }: { shop: string | null; photo?: Photo }) {
   </>;
 }
 
-export function PhotoForm({ path, shop, photo }: { path: string; shop: string | null; photo?: Photo }) {
+export function PhotoForm({ path, shop, photo, manageMedia, publicPage }: { path: string; shop: string | null; photo?: Photo; manageMedia?: boolean; publicPage?: boolean }) {
   const router = useRouter();
   const requestId = useRef<string | null>(null);
   const sending = useRef(false);
@@ -56,7 +56,7 @@ export function PhotoForm({ path, shop, photo }: { path: string; shop: string | 
 
   if (photo) return <form className="account-form card panel-form" action={saveSocialPhoto.bind(null, path, shop, photo.id)}>
     <h3>Editar publicação</h3>
-    <Fields shop={shop} photo={photo} />
+    <Fields shop={shop} photo={photo} manageMedia={manageMedia} />
     <button className="primary">Salvar alterações</button>
   </form>;
 
@@ -64,7 +64,7 @@ export function PhotoForm({ path, shop, photo }: { path: string; shop: string | 
     <h3>Criar publicação</h3>
     <fieldset key={revision} disabled={pending} className="account-form post-composer-fields">
       <legend className="visually-hidden">Conteúdo da publicação</legend>
-      <Fields shop={shop} />
+      <Fields shop={shop} publicPage={publicPage} />
       <button className="primary" type="submit">{pending ? "Publicando…" : "Publicar"}</button>
     </fieldset>
     <div role="status" aria-live="polite">{feedback && <p data-feedback={feedback.error ? "error" : "success"}>{feedback.text}</p>}</div>

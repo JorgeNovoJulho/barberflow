@@ -11,6 +11,7 @@ import { bookingCurrency } from "../../../../lib/public-booking";
 import { supabaseServer } from "../../../../lib/supabase";
 import { SubmitButton } from "../../../auth/submit";
 
+const periodTones: Record<string, string> = { dia: "purple", semana: "blue", quinzena: "teal", mes: "amber" };
 const periods = { dia: "Dia", semana: "Semana", quinzena: "Quinzenal", mes: "Mensal" };
 type Appointment = { walk_in?: boolean; id: string; client: string; phone: string | null; service: string; price_cents: number | null; starts: string; state: string; checked_in?: boolean; cancellation_reason?: string | null; booked_by: string | null };
 type Panel = {
@@ -119,7 +120,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
-  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance, stock, shopServices] = await Promise.all([
+  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance, stock, shopServices, pickups, feedTotals] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_agenda_with_walk_ins", { shop_id: shop, agenda_period: agendaPeriod }),
@@ -132,9 +133,13 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     supabase.rpc("barberflow_team_finance_status", { shop }),
     supabase.rpc("barberflow_team_can_manage_products", { shop }),
     supabase.rpc("barberflow_professional_shop_has_services", { shop }),
+    supabase.rpc("barberflow_team_pickups", { shop }),
+    supabase.rpc("barberflow_shop_feed_totals", { shop }).maybeSingle<{ comments: number; likes: number }>(),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
+  const pickupOrders = (pickups.data ?? []) as { quantity: number; status: string }[];
+  const pendingPickupUnits = pickupOrders.reduce((total, order) => total + (order.status === "ready" ? order.quantity : 0), 0);
   const panel = data as Panel;
   const counter = counterResult.data as (Pick<Panel, "paid_services" | "sold_products" | "daily"> & { checked_in: string[]; attended_open: number }) | null;
   const checkedIn = new Set(counter?.checked_in ?? []);
@@ -206,12 +211,16 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         {serviceShortcut("Novo atendimento", `/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`, "secondary professional-new-link")}
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       </nav>
-      {(stock.data === true || delegatedLinks.some(([allowed]) => allowed)) && <nav className="account-links" aria-label="Funções delegadas">
+      {(feedTotals.data || stock.data === true || delegatedLinks.some(([allowed]) => allowed)) && <nav className="account-links" aria-label="Funções delegadas">
         {delegatedLinks.map(([allowed, label, suffix]) => allowed && <Link key={suffix}
           className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}${suffix}`}>{label}</Link>)}
+        {feedTotals.data && <Link className="secondary finance-tab command-action" data-tone="purple" href={`/equipe/${shop}/feed`}>
+          Feed da página pública
+          <span className="pickup-count">{feedTotals.data.comments} comentários · {feedTotals.data.likes} curtidas</span>
+        </Link>}
         {stock.data === true && <>
           <Link className="secondary finance-tab command-action" data-tone="teal" href={`/painel/${shop}/estoque`}>Estoque e produtos</Link>
-          <Link className="secondary finance-tab command-action" data-tone="amber" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine</Link>
+          <Link className="secondary finance-tab command-action" data-tone="amber" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine <span className="pickup-count" aria-label={pickups.error ? "Quantidade indisponível" : `${pendingPickupUnits} unidades aguardando retirada`}>{pickups.error ? "—" : pendingPickupUnits}</span></Link>
         </>}
       </nav>}
     </header>
@@ -245,8 +254,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     <section className="card professional-agenda" id="agenda-dia" aria-labelledby="professional-agenda-title">
       <VisiblePageRefresh pauseWithin="#agenda-dia form" />
       <h2 id="professional-agenda-title">Agendamentos · {appointments.filter(entry => !entry.walk_in).length} · Avulsos · {appointments.filter(entry => entry.walk_in).length}</h2>
-      <nav className="account-links" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
-        <Link key={key} className="secondary" aria-current={agendaPeriod === key ? "page" : undefined}
+      <nav className="account-links finance-tabs" aria-label="Período da agenda">{Object.entries(periods).map(([key, label]) =>
+        <Link key={key} className="secondary finance-tab" data-tone={periodTones[key]} aria-current={agendaPeriod === key ? "page" : undefined}
           href={`${base}?periodo=${period}&agenda=${key}#agenda-dia`}>{label}</Link>)}</nav>
       {agendaResult.error ? <p role="alert">Não foi possível carregar os agendamentos.</p>
         : !appointments.length && <p>Nenhum agendamento ou avulso neste período.</p>}
@@ -308,8 +317,8 @@ export default async function ProfessionalPanel({ params, searchParams }: {
       base={`${base}?periodo=${period}&agenda=${agendaPeriod}`} />
     <section className="card" id="desempenho">
       <h2>Desempenho</h2>
-      <nav className="account-links" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
-        <Link key={key} className="secondary" aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}&agenda=${agendaPeriod}#desempenho`}>{label}</Link>)}</nav>
+      <nav className="account-links finance-tabs" aria-label="Período do desempenho">{Object.entries(periods).map(([key, label]) =>
+        <Link key={key} className="secondary finance-tab" data-tone={periodTones[key]} aria-current={period === key ? "page" : undefined} href={`${base}?periodo=${key}&agenda=${agendaPeriod}#desempenho`}>{label}</Link>)}</nav>
       <div className="professional-chart-grid">
         <section className="professional-chart">
           <h3>Comparecimentos e faltas</h3>
