@@ -46,7 +46,7 @@ function ProductForm({ shop, product, margins }: { shop: string; product?: Produ
 
 export default async function Stock({ params, searchParams }: {
   params: Promise<{ establishmentId: string }>;
-  searchParams: Promise<{ estado?: string; busca?: string }>;
+  searchParams: Promise<{ estado?: string; busca?: string; novo?: string }>;
 }) {
   const { establishmentId: shop } = await params;
   if (!isUuid(shop)) notFound();
@@ -61,7 +61,7 @@ export default async function Stock({ params, searchParams }: {
   const business = owned ?? (delegated ? (await supabase.rpc("barberflow_my_team_shops")).data?.find((row: { id: string }) => row.id === shop) : null);
   if (error) throw new Error("Não foi possível carregar o estabelecimento.");
   if (!business) notFound();
-  const { estado, busca } = await searchParams;
+  const { estado, busca, novo } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const [products, movements, searchResult, marginResult] = await Promise.all([
     supabase.from("barberflow_products").select("id,name,sku,barcode,price_cents,stock,active,cost_cents,minimum_stock,expires_on,promo_units,promo_cents,promo_until,description,showcase,margin_tier,markup_percent")
@@ -107,7 +107,10 @@ export default async function Stock({ params, searchParams }: {
       <p>Produtos, quantidades, validade e movimentações do estabelecimento.</p>
     </header>
     <StockFeedback status={estado} />
-    {delegated ? <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine</Link> :
+    {delegated ? <div className="stock-quick-actions">
+      <Link className="secondary finance-tab command-action" data-tone="blue" href={`/equipe/${shop}/retiradas`}>Retiradas da vitrine</Link>
+      <Link className="secondary finance-tab command-action" data-tone="green" href={`/painel/${shop}/estoque?${new URLSearchParams({ ...(search ? { busca: search } : {}), novo: "1" })}#novo-produto`}>Novo produto</Link>
+    </div> :
       <Link className="secondary" href={`/painel/${shop}/financeiro/margens`}>Configurar margens de produtos</Link>}
     {products.error || movements.error || (marginResult.error && !delegated) ? <p role="alert">Não foi possível carregar o estoque.</p> : <>
       <dl className="cards stock-metrics">
@@ -115,7 +118,7 @@ export default async function Stock({ params, searchParams }: {
         <div className="card dashboard-metric"><dt>Unidades em produtos à venda</dt><dd>{activeProducts.reduce((total, item) => total + item.stock, 0).toLocaleString("pt-BR")}</dd></div>
         <div className="card dashboard-metric"><dt>Produtos com alerta</dt><dd>{flagged.length}</dd></div>
       </dl>
-      <details className="card panel-form"><summary>Novo produto</summary><ProductForm shop={shop} margins={margins} /></details>
+      <details className="card panel-form" id="novo-produto" open={novo === "1" || undefined}><summary>Novo produto</summary><ProductForm shop={shop} margins={margins} /></details>
       {flagged.length > 0 && <section className="card panel-form stock-alerts" aria-labelledby="stock-alerts-title">
         <h2 id="stock-alerts-title">Alertas de estoque e validade</h2>
         <ul>{flagged.map(({ product, warnings }) => <li key={product.id}>

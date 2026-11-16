@@ -691,3 +691,6 @@ summary.command-action::-webkit-details-marker { display: none; }
 
 .professional-service-alert { margin: auto; width: min(28rem, calc(100% - 2rem)); }
 .professional-service-alert::backdrop { background: #131a30a8; }
+
+.stock-quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-inline-size: 27rem; margin-block-end: .75rem; }
+.stock-quick-actions .command-action { overflow-wrap: anywhere; }
