@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.13",
+    "date": "2026-11-16",
+    "title": "Atendimento rápido pelo cadastro de clientes",
+    "changes": [
+      "Botão Iniciar serviço abre o atendimento avulso com o cliente já selecionado."
+    ]
+  },
+  {
     "version": "0.2.12",
     "date": "2026-11-16",
     "title": "Feed e atalhos do painel profissional",

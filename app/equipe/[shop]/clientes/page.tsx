@@ -17,7 +17,10 @@ export default async function TeamClients({ params, searchParams }: {
   const path = base + "/clientes";
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path }));
-  const access = await supabase.rpc("barberflow_team_can_edit_clients", { shop });
+  const [access, professional] = await Promise.all([
+    supabase.rpc("barberflow_team_can_edit_clients", { shop }),
+    supabase.rpc("barberflow_professional_panel", { shop_id: shop, period: "dia" }),
+  ]);
   if (access.error || access.data !== true) notFound();
 
   const { busca, cliente, estado } = await searchParams;
@@ -44,6 +47,11 @@ export default async function TeamClients({ params, searchParams }: {
     {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client, index) =>
       <li className="card team-professional-card" data-tone={index % 4} key={client.id} id={`cliente-${client.id}`}>
       <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
+      {!!professional.data && client.active && /\d/.test(client.phone ?? "") &&
+        <Link className="secondary finance-tab command-action payment-action" data-tone="green"
+          href={base + "?" + new URLSearchParams({ avulso: "1", cliente: client.id }) + "#avulso"}>
+          Iniciar serviço
+        </Link>}
       <details><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
       <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
         {selected?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}

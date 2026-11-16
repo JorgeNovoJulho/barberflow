@@ -55,7 +55,7 @@ async function createWalkIn(shop: string, day: string, request: string, form: Fo
     shop_id: shop, sale_id: request, customer: form.get("name"), contact: form.get("phone"), selections,
   });
   if (result?.data === "ok") redirect(`/equipe/${shop}/meu-painel?estado=avulso-criado#meu-dia`);
-  redirect(`/equipe/${shop}?dia=${day}&avulso=1&estado=falha#avulso`);
+  redirect(`/equipe/${shop}?dia=${day}&avulso=1&estado=falha${selected ? `&cliente=${selected}` : ""}#avulso`);
 }
 
 type Entry = { id: string; professional_name: string; kind: string; state: string; starts_at: string; ends_at: string;
@@ -63,11 +63,11 @@ type Entry = { id: string; professional_name: string; kind: string; state: strin
 type Offering = { professional_id: string; professional_name: string; service_id: string; service_name: string; duration_minutes: number };
 
 export default async function TeamAgenda({ params, searchParams }: {
-  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string; novo?: string; avulso?: string }>;
+  params: Promise<{ shop: string }>; searchParams: Promise<{ dia?: string; estado?: string; novo?: string; avulso?: string; cliente?: string }>;
 }) {
   const { shop } = await params;
   if (!isUuid(shop)) notFound();
-  const { dia, estado, novo, avulso } = await searchParams;
+  const { dia, estado, novo, avulso, cliente } = await searchParams;
   const day = typeof dia === "string" && validDay(dia) ? dia : saoPauloToday();
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}` }));
@@ -97,11 +97,19 @@ export default async function TeamAgenda({ params, searchParams }: {
     providers.set(person.id, person);
   }
   const walkIns = individual.data ? await supabase.rpc("barberflow_my_walk_ins", { shop_id: shop }) : null;
+  const initialClient = avulso === "1" && typeof cliente === "string" && isUuid(cliente) ? cliente : undefined;
   const registered = individual.data && clientAccess.data === true
     ? await supabase.from("barberflow_clients").select("id,name,phone,active,client_number,photo_path")
       .eq("establishment_id", shop).order("name").order("id") : null;
-  const registeredPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
-  const registeredClients = (registered?.data ?? []).map(({ id, name, phone, active, client_number, photo_path }) =>
+  const registeredRows = registered?.data ?? [];
+  if (initialClient && registered && !registered.error && !registeredRows.some(client => client.id === initialClient)) {
+    const { data: requestedClient } = await supabase.from("barberflow_clients")
+      .select("id,name,phone,active,client_number,photo_path")
+      .eq("establishment_id", shop).eq("id", initialClient).maybeSingle();
+    if (requestedClient) registeredRows.push(requestedClient);
+  }
+  const registeredPhotos = await clientPhotoLinks(supabase, registeredRows);
+  const registeredClients = registeredRows.map(({ id, name, phone, active, client_number, photo_path }) =>
     ({ id, name, phone, active, client_number, photo: registeredPhotos.get(photo_path ?? "") }));
   const catalog = individual.data ? await supabase.rpc("barberflow_walk_in_products", { shop_id: shop }) : null;
   const walkInProducts = (catalog?.data ?? []) as { id: string; name: string; description: string | null; price_cents: number }[];
@@ -144,7 +152,9 @@ export default async function TeamAgenda({ params, searchParams }: {
       {catalog?.error && <p role="alert">Não foi possível consultar os produtos.</p>}
       <form className="account-form" action={createWalkIn.bind(null, shop, day, crypto.randomUUID())}>
         {registered?.error && <p role="alert">Não foi possível consultar os clientes cadastrados.</p>}
-        <WalkInCustomer clients={registeredClients} canSelect={clientAccess.data === true} />
+        {initialClient && !registeredClients.some(client => client.id === initialClient && client.active && /\d/.test(client.phone)) &&
+          <p role="alert">O cliente selecionado não está disponível. Confira o cadastro ou selecione outro cliente.</p>}
+        <WalkInCustomer key={initialClient} clients={registeredClients} canSelect={clientAccess.data === true} initialId={initialClient} />
         <label>Serviço <select name="service"><option value="">Nenhum</option>{wizard.services.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
         <label>Produto <select name="product"><option value="">Nenhum</option>{walkInProducts.map((item) => <option key={item.id} value={item.id}>{catalogLabel(item)}</option>)}</select></label>
         <label>Quantidade do produto <input name="units" type="number" min={1} max={10000} defaultValue={1} /></label>
