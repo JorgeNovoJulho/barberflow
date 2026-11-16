@@ -50,8 +50,9 @@ export default async function Settings({ searchParams }: {
       <p><strong>Exclusão permanente.</strong> A restauração apaga os cadastros, histórico operacional, mídia exibida e acessos da equipe da loja escolhida. O login do proprietário e a assinatura serão preservados.</p>
       <form className="account-form" action={restoreStore}>
         <label>Loja <select name="shop" required>{shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label>
-        <label>Digite o nome exato da loja <input name="shop_name" required maxLength={120} autoComplete="off" /></label>
-        <PasswordField label="Senha de restauração" name="secret" autoComplete="off" minLength={12} />
+        <label>Digite o nome da loja selecionada <input name="shop_name" required maxLength={120} autoComplete="off" autoCapitalize="off" spellCheck={false} /></label>
+        <p>Se o navegador preencher seu e-mail neste campo, substitua pelo nome exibido em Loja.</p>
+        <PasswordField label="Senha de restauração" name="secret" autoComplete="new-password" minLength={12} />
         <label><input type="checkbox" name="acknowledged" value="yes" required /> Confirmo a exclusão permanente dos dados da loja selecionada.</label>
         <SubmitButton>Apagar dados da loja</SubmitButton>
       </form>
