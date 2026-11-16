@@ -16,13 +16,16 @@ export default async function TeamClients({ params, searchParams }: {
   const base = `/equipe/${shop}`;
   const path = base + "/clientes";
   const supabase = await supabaseServer();
-  if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: path }));
-  const [access, professional] = await Promise.all([
+  const user = supabase && (await supabase.auth.getUser()).data.user;
+  if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: path }));
+  const [access, professional, ownership] = await Promise.all([
     supabase.rpc("barberflow_team_can_edit_clients", { shop }),
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period: "dia" }),
+    supabase.from("barberflow_establishments").select("owner_id").eq("id", shop).maybeSingle(),
   ]);
   if (access.error || access.data !== true) notFound();
 
+  const isOwner = ownership.data?.owner_id === user.id;
   const { busca, cliente, estado } = await searchParams;
   const search = typeof busca === "string" ? busca.trim().slice(0, 120) : "";
   const query = supabase.from("barberflow_clients").select("id,name,phone,preferences,notes,active,email,instagram,facebook,tiktok,youtube,photo_path,client_number,created_at")
@@ -47,11 +50,12 @@ export default async function TeamClients({ params, searchParams }: {
     {error ? <p role="alert">Não foi possível consultar os clientes.</p> : clients.length ? <ul className="cards">{clients.map((client, index) =>
       <li className="card team-professional-card" data-tone={index % 4} key={client.id} id={`cliente-${client.id}`}>
       <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
-      {!!professional.data && client.active && /\d/.test(client.phone ?? "") &&
+      {(professional.data || isOwner) && client.active && /\d/.test(client.phone ?? "") ?
         <Link className="secondary finance-tab command-action payment-action" data-tone="green"
-          href={base + "?" + new URLSearchParams({ avulso: "1", cliente: client.id }) + "#avulso"}>
-          Iniciar serviço
-        </Link>}
+          href={professional.data
+            ? base + "?" + new URLSearchParams({ avulso: "1", cliente: client.id }) + "#avulso"
+            : `/painel/${shop}/caixa?aba=nova&cliente=${client.id}`}>Iniciar serviço</Link>
+        : <button className="secondary finance-tab command-action payment-action" data-tone="green" disabled>Iniciar serviço</button>}
       <details><summary className="secondary finance-tab command-action payment-action" data-tone="purple">Editar cliente</summary><ClientForm shop={shop} client={client} photo={photos.get(client.photo_path ?? "")} team /></details>
       <Link className="secondary finance-tab command-action payment-action" data-tone="blue" href={path + "?" + new URLSearchParams({ busca: search, cliente: client.id }) + `#cliente-${client.id}`}>Ver histórico</Link>
         {selected?.id === client.id && <ClientVisitHistory name={client.name} details={history?.data as VisitDetails | null} error={!!history?.error} />}

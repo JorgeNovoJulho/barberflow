@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.14",
+    "date": "2026-11-16",
+    "title": "Iniciar serviço no cadastro da loja",
+    "changes": [
+      "Atalho disponível também no cadastro de clientes do proprietário, com seleção automática do cliente na comanda."
+    ]
+  },
+  {
     "version": "0.2.13",
     "date": "2026-11-16",
     "title": "Atendimento rápido pelo cadastro de clientes",

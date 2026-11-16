@@ -44,7 +44,7 @@ const money = (cents:number)=>bookingCurrency.format(cents/100);
 const timezones = { "America/Sao_Paulo":"Brasília (UTC−3)", "America/Manaus":"Manaus (UTC−4)", "America/Rio_Branco":"Rio Branco (UTC−5)", "America/Noronha":"Fernando de Noronha (UTC−2)" };
 const methods = { pix:"Pix",debit:"Débito",credit:"Crédito",cash:"Dinheiro" };
 
-export type CheckoutQuery = { aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string; data?:string; recibo?:string };
+export type CheckoutQuery = { aba?:string; comanda?:string; modo?:string; estado?:string; periodo?:string; itens?:string; pagina?:string; data?:string; recibo?:string; cliente?:string };
 
 export async function Checkout({shop,args,professional=false}:{
   shop:string; args:CheckoutQuery; professional?:boolean;
@@ -92,8 +92,15 @@ export async function Checkout({shop,args,professional=false}:{
     (await supabase.rpc("barberflow_team_can_edit_clients", { shop })).data === true);
   const registered = canSelectClient ? await supabase.from("barberflow_clients").select("id,name,phone,active,client_number,photo_path")
     .eq("establishment_id",shop).order("name").order("id") : null;
-  const clientPhotos = await clientPhotoLinks(supabase, registered?.data ?? []);
-  const clients = (registered?.data ?? []).map(({id,name,phone,active,client_number,photo_path}) =>
+  const requestedClient = creating && !id && typeof args.cliente === "string" && isUuid(args.cliente) ? args.cliente : undefined;
+  const clientRows = registered?.data ?? [];
+  if (requestedClient && registered && !registered.error && !clientRows.some(client => client.id === requestedClient)) {
+    const { data } = await supabase.from("barberflow_clients").select("id,name,phone,active,client_number,photo_path")
+      .eq("establishment_id",shop).eq("id",requestedClient).maybeSingle();
+    if (data) clientRows.push(data);
+  }
+  const clientPhotos = await clientPhotoLinks(supabase, clientRows);
+  const clients = clientRows.map(({id,name,phone,active,client_number,photo_path}) =>
     ({id,name,phone,active,client_number,photo:clientPhotos.get(photo_path ?? "")}));
   const chargeFeedback = args.estado === "pix_missing"
     ? "A comanda foi mantida aberta. Cadastre a chave Pix do estabelecimento para gerar a cobrança, ou escolha Débito ou Crédito."
@@ -116,7 +123,7 @@ export async function Checkout({shop,args,professional=false}:{
     <h1>{closing ? "Fechamento" : archived ? "Comandas fechadas" : closeSaved ? "Fechar comanda" : id ? "Detalhes da comanda" : creating ? "Criar comanda" : "Comandas abertas"}</h1>
     {!canEdit && chargeFeedback && <p role="status" data-feedback={["ok","recebido","pix_ready","closed","forma_alterada"].includes(args.estado ?? "") ? "success" : "warning"}>{chargeFeedback}</p>}
     {[current,openResult,reportResult,archiveResult,services,products].some(result=>result?.error) && <p role="alert">Não foi possível carregar todos os dados.</p>}
-    {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? "nova"}:${args.estado ?? ""}`} shop={shop} professional={professional} clients={clients} canSelectClient={canSelectClient} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
+    {canEdit && services?.data && products?.data && <SaleEditor key={`${sale?.revision ?? id ?? requestedClient ?? "nova"}:${args.estado ?? ""}`} shop={shop} professional={professional} clients={clients} initialClient={requestedClient} canSelectClient={canSelectClient} id={id ?? crypto.randomUUID()} sale={sale ?? undefined} services={services.data} products={products.data} feedback={chargeFeedback} pixMissing={args.estado === "pix_missing"} pixReady={args.estado === "pix_ready"} />}
     {closeSaved && sale && <section className="card panel-form" id="cobranca">
       <h2>{sale.number} · {sale.client_name || "Cliente não informado"}</h2>
       <SaleDetails sale={sale} />

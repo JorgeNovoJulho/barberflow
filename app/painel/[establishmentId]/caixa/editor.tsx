@@ -14,7 +14,7 @@ function options(catalog:CatalogItem[],saved:Item[]) {
   return prices;
 }
 
-export function SaleEditor({shop,professional,id,sale,services,products,feedback,pixMissing,pixReady,clients,canSelectClient}:{shop:string;professional:boolean;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean;clients:WalkInClient[];canSelectClient:boolean}) {
+export function SaleEditor({shop,professional,id,sale,services,products,feedback,pixMissing,pixReady,clients,canSelectClient,initialClient}:{shop:string;professional:boolean;id:string;sale?:Sale;services:CatalogItem[];products:CatalogItem[];feedback?:string;pixMissing:boolean;pixReady:boolean;clients:WalkInClient[];canSelectClient:boolean;initialClient?:string}) {
   const savedServices = sale?.items.filter(item=>item.kind==="service") ?? [];
   const savedProducts = sale?.items.filter(item=>item.kind==="product") ?? [];
   const serviceOptions = options(services,savedServices);
@@ -29,7 +29,7 @@ export function SaleEditor({shop,professional,id,sale,services,products,feedback
   return <form className="account-form card panel-form" action={saveSale.bind(null,shop,id,sale?.revision ?? 0,professional)}>
     <h2>{sale ? "Comanda "+sale.number : "Nova comanda"}</h2>
     {!sale && <p>O número será gerado ao salvar a comanda.</p>}
-    <WalkInCustomer clients={clients} canSelect={canSelectClient} initialId={sale?.client_id}
+    <WalkInCustomer clients={clients} canSelect={canSelectClient} initialId={sale?.client_id ?? initialClient}
       nameField="customer" initialName={sale?.client_name} initialPhone={sale?.phone} />
     <fieldset className="checkout-item-group" data-tone="purple"><legend>Serviços</legend>{serviceIds.map((value,i)=><label key={i}>Serviço {i+1}
       <select name={"service"+i} value={value} onChange={event=>setServiceIds(update(serviceIds,i,event.target.value))}>

@@ -78,6 +78,10 @@ export default async function Clients({ params, searchParams }: {
         const contact = client.active && whatsappUrl(client.phone, [message, bookingLink].filter(Boolean).join("\n"));
         return <li className="card team-professional-card" data-tone={index % 4} key={client.id} id={`cliente-${client.id}`}>
         <ClientIdentity client={client} photo={photos.get(client.photo_path ?? "")} />
+        {client.active && /\d/.test(client.phone ?? "") ?
+          <Link className="secondary finance-tab command-action payment-action" data-tone="green"
+            href={`/painel/${shop}/caixa?aba=nova&cliente=${client.id}`}>Iniciar serviço</Link>
+          : <button className="secondary finance-tab command-action payment-action" data-tone="green" disabled>Iniciar serviço</button>}
         <dl className="order-totals">
           <div><dt>Última visita</dt><dd>{client.last_visit?.split("-").reverse().join("/") ?? "Sem visita concluída"}</dd></div>
           <div><dt>Atendimentos concluídos</dt><dd>{client.visits}</dd></div>
