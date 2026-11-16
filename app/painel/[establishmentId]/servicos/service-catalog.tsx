@@ -86,7 +86,7 @@ export async function ServiceCatalog({ establishmentId, name, services, failed, 
     <h1>Serviços</h1>
     <PanelStatus status={estado} />
     {failed ? <p role="alert">Não foi possível carregar os serviços.</p> : <>
-      <details id="novo-servico" className="card panel-form">
+      <details className="card panel-form">
         <summary>Novo serviço</summary>
         <ServiceForm key={nextOrder} establishmentId={establishmentId} team={team} nextOrder={nextOrder} />
       </details>

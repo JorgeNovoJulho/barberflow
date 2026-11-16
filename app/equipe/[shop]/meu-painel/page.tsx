@@ -1,4 +1,3 @@
-import { ServiceAlert } from "./service-alert";
 import { MyCommissions } from "./my-commissions";
 import { offsetDay } from "../../../../lib/agenda";
 import { appointmentAvatars, ClientAvatar, internalBookingClients } from "../../../painel/[establishmentId]/appointment-card";
@@ -119,7 +118,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
-  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance, stock, shopServices] = await Promise.all([
+  const [{ data, error }, counterResult, agendaResult, bookingContext, walkIns, teamAgenda, clients, services, professionals, finance, stock] = await Promise.all([
     supabase.rpc("barberflow_professional_panel", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_counter_metrics", { shop_id: shop, period }),
     supabase.rpc("barberflow_professional_agenda_with_walk_ins", { shop_id: shop, agenda_period: agendaPeriod }),
@@ -131,7 +130,6 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     supabase.rpc("barberflow_team_can_edit_professionals", { shop }),
     supabase.rpc("barberflow_team_finance_status", { shop }),
     supabase.rpc("barberflow_team_can_manage_products", { shop }),
-    supabase.rpc("barberflow_professional_shop_has_services", { shop }),
   ]);
   if (error) throw new Error("Não foi possível carregar seu painel.");
   if (!data) notFound();
@@ -164,20 +162,12 @@ export default async function ProfessionalPanel({ params, searchParams }: {
     [professionals.data === true, "Profissionais", "/profissionais"],
     [!!finance.data && finance.data !== "denied", "Financeiro e relatórios", "/financeiro"],
   ] as const;
-  const needsService = !panel.services.length && typeof shopServices.data === "boolean";
-  const registration = shopServices.data === false ? (services.data === true
-    ? `/equipe/${shop}/servicos#novo-servico`
-    : "/login?" + new URLSearchParams({ next: `/painel/${shop}/servicos#novo-servico` })) : undefined;
-  function serviceShortcut(label: string, href: string, className?: string) {
-    return needsService ? <ServiceAlert label={label} registration={registration} className={className ?? "secondary"} />
-      : <Link className={className} href={href}>{label}</Link>;
-  }
   const publicSlug = bookingContext.data?.slug;
   return <section className="container section professional-workspace" id="meu-dia">
     <nav className="professional-mobile-nav" aria-label="Atalhos do painel profissional">
       <Link href={base + "#meu-dia"}>Meu dia</Link>
-      {serviceShortcut("Agenda", base + "?agenda=dia#agenda-dia")}
-      {serviceShortcut("Avulsos", `/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`)}
+      <Link href={base + "?agenda=dia#agenda-dia"}>Agenda</Link>
+      <Link href={`/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`}>Avulsos</Link>
     </nav>
     <Link href={`/equipe/${shop}`}>Agenda da equipe</Link>
     <header className="card professional-identity">
@@ -200,10 +190,10 @@ export default async function ProfessionalPanel({ params, searchParams }: {
           <Link className="secondary" href={`/equipe/${shop}#comandas-avulsas`}>Revisar avulsos</Link>
           <SubmitButton>Fechar dia mesmo assim</SubmitButton>
         </form>
-      </details> : needsService ? <ServiceAlert label="Iniciar dia" registration={registration} className="primary action-keep" /> : <form action={changeDay.bind(null, shop, true)}><SubmitButton tone="keep" disabled={panel.shop_open === false}>Iniciar dia</SubmitButton></form>}
-        {serviceShortcut("Avulsos", `/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`, "secondary professional-walk-in-link")}
-        {serviceShortcut("Abrir agenda", `${base}?agenda=dia#agenda-dia`, "secondary professional-agenda-link")}
-        {serviceShortcut("Novo atendimento", `/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`, "secondary professional-new-link")}
+      </details> : <form action={changeDay.bind(null, shop, true)}><SubmitButton tone="keep" disabled={panel.shop_open === false}>Iniciar dia</SubmitButton></form>}
+        <Link className="secondary professional-walk-in-link" href={`/equipe/${shop}?dia=${panel.today}&avulso=1#avulso`}>Avulsos</Link>
+        <Link className="secondary professional-agenda-link" href={`${base}?agenda=dia#agenda-dia`}>Abrir agenda</Link>
+        <Link className="secondary professional-new-link" href={`/equipe/${shop}?dia=${panel.today}&novo=1#novo-atendimento`}>Novo atendimento</Link>
         {publicSlug && <Link className="secondary professional-public-link" href={`/estabelecimento/${publicSlug}?equipe=${shop}`}>Página pública</Link>}
       </nav>
       {(stock.data === true || delegatedLinks.some(([allowed]) => allowed)) && <nav className="account-links" aria-label="Funções delegadas">
