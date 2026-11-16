@@ -688,3 +688,6 @@ summary.command-action::-webkit-details-marker { display: none; }
 
 .split-cash-fields .cash-payment-result[data-state="short"] { background: #ffe5e8; border-color: #bd5262; color: #781c2b; }
 .split-cash-fields .cash-payment-result[data-state="change"] { background: #fff0cf; border-color: #d4a65c; color: #683d08; }
+
+.professional-service-alert { margin: auto; width: min(28rem, calc(100% - 2rem)); }
+.professional-service-alert::backdrop { background: #131a30a8; }
