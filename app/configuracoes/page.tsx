@@ -1,3 +1,4 @@
+import { RestoreShopFields } from "./restore-shop-fields";
 import { InstallApp } from "./install-app";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "../../lib/supabase";
@@ -49,9 +50,7 @@ export default async function Settings({ searchParams }: {
       {restauracao === "concluida" && <p role="status">Loja restaurada. Abra o painel para configurar a loja novamente.</p>}
       <p><strong>Exclusão permanente.</strong> A restauração apaga os cadastros, histórico operacional, mídia exibida e acessos da equipe da loja escolhida. O login do proprietário e a assinatura serão preservados.</p>
       <form className="account-form" action={restoreStore}>
-        <label>Loja <select name="shop" required>{shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label>
-        <label>Digite o nome da loja selecionada <input name="shop_name" required maxLength={120} autoComplete="off" autoCapitalize="off" spellCheck={false} /></label>
-        <p>Se o navegador preencher seu e-mail neste campo, substitua pelo nome exibido em Loja.</p>
+        <RestoreShopFields shops={shops} />
         <PasswordField label="Senha de restauração" name="secret" autoComplete="new-password" minLength={12} />
         <label><input type="checkbox" name="acknowledged" value="yes" required /> Confirmo a exclusão permanente dos dados da loja selecionada.</label>
         <SubmitButton>Apagar dados da loja</SubmitButton>
