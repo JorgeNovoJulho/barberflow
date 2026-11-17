@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.19",
+    "date": "2026-11-17",
+    "title": "Reprodução dos vídeos de serviços",
+    "changes": [
+      "Endereço estável para os vídeos e suporte à reprodução por trechos no catálogo de serviços."
+    ]
+  },
+  {
     "version": "0.2.18",
     "date": "2026-11-17",
     "title": "Duração e prévias no catálogo de serviços",
