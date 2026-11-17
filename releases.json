@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.21",
+    "date": "2026-11-17",
+    "title": "Vínculos no catálogo profissional",
+    "changes": [
+      "Gerenciar serviços e preços também permite escolher quem executa cada serviço."
+    ]
+  },
+  {
     "version": "0.2.20",
     "date": "2026-11-17",
     "title": "Vídeos por link e galeria nos serviços",

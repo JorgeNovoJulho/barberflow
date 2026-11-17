@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { isUuid } from "../../../../lib/establishments";
 import { supabaseServer } from "../../../../lib/supabase";
 
-export async function saveServiceProfessionals(shop: string, service: string, form: FormData) {
+export async function saveServiceProfessionals(shop: string, service: string, team: boolean, form: FormData) {
   if (!isUuid(shop) || !isUuid(service)) redirect("/painel");
-  const path = `/painel/${shop}/servicos`;
+  const path = `/${team ? "equipe" : "painel"}/${shop}/servicos`;
   const supabase = await supabaseServer();
   if (!supabase || !(await supabase.auth.getUser()).data.user) {
     redirect("/login?" + new URLSearchParams({ next: path }));
@@ -16,7 +16,9 @@ export async function saveServiceProfessionals(shop: string, service: string, fo
   if (professionals.some((id) => !isUuid(id))) redirect(path + "?estado=falha&vincular=" + service);
   const { data, error } = await supabase.rpc("barberflow_set_service_professionals", { shop, service, professionals });
   if (data && !error) {
-    revalidatePath(path);
+    revalidatePath(`/painel/${shop}/servicos`);
+    revalidatePath(`/equipe/${shop}/servicos`);
+    revalidatePath(`/equipe/${shop}/meu-painel`);
     revalidatePath(`/painel/${shop}/profissionais`);
   }
   const status = error?.code === "BF001" ? "limite-vinculos" : error || !data ? "falha" : "vinculos-salvos";

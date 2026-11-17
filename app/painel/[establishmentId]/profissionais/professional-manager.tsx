@@ -19,7 +19,7 @@ const teamPermissions = {
   see_all: "Ver a agenda de todos os profissionais",
   manage_all: "Criar, remarcar e alterar agendamentos de todos",
   manage_clients: "Ver e editar a base de clientes",
-  manage_services: "Gerenciar serviços e preços",
+  manage_services: "Gerenciar serviços, preços e vínculos de profissionais",
   manage_professionals: "Gerenciar profissionais, horários e imagens",
   manage_feed: "Gerenciar postagens do Feed da página pública",
   manage_products: "Gerenciar produtos, estoque e retiradas da vitrine",
