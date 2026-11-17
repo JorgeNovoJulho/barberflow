@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.17",
+    "date": "2026-11-17",
+    "title": "Saudação no painel profissional",
+    "changes": [
+      "Meu dia saúda o profissional pelo nome conforme o horário do login."
+    ]
+  },
+  {
     "version": "0.2.16",
     "date": "2026-11-17",
     "title": "Atalhos para Meu dia",

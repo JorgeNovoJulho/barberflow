@@ -73,13 +73,14 @@ const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 async function client(shop: string) {
   if (!isUuid(shop)) notFound();
   const supabase = await supabaseServer();
-  if (!supabase || !(await supabase.auth.getUser()).data.user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}/meu-painel` }));
-  return supabase;
+  const user = supabase && (await supabase.auth.getUser()).data.user;
+  if (!supabase || !user) redirect("/login?" + new URLSearchParams({ next: `/equipe/${shop}/meu-painel` }));
+  return { supabase, user };
 }
 
 async function changeDay(shop: string, available: boolean) {
   "use server";
-  const supabase = await client(shop);
+  const { supabase } = await client(shop);
   const { data, error } = await supabase.rpc("barberflow_set_professional_day", { shop_id: shop, available_now: available });
   revalidatePath(`/equipe/${shop}/meu-painel`);
   redirect(`/equipe/${shop}/meu-painel?estado=${data && !error ? "salvo" : "falha"}`);
@@ -88,7 +89,7 @@ async function changeDay(shop: string, available: boolean) {
 async function appointmentAction(shop: string, id: string, operation: "cancel" | "absence", form: FormData) {
   "use server";
   if (!isUuid(id)) notFound();
-  const supabase = await client(shop);
+  const { supabase } = await client(shop);
   const reason = String(form.get("reason") ?? "").trim();
   const { data, error } = await supabase.rpc("barberflow_professional_appointment", {
     shop_id: shop, entry_id: id, operation, reason: reason || null,
@@ -100,7 +101,7 @@ async function appointmentAction(shop: string, id: string, operation: "cancel" |
 async function checkIn(shop: string, id: string, openOrder: boolean) {
   "use server";
   if (!isUuid(id)) notFound();
-  const supabase = await client(shop);
+  const { supabase } = await client(shop);
   const { data, error } = await supabase.rpc("barberflow_professional_check_in", { shop_id: shop, entry_id: id });
   if (openOrder && data && !error) redirect(`/equipe/${shop}/comanda/${id}`);
   revalidatePath(`/equipe/${shop}/meu-painel`);
@@ -116,7 +117,12 @@ export default async function ProfessionalPanel({ params, searchParams }: {
   searchParams: Promise<{ periodo?: string; agenda?: string; estado?: string; pagina?: string; comissoes?: string; ano?: string }>;
 }) {
   const { shop } = await params;
-  const supabase = await client(shop);
+  const { supabase, user } = await client(shop);
+  const loginTime = new Date(user.last_sign_in_at ?? Date.now());
+  const loginHour = Number(new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo", hour: "2-digit", hourCycle: "h23",
+  }).format(loginTime));
+  const greeting = loginHour < 12 ? "Bom dia" : loginHour < 18 ? "Boa tarde" : "Boa noite";
   const { periodo, agenda, estado, pagina, comissoes, ano } = await searchParams;
   const period = typeof periodo === "string" && Object.hasOwn(periods, periodo) ? periodo : "dia";
   const agendaPeriod = typeof agenda === "string" && Object.hasOwn(periods, agenda) ? agenda : "dia";
@@ -193,7 +199,7 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <h1>Meu dia</h1>
         <AgendaDate date={panel.today} location={bookingContext.data} inHeader />
       </div>
-      <h2>{panel.name}</h2>
+      <h2>{greeting}, {panel.name}!</h2>
       <p>{panel.services.length ? panel.services.join(" · ") : "Sem serviços vinculados."}</p>
       <p>Comissão de serviços {panel.service_rate / 100}% · Comissão de produtos {panel.product_rate / 100}%</p>
       <p><strong>{panel.shop_open === false ? (panel.walk_in_active ? "Em atendimento avulso" : "Indisponível para agendamentos") : panel.available ? "Disponível hoje" : "Indisponível hoje"}</strong></p>
