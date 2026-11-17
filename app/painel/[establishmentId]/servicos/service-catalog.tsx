@@ -1,3 +1,4 @@
+import { formatServiceDuration } from "../../../../lib/service-presentation";
 import { ServiceDurationField, ServiceMediaField } from "./service-fields";
 import { ServiceSubmitForm } from "./service-submit-form";
 import Link from "next/link";
@@ -50,16 +51,24 @@ type Service = ServiceMediaPaths & {
   active: boolean;
 };
 
-function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establishmentId: string; service?: Service; team: boolean; nextOrder?: number }) {
+function ServiceForm({ establishmentId, service, team, categories, nextOrder = 1 }: { establishmentId: string; service?: Service; team: boolean; categories: string[]; nextOrder?: number }) {
   return <ServiceSubmitForm shop={establishmentId} service={service?.id ?? null} team={team}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={service?.name} /></label>
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={service?.description} /></label>
-    <label>Categoria <input name="category" maxLength={80} defaultValue={service?.category} /></label>
+    {categories.length > 0 && <label>Categoria
+      <select name="category" defaultValue={service?.category ?? ""}>
+        <option value="">Sem categoria</option>
+        {categories.map(category => <option key={category}>{category}</option>)}
+      </select>
+    </label>}
+    <label>Nova categoria <input name="category_new" maxLength={80} /></label>
     <fieldset>
       <legend>Foto e vídeo</legend>
-      <ServiceMediaField kind="photo" label={service?.photo_path ? "Substituir foto" : "Enviar foto"} />
-      <small>JPG, PNG, WebP ou AVIF, até 5 MB.</small>
-      {service?.photo_path && <label><input type="checkbox" name="remove_photo" /> Remover foto salva</label>}
+      <ServiceMediaField kind="photo" label={service?.photo_path ? "Substituir fotos" : "Enviar fotos"} />
+      <small>Até 5 fotos JPG, PNG, WebP ou AVIF, de até 5 MB cada.</small>
+      {service?.photo_path && <label><input type="checkbox" name="remove_photo" /> Remover fotos salvas</label>}
+      <label>Link do vídeo <input name="video_url" type="url" maxLength={500} defaultValue={service?.video_url} /></label>
+      <small>Use o link completo de um vídeo público do YouTube, TikTok ou Instagram. O link tem prioridade sobre um arquivo de vídeo.</small>
       <ServiceMediaField kind="video" label={service?.video_path ? "Substituir vídeo" : "Enviar vídeo"} />
       <small>MP4 ou WebM, até 15 MB. Os arquivos são enviados ao salvar.</small>
       {service?.video_path && <label><input type="checkbox" name="remove_video" /> Remover vídeo salvo</label>}
@@ -76,6 +85,7 @@ function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establ
 export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false, assignments }: {
   establishmentId: string; name: string; services: Service[]; failed: boolean; estado?: string; team?: boolean; assignments?: Assignments;
 }) {
+  const categories = [...new Set(services.map(service => service.category?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const urls = await serviceMediaUrls(services);
   const occupiedOrders = new Set(services.map(({ display_order }) => display_order));
   let nextOrder = services.length + 1;
@@ -88,7 +98,7 @@ export async function ServiceCatalog({ establishmentId, name, services, failed, 
     {failed ? <p role="alert">Não foi possível carregar os serviços.</p> : <>
       <details id="novo-servico" className="card panel-form">
         <summary>Novo serviço</summary>
-        <ServiceForm key={nextOrder} establishmentId={establishmentId} team={team} nextOrder={nextOrder} />
+        <ServiceForm key={nextOrder} establishmentId={establishmentId} team={team} categories={categories} nextOrder={nextOrder} />
       </details>
       <h2>Catálogo</h2>
       <p>A ordem dos serviços ativos também aparece na página pública.</p>
@@ -96,10 +106,10 @@ export async function ServiceCatalog({ establishmentId, name, services, failed, 
         {services.map((service: Service, index) => <li className="card" key={service.id}>
           <h3>{service.name}</h3>
           <ServiceMedia service={service} urls={urls} />
-          <p>{currency.format(service.price_cents / 100)} · {service.duration_minutes} min · {service.active ? "Ativo" : "Arquivado"}</p>
+          <p>{currency.format(service.price_cents / 100)} · {formatServiceDuration(service.duration_minutes)} · {service.active ? "Ativo" : "Arquivado"}</p>
           {service.category && <p>{service.category}</p>}
           {service.description && <p>{service.description}</p>}
-          <details><summary>Editar serviço</summary><ServiceForm establishmentId={establishmentId} team={team} service={service} /></details>
+          <details><summary>Editar serviço</summary><ServiceForm establishmentId={establishmentId} team={team} categories={categories} service={service} /></details>
           {assignments && <ServiceProfessionals key={service.id + (estado ?? "")} shop={establishmentId} service={service.id} assignments={assignments} />}
           {service.active && <div className="account-links">
             {([-1, 1] as const).map((step) => {

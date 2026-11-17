@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { productImageLimit, productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 import { serviceMediaBucket, serviceVideoLimit } from "../../../../lib/service-media-config";
+import { serviceVideoEmbed } from "../../../../lib/service-presentation";
 import { saveService } from "../../actions";
 
 export function ServiceSubmitForm({ shop, service, team, children }: {
@@ -24,18 +25,22 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
     if (submitting.current) return;
     const form = event.currentTarget;
     const data = new FormData(form);
-    const media = [
-      { kind: "photo", types: productImageTypes, limit: productImageLimit },
-      { kind: "video", types: productVideoTypes, limit: serviceVideoLimit },
-    ];
-
-    for (const { kind, types, limit } of media) {
-      const file = data.get(kind);
-      if (file instanceof File && file.size && (file.size > limit || !types.includes(file.type))) {
-        setMessage("Confira o formato e o tamanho dos arquivos. A foto pode ter até 5 MB e o vídeo até 15 MB.");
-        return;
-      }
+    const videoLink = String(data.get("video_url") ?? "").trim();
+    if (videoLink && !serviceVideoEmbed(videoLink)) {
+      setMessage("Informe o link completo de um vídeo do YouTube, TikTok ou Instagram.");
+      return;
     }
+    const photos = data.getAll("photo").filter((file): file is File => file instanceof File && file.size > 0);
+    const video = data.get("video");
+    if (photos.length > 5 || photos.some(file => file.size > productImageLimit || !productImageTypes.includes(file.type))
+      || (!videoLink && video instanceof File && video.size > 0 && (video.size > serviceVideoLimit || !productVideoTypes.includes(video.type)))) {
+      setMessage("Confira os formatos e os limites de até 5 fotos de 5 MB cada e 1 vídeo de 15 MB.");
+      return;
+    }
+    const media = photos.map(file => ({ kind: "photo", file }));
+    if (!videoLink && video instanceof File && video.size) media.push({ kind: "video", file: video });
+    data.delete("photo");
+    data.delete("video");
 
     submitting.current = true;
     setPending(true);
@@ -47,10 +52,7 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       ).storage.from(serviceMediaBucket);
-      for (const { kind } of media) {
-        const file = data.get(kind);
-        data.delete(kind);
-        if (!(file instanceof File) || !file.size) continue;
+      for (const { kind, file } of media) {
         const object = `${shop}/${crypto.randomUUID()}-${kind}`;
         const { error } = await bucket.upload(object, file, { contentType: file.type });
         if (error) {
@@ -59,7 +61,7 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
           return;
         }
         uploaded.push(object);
-        data.set(`${kind}_path`, object);
+        data.append(`${kind}_path`, object);
       }
 
       savingRecord = true;

@@ -618,3 +618,41 @@ svg.booking-client-avatar { padding: 6px; }
     text-align: center;
   }
 }
+
+.service-media .service-photo-carousel img,
+.public-profile .service-media-thumbnail .service-photo-carousel img {
+  width: 100%;
+  height: auto;
+  max-height: min(70vh, 36rem);
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+
+.service-photo-carousel .account-links {
+  align-items: center;
+  justify-content: center;
+  margin-block: 0.5rem;
+}
+
+.service-video-embed {
+  width: min(100%, 38rem);
+}
+
+.service-video-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0.65rem;
+}
+
+.service-video-embed[data-provider="TikTok"],
+.service-video-embed[data-provider="Instagram"] {
+  width: min(100%, 23rem);
+}
+
+.service-video-embed[data-provider="TikTok"] iframe,
+.service-video-embed[data-provider="Instagram"] iframe {
+  aspect-ratio: 9 / 16;
+}

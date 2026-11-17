@@ -1,5 +1,7 @@
 "use server";
 
+import { serviceVideoEmbed } from "../../lib/service-presentation";
+
 import { redirect } from "next/navigation";
 import { isSegment, isUuid, parsePrice } from "../../lib/establishments";
 import { supabaseServer } from "../../lib/supabase";
@@ -37,7 +39,10 @@ export async function saveService(establishmentId: string, serviceId: string | n
   const supabase = await authenticated(path);
   const name = field(data, "name");
   const description = field(data, "description");
-  const category = field(data, "category");
+  const category = field(data, "category_new") || field(data, "category");
+  const videoLink = field(data, "video_url");
+  const embed = serviceVideoEmbed(videoLink);
+  if (videoLink && !embed) return "video-link-invalido";
   const price = parsePrice(field(data, "price"));
   const display_order = Number(field(data, "order"));
   const duration = Number(field(data, "duration"));
@@ -48,19 +53,24 @@ export async function saveService(establishmentId: string, serviceId: string | n
     || !Number.isInteger(display_order) || display_order < 0 || display_order > 9999
     || (serviceId !== null && !isUuid(serviceId))) return "invalido";
 
-  const mediaFields: { photo_path?: string; video_path?: string } = {};
-  for (const kind of ["photo", "video"] as const) {
-    const object = field(data, `${kind}_path`);
-    if (object) {
-      const [shop, filename, ...remaining] = object.split("/");
-      if (shop !== establishmentId || !filename?.endsWith(`-${kind}`)
-        || !isUuid(filename.slice(0, -(kind.length + 1))) || remaining.length) return "servico-midia-invalida";
-      mediaFields[`${kind}_path`] = object;
-    } else if (data.get(`remove_${kind}`) === "on") {
-      mediaFields[`${kind}_path`] = "";
-    }
+  const mediaFields: { photo_path?: string; video_path?: string; extra_photos?: string[] } = {};
+  const validObject = (object: string, kind: "photo" | "video") => {
+    const [shop, filename, ...remaining] = object.split("/");
+    return shop === establishmentId && filename?.endsWith(`-${kind}`)
+      && isUuid(filename.slice(0, -(kind.length + 1))) && !remaining.length;
+  };
+  const photos = data.getAll("photo_path").map(String);
+  const video = field(data, "video_path");
+  if (photos.length > 5 || photos.some(object => !validObject(object, "photo"))
+    || (video && !validObject(video, "video"))) return "servico-midia-invalida";
+  if (photos.length || data.get("remove_photo") === "on") {
+    mediaFields.photo_path = photos[0] ?? "";
+    mediaFields.extra_photos = photos.slice(1);
   }
-  const fields = { name, description, category, price_cents: price, duration_minutes: minutes, display_order, ...mediaFields };
+  if (video || data.get("remove_video") === "on") mediaFields.video_path = video;
+
+  const fields = { name, description, category, video_url: embed?.href ?? "", price_cents: price,
+    duration_minutes: minutes, display_order, ...mediaFields };
   const query = serviceId
     ? supabase.from("barberflow_services").update(fields).eq("id", serviceId).eq("establishment_id", establishmentId).is("deleted_at", null)
     : supabase.from("barberflow_services").insert({ ...fields, establishment_id: establishmentId });

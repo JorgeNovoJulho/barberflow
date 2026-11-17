@@ -21,7 +21,7 @@ export default async function Services({ params, searchParams }: {
   const owner = establishment.owner_id === user.id;
   const [catalog, people, links] = await Promise.all([
     supabase.from("barberflow_services")
-      .select("id,name,description,category,price_cents,duration_minutes,active,display_order,photo_path,video_path").is("deleted_at", null)
+      .select("id,name,description,category,price_cents,duration_minutes,active,display_order,photo_path,video_path,extra_photos,video_url").is("deleted_at", null)
       .eq("establishment_id", establishmentId).order("active", { ascending: false }).order("display_order").order("name").order("id"),
     owner ? supabase.from("barberflow_professionals").select("id,name,photo_url,active")
       .eq("establishment_id", establishmentId).order("name") : null,

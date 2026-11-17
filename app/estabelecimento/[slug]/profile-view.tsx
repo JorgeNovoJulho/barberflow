@@ -1,3 +1,4 @@
+import { formatServiceDuration } from "../../../lib/service-presentation";
 import { VisiblePageRefresh } from "../../visible-page-refresh";
 import { BusinessHeader } from "./business-header";
 import { serviceMediaUrls } from "../../../lib/service-media";
@@ -141,7 +142,7 @@ export async function ProfileView({ profile, professionalShop, previewShop, denu
       <p>{service.description || "Descrição não informada."}</p>
       <dl className="service-facts">
         <div><dt>Valor</dt><dd className="public-service-price">{bookingCurrency.format(service.price_cents / 100)}</dd></div>
-        <div><dt>Duração prevista</dt><dd>{service.duration_minutes} min</dd></div>
+        <div><dt>Duração prevista</dt><dd>{formatServiceDuration(service.duration_minutes)}</dd></div>
       </dl>
       <p><strong>Profissionais</strong> {service.professionals.length ? service.professionals.map(person => person.name).join(", ") : "Nenhum profissional vinculado."}</p>
       {previewShop || !service.professionals.length ? <button type="button" className="primary" disabled>Agendar</button>

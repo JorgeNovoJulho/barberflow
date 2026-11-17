@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.20",
+    "date": "2026-11-17",
+    "title": "Vídeos por link e galeria nos serviços",
+    "changes": [
+      "Players de YouTube, TikTok e Instagram no catálogo.",
+      "Até cinco fotos sem recorte e com carrossel.",
+      "Seleção de categorias e duração em horas quando aplicável."
+    ]
+  },
+  {
     "version": "0.2.19",
     "date": "2026-11-17",
     "title": "Reprodução dos vídeos de serviços",

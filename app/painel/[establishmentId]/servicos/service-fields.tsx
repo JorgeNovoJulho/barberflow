@@ -22,27 +22,25 @@ export function ServiceDurationField({ initialMinutes }: { initialMinutes: numbe
 }
 
 export function ServiceMediaField({ kind, label }: { kind: "photo" | "video"; label: string }) {
-  const [file, setFile] = useState<File>();
-  const [preview, setPreview] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const photo = kind === "photo";
   const types = photo ? productImageTypes : productVideoTypes;
   const limit = photo ? productImageLimit : serviceVideoLimit;
 
   useEffect(() => {
-    if (!file || !file.size || file.size > limit || !types.includes(file.type)) {
-      setPreview("");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file, limit, types]);
+    const urls = files.slice(0, 5)
+      .filter(file => file.size > 0 && file.size <= limit && types.includes(file.type))
+      .map(file => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [files, limit, types]);
 
   return <>
-    <label>{label} <input type="file" name={kind} accept={types.join(",")}
-      onChange={event => setFile(event.currentTarget.files?.[0])} /></label>
-    {preview && (photo
-      ? <img width={144} height={96} style={{ objectFit: "contain" }} src={preview} alt="Prévia da foto selecionada" />
-      : <video width={144} height={96} src={preview} controls playsInline preload="metadata" aria-label="Prévia do vídeo selecionado" />)}
+    <label>{label} <input type="file" name={kind} accept={types.join(",")} multiple={photo}
+      onChange={event => setFiles(Array.from(event.currentTarget.files ?? []))} /></label>
+    {previews.map((preview, index) => photo
+      ? <img key={preview} width={144} height={96} style={{ objectFit: "contain" }} src={preview} alt={`Prévia da foto ${index + 1}`} />
+      : <video key={preview} width={144} height={96} src={preview} controls playsInline preload="metadata" aria-label="Prévia do vídeo selecionado" />)}
   </>;
 }
