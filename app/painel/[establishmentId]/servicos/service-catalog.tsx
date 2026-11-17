@@ -1,8 +1,9 @@
+import { ServiceSubmitForm } from "./service-submit-form";
 import Link from "next/link";
 import { httpsUrl } from "../../../../lib/business-profile";
 import { saveServiceProfessionals } from "./actions";
 import { SubmitButton } from "../../../auth/submit";
-import { changeServiceAvailability, deleteService, moveService, saveService } from "../../actions";
+import { changeServiceAvailability, deleteService, moveService } from "../../actions";
 import { PanelStatus } from "../../status";
 import { ServiceMedia } from "../../../service-media";
 import { serviceMediaUrls, type ServiceMediaPaths } from "../../../../lib/service-media";
@@ -50,7 +51,7 @@ type Service = ServiceMediaPaths & {
 };
 
 function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establishmentId: string; service?: Service; team: boolean; nextOrder?: number }) {
-  return <form className="account-form" action={saveService.bind(null, establishmentId, service?.id ?? null, team)}>
+  return <ServiceSubmitForm shop={establishmentId} service={service?.id ?? null} team={team}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={service?.name} /></label>
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={service?.description} /></label>
     <label>Categoria <input name="category" maxLength={80} defaultValue={service?.category} /></label>
@@ -69,8 +70,7 @@ function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establ
       <label>Duração (min) <input name="duration" type="number" min={1} max={1440} required defaultValue={service?.duration_minutes ?? 30} /></label>
     </div>
     <label>Ordem no catálogo <input name="order" type="number" min={0} max={9999} defaultValue={service?.display_order ?? nextOrder} required /></label>
-    <SubmitButton>Salvar serviço</SubmitButton>
-  </form>;
+  </ServiceSubmitForm>;
 }
 
 export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false, assignments }: {

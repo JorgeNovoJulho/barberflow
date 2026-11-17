@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.15",
+    "date": "2026-11-17",
+    "title": "Salvamento de serviços no painel profissional",
+    "changes": [
+      "Envio de fotos e vídeos separado do salvamento do serviço.",
+      "Falhas de envio ou cadastro aparecem no formulário, mantendo os campos preenchidos."
+    ]
+  },
+  {
     "version": "0.2.14",
     "date": "2026-11-16",
     "title": "Iniciar serviço no cadastro da loja",

@@ -1,7 +1,6 @@
 import { supabaseServer } from "./supabase";
 
-export const serviceMediaBucket = "barberflow-service-media";
-export const serviceVideoLimit = 15 * 1024 * 1024;
+import { serviceMediaBucket } from "./service-media-config";
 export type ServiceMediaPaths = { photo_path: string; video_path: string };
 
 export async function serviceMediaUrls(services: ServiceMediaPaths[]) {

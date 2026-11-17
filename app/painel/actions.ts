@@ -3,8 +3,6 @@
 import { redirect } from "next/navigation";
 import { isSegment, isUuid, parsePrice } from "../../lib/establishments";
 import { supabaseServer } from "../../lib/supabase";
-import { productImageLimit, productImageTypes, productVideoTypes } from "../../lib/product-media";
-import { serviceMediaBucket, serviceVideoLimit } from "../../lib/service-media";
 
 function field(data: FormData, key: string) {
   return String(data.get(key) ?? "").trim();
@@ -46,30 +44,18 @@ export async function saveService(establishmentId: string, serviceId: string | n
   if (!name || name.length > 120 || description.length > 1000 || category.length > 80
     || price === null || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440
     || !Number.isInteger(display_order) || display_order < 0 || display_order > 9999
-    || (serviceId !== null && !isUuid(serviceId))) finish(path, "invalido");
+    || (serviceId !== null && !isUuid(serviceId))) return "invalido";
 
-  const media = [
-    { kind: "photo", column: "photo_path", file: data.get("photo"), types: productImageTypes, limit: productImageLimit },
-    { kind: "video", column: "video_path", file: data.get("video"), types: productVideoTypes, limit: serviceVideoLimit },
-  ] as const;
-  for (const { file, types, limit } of media) {
-    if (file instanceof File && file.size && (file.size > limit || !types.includes(file.type))) finish(path, "servico-midia-invalida");
-  }
-  const bucket = supabase.storage.from(serviceMediaBucket);
-  const uploaded: string[] = [];
   const mediaFields: { photo_path?: string; video_path?: string } = {};
-  for (const { kind, column, file } of media) {
-    if (file instanceof File && file.size) {
-      const object = `${establishmentId}/${crypto.randomUUID()}-${kind}`;
-      const { error } = await bucket.upload(object, file, { contentType: file.type });
-      if (error) {
-        if (uploaded.length) await bucket.remove(uploaded);
-        finish(path, "servico-midia-falha");
-      }
-      uploaded.push(object);
-      mediaFields[column] = object;
+  for (const kind of ["photo", "video"] as const) {
+    const object = field(data, `${kind}_path`);
+    if (object) {
+      const [shop, filename, ...remaining] = object.split("/");
+      if (shop !== establishmentId || !filename?.endsWith(`-${kind}`)
+        || !isUuid(filename.slice(0, -(kind.length + 1))) || remaining.length) return "servico-midia-invalida";
+      mediaFields[`${kind}_path`] = object;
     } else if (data.get(`remove_${kind}`) === "on") {
-      mediaFields[column] = "";
+      mediaFields[`${kind}_path`] = "";
     }
   }
   const fields = { name, description, category, price_cents: price, duration_minutes: minutes, display_order, ...mediaFields };
@@ -77,10 +63,8 @@ export async function saveService(establishmentId: string, serviceId: string | n
     ? supabase.from("barberflow_services").update(fields).eq("id", serviceId).eq("establishment_id", establishmentId).is("deleted_at", null)
     : supabase.from("barberflow_services").insert({ ...fields, establishment_id: establishmentId });
   const { data: saved, error } = await query.select("id").maybeSingle();
-  if (uploaded.length && ((!error && !saved) || error?.code.startsWith("23") || error?.code === "42501")) {
-    await bucket.remove(uploaded);
-  }
-  finish(path, error || !saved ? "falha" : "salvo");
+  if (error && !/^[0-9A-Z]{5}$/.test(error.code ?? "")) return "incerto";
+  return error || !saved ? "falha" : "salvo";
 }
 
 export async function changeServiceAvailability(establishmentId: string, serviceId: string, active: boolean, team: boolean) {
