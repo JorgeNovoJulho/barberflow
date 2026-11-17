@@ -4,6 +4,7 @@ import { BrandLogo } from "./brand-logo";
 import { ActionFeedback } from "./action-feedback";
 import type { ReactNode } from "react";
 import { hasMasterSession, masterPath } from "../lib/master";
+import { professionalPanelPath } from "../lib/account-role";
 import { policyLinks } from "../lib/auth-path";
 import { supabaseServer } from "../lib/supabase";
 import { defaultTheme, isThemeId } from "../lib/themes";
@@ -29,7 +30,10 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : undefined;
   const user = claims?.sub;
   const master = user && await hasMasterSession();
-  const role = supabase && user ? (await supabase.rpc("barberflow_account_kind")).data : null;
+  const [role, professionalPath] = supabase && user ? await Promise.all([
+    supabase.rpc("barberflow_account_kind").then(({ data }) => data),
+    professionalPanelPath(supabase, claims.app_metadata),
+  ]) : [null, null];
   const preference = supabase && user
     ? (await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user).maybeSingle()).data
     : null;
@@ -42,7 +46,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
     <Link href="/planos">Planos</Link>
     <Link href="/#duvidas">Dúvidas</Link>
     <Link href="/sobre">Sobre</Link>
-    {user && <Link href={role === "cliente" ? "/cliente" : "/painel"}>Meu painel</Link>}
+    {user && <Link href={professionalPath ?? (role === "cliente" ? "/cliente" : "/painel")}>Meu painel</Link>}
     {user && <Link href="/meus-agendamentos">Minhas reservas</Link>}
     {user && <Link href="/minhas-compras">Minhas compras</Link>}
     {user ? <Link className="header-action" href="/configuracoes">Configurações</Link> : <Link className="header-action" href="/login">Entrar</Link>}

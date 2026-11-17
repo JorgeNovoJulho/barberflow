@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { isUuid } from "./establishments";
 import { isMasterAccount, masterPath } from "./master";
 import type { supabaseServer } from "./supabase";
 
@@ -6,11 +7,19 @@ export function accountKind(value: unknown) {
   return value === "cliente" || value === "barbearia" ? value : null;
 }
 
-export async function afterLogin(client: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>, user: User | null, next: string) {
+type SessionClient = NonNullable<Awaited<ReturnType<typeof supabaseServer>>>;
+
+export async function professionalPanelPath(client: SessionClient, metadata?: User["app_metadata"]) {
+  if (metadata?.barberflow_managed_professional !== true) return null;
+  const { data } = await client.rpc("barberflow_managed_professional_destination");
+  return typeof data === "string" && isUuid(data) ? `/equipe/${data}/meu-painel` : null;
+}
+
+export async function afterLogin(client: SessionClient, user: User | null, next: string) {
   if (await isMasterAccount(client, user?.email)) return masterPath;
   if (user?.app_metadata.barberflow_managed_professional === true) {
-    const { data } = await client.rpc("barberflow_managed_professional_destination");
-    if (typeof data === "string") return `/equipe/${data}/meu-painel`;
+    const path = await professionalPanelPath(client, user.app_metadata);
+    if (path) return path;
     await client.auth.signOut({ scope: "local" });
     return "/login?estado=credenciais";
   }

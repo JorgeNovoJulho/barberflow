@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.16",
+    "date": "2026-11-17",
+    "title": "Atalhos para Meu dia",
+    "changes": [
+      "Configurações e o menu superior agora levam ao Meu dia da conta profissional."
+    ]
+  },
+  {
     "version": "0.2.15",
     "date": "2026-11-17",
     "title": "Salvamento de serviços no painel profissional",

@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { professionalPanelPath } from "../../lib/account-role";
 import { RestoreShopFields } from "./restore-shop-fields";
 import { InstallApp } from "./install-app";
 import { redirect } from "next/navigation";
@@ -18,11 +20,17 @@ export default async function Settings({ searchParams }: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/configuracoes");
 
-  const { data, error } = await supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user.id).maybeSingle();
-  const { data: shops } = await supabase.from("barberflow_establishments").select("id,name").eq("owner_id", user.id).order("name");
+  const [{ data, error }, { data: shops }, professionalPath] = await Promise.all([
+    supabase.from("barberflow_user_preferences").select("theme").eq("user_id", user.id).maybeSingle(),
+    supabase.from("barberflow_establishments").select("id,name").eq("owner_id", user.id).order("name"),
+    professionalPanelPath(supabase, user.app_metadata),
+  ]);
   const { restauracao } = await searchParams;
   const theme = isThemeId(data?.theme) ? data.theme : defaultTheme;
   return <section className="container section">
+    {professionalPath && <div className="account-links">
+      <Link className="secondary finance-tab command-action" data-tone="blue" href={professionalPath}>Voltar ao Meu dia</Link>
+    </div>}
     <h1>Configurações</h1>
     <InstallApp />
     <div className="card">
