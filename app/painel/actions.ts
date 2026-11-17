@@ -40,9 +40,11 @@ export async function saveService(establishmentId: string, serviceId: string | n
   const category = field(data, "category");
   const price = parsePrice(field(data, "price"));
   const display_order = Number(field(data, "order"));
-  const minutes = Number(field(data, "duration"));
+  const duration = Number(field(data, "duration"));
+  const minutesMode = data.get("duration_in_minutes") === "on";
+  const minutes = minutesMode ? duration : Math.round(duration * 60);
   if (!name || name.length > 120 || description.length > 1000 || category.length > 80
-    || price === null || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440
+    || price === null || (!minutesMode && duration > 24) || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440
     || !Number.isInteger(display_order) || display_order < 0 || display_order > 9999
     || (serviceId !== null && !isUuid(serviceId))) return "invalido";
 

@@ -1,3 +1,4 @@
+import { ServiceDurationField, ServiceMediaField } from "./service-fields";
 import { ServiceSubmitForm } from "./service-submit-form";
 import Link from "next/link";
 import { httpsUrl } from "../../../../lib/business-profile";
@@ -7,7 +8,6 @@ import { changeServiceAvailability, deleteService, moveService } from "../../act
 import { PanelStatus } from "../../status";
 import { ServiceMedia } from "../../../service-media";
 import { serviceMediaUrls, type ServiceMediaPaths } from "../../../../lib/service-media";
-import { productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 
 type Professional = { id: string; name: string; photo_url: string; active: boolean };
 type Assignments = { professionals: Professional[]; links: { professional_id: string; service_id: string }[]; failed: boolean; open?: string };
@@ -57,17 +57,17 @@ function ServiceForm({ establishmentId, service, team, nextOrder = 1 }: { establ
     <label>Categoria <input name="category" maxLength={80} defaultValue={service?.category} /></label>
     <fieldset>
       <legend>Foto e vídeo</legend>
-      <label>{service?.photo_path ? "Substituir foto" : "Enviar foto"} <input type="file" name="photo" accept={productImageTypes.join(",")} /></label>
+      <ServiceMediaField kind="photo" label={service?.photo_path ? "Substituir foto" : "Enviar foto"} />
       <small>JPG, PNG, WebP ou AVIF, até 5 MB.</small>
       {service?.photo_path && <label><input type="checkbox" name="remove_photo" /> Remover foto salva</label>}
-      <label>{service?.video_path ? "Substituir vídeo" : "Enviar vídeo"} <input type="file" name="video" accept={productVideoTypes.join(",")} /></label>
+      <ServiceMediaField kind="video" label={service?.video_path ? "Substituir vídeo" : "Enviar vídeo"} />
       <small>MP4 ou WebM, até 15 MB. Os arquivos são enviados ao salvar.</small>
       {service?.video_path && <label><input type="checkbox" name="remove_video" /> Remover vídeo salvo</label>}
     </fieldset>
     <div className="form-columns">
       <label>Valor (R$) <input name="price" inputMode="decimal" required placeholder="0,00"
         defaultValue={service ? (service.price_cents / 100).toFixed(2).replace(".", ",") : undefined} /></label>
-      <label>Duração (min) <input name="duration" type="number" min={1} max={1440} required defaultValue={service?.duration_minutes ?? 30} /></label>
+      <ServiceDurationField key={service?.duration_minutes} initialMinutes={service?.duration_minutes ?? 30} />
     </div>
     <label>Ordem no catálogo <input name="order" type="number" min={0} max={9999} defaultValue={service?.display_order ?? nextOrder} required /></label>
   </ServiceSubmitForm>;

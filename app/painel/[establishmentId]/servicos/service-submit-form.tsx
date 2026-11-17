@@ -2,7 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { productImageLimit, productImageTypes, productVideoTypes } from "../../../../lib/product-media";
 import { serviceMediaBucket, serviceVideoLimit } from "../../../../lib/service-media-config";
 import { saveService } from "../../actions";
@@ -16,6 +16,7 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
   const router = useRouter();
   const submitting = useRef(false);
   const [pending, setPending] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -64,7 +65,7 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
       savingRecord = true;
       const result = await saveService(shop, service, team, data);
       if (result === "salvo") {
-        form.reset();
+        setRevision(value => value + 1);
         const path = `/${team ? "equipe" : "painel"}/${shop}/servicos?estado=salvo`;
         router.replace(path);
         router.refresh();
@@ -84,7 +85,7 @@ export function ServiceSubmitForm({ shop, service, team, children }: {
   }
 
   return <form className="account-form" onSubmit={submit} aria-busy={pending}>
-    {children}
+    <Fragment key={revision}>{children}</Fragment>
     <button className="primary" type="submit" disabled={pending}>{pending ? "Salvando serviço…" : "Salvar serviço"}</button>
     {message && <p role="alert">{message}</p>}
   </form>;
