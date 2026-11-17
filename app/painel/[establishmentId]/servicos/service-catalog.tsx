@@ -1,5 +1,6 @@
 import { formatServiceDuration } from "../../../../lib/service-presentation";
-import { ServiceDurationField, ServiceMediaField } from "./service-fields";
+import { supabaseServer } from "../../../../lib/supabase";
+import { ServiceCategoryField, ServiceDurationField, ServiceMediaField } from "./service-fields";
 import { ServiceSubmitForm } from "./service-submit-form";
 import Link from "next/link";
 import { httpsUrl } from "../../../../lib/business-profile";
@@ -55,13 +56,7 @@ function ServiceForm({ establishmentId, service, team, categories, nextOrder = 1
   return <ServiceSubmitForm shop={establishmentId} service={service?.id ?? null} team={team}>
     <label>Nome <input name="name" required maxLength={120} defaultValue={service?.name} /></label>
     <label>Descrição <textarea name="description" maxLength={1000} rows={3} defaultValue={service?.description} /></label>
-    {categories.length > 0 && <label>Categoria
-      <select name="category" defaultValue={service?.category ?? ""}>
-        <option value="">Sem categoria</option>
-        {categories.map(category => <option key={category}>{category}</option>)}
-      </select>
-    </label>}
-    <label>Nova categoria <input name="category_new" maxLength={80} /></label>
+    <ServiceCategoryField shop={establishmentId} categories={categories} initial={service?.category ?? ""} />
     <fieldset>
       <legend>Foto e vídeo</legend>
       <ServiceMediaField kind="photo" label={service?.photo_path ? "Substituir fotos" : "Enviar fotos"} />
@@ -85,7 +80,13 @@ function ServiceForm({ establishmentId, service, team, categories, nextOrder = 1
 export async function ServiceCatalog({ establishmentId, name, services, failed, estado, team = false, assignments }: {
   establishmentId: string; name: string; services: Service[]; failed: boolean; estado?: string; team?: boolean; assignments?: Assignments;
 }) {
-  const categories = [...new Set(services.map(service => service.category?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const supabase = await supabaseServer();
+  const { data: savedCategories } = await supabase?.from("barberflow_service_categories").select("name")
+    .eq("establishment_id", establishmentId).order("name") ?? {};
+  const categories = [...new Set([
+    ...(savedCategories ?? []).map(category => String(category.name)),
+    ...services.map(service => service.category?.trim()).filter(Boolean),
+  ])];
   const urls = await serviceMediaUrls(services);
   const occupiedOrders = new Set(services.map(({ display_order }) => display_order));
   let nextOrder = services.length + 1;

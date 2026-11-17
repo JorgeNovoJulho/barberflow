@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.22",
+    "date": "2026-11-17",
+    "title": "Cadastro de categorias de serviços",
+    "changes": [
+      "Salve novas categorias separadamente e selecione-as no catálogo, mantendo as categorias da loja."
+    ]
+  },
+  {
     "version": "0.2.21",
     "date": "2026-11-17",
     "title": "Vínculos no catálogo profissional",

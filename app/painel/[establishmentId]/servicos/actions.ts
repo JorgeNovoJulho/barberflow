@@ -24,3 +24,15 @@ export async function saveServiceProfessionals(shop: string, service: string, te
   const status = error?.code === "BF001" ? "limite-vinculos" : error || !data ? "falha" : "vinculos-salvos";
   redirect(path + "?" + new URLSearchParams({ estado: status, vincular: service }) + "#vincular-" + service);
 }
+
+export async function saveServiceCategory(shop: string, value: string) {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!isUuid(shop) || !name || name.length > 80) return { error: "Informe um nome de categoria de até 80 caracteres." };
+  const supabase = await supabaseServer();
+  if (!supabase || !(await supabase.auth.getUser()).data.user) return { error: "Entre novamente para salvar a categoria." };
+  const { data, error } = await supabase.from("barberflow_service_categories")
+    .insert({ establishment_id: shop, name }).select("name").single();
+  if (error?.code === "23505") return { error: "Essa categoria já existe. Selecione-a na lista." };
+  if (error || !data) return { error: "Não foi possível salvar a categoria." };
+  return { name: data.name as string };
+}

@@ -39,7 +39,7 @@ export async function saveService(establishmentId: string, serviceId: string | n
   const supabase = await authenticated(path);
   const name = field(data, "name");
   const description = field(data, "description");
-  const category = field(data, "category_new") || field(data, "category");
+  const category = field(data, "category");
   const videoLink = field(data, "video_url");
   const embed = serviceVideoEmbed(videoLink);
   if (videoLink && !embed) return "video-link-invalido";
