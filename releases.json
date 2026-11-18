@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.26",
+    "date": "2026-11-18",
+    "title": "Legibilidade dos dias na agenda",
+    "changes": [
+      "Textos de feriados, domingos e quantidade de atendimentos com contraste no tema escuro."
+    ]
+  },
+  {
     "version": "0.2.25",
     "date": "2026-11-18",
     "title": "Contraste e indicadores do aplicativo",

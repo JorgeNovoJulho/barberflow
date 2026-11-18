@@ -297,3 +297,28 @@ main .dashboard-comparison meter::-webkit-meter-bar { background: #243651; }
 main .dashboard-comparison meter::-webkit-meter-optimum-value { background: linear-gradient(90deg, #43a3f1, #36d9e5); }
 main .professional-chart-legend li,
 main .professional-chart-bars li { color: #dbe8fc; }
+
+main .professional-agenda-date {
+  background: #111c2d;
+  color: #e5efff;
+  border: 1px solid #364964;
+}
+main .professional-agenda-date[data-sunday="true"] {
+  background: #30234b;
+  color: #f0e5ff;
+  border-color: #9b7ec9;
+}
+main .professional-agenda-date[data-holiday="true"] {
+  background: #403016;
+  color: #ffe4ac;
+  border-color: #bd9650;
+}
+main .professional-agenda-date :is(time, small) {
+  color: inherit;
+  opacity: 1;
+}
+main .professional-agenda-date small {
+  font-size: .8125rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
