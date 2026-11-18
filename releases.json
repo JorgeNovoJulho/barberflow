@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.25",
+    "date": "2026-11-18",
+    "title": "Contraste e indicadores do aplicativo",
+    "changes": [
+      "Etapas de agendamento legíveis e campo de observações alinhado aos demais campos.",
+      "Cards e gráficos com cores de status e valores em destaque."
+    ]
+  },
+  {
     "version": "0.2.24",
     "date": "2026-11-18",
     "title": "Agenda com pausa e retomada do atendimento",

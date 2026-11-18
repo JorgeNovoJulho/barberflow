@@ -199,3 +199,101 @@ main .public-profile .public-business-profile .primary {
   border-color: #a086e9;
   color: white;
 }
+
+/* Booking steps keep explicit foregrounds in every state. */
+main .booking-steps li,
+main .booking-redesign .booking-steps li {
+  background: #172237;
+  color: #e4edff;
+  border: 1px solid #4e6080;
+}
+main .booking-steps li > span,
+main .booking-redesign .booking-steps li > span {
+  background: #344462;
+  color: #fff;
+}
+main .booking-steps li[aria-current="step"],
+main .booking-redesign .booking-steps li[aria-current="step"] {
+  background: #302355;
+  color: #f8f4ff;
+  border-color: #b49aff;
+  box-shadow: inset 3px 0 #a382ff;
+}
+main .booking-steps li[aria-current="step"] > span,
+main .booking-redesign .booking-steps li[aria-current="step"] > span {
+  background: #7851cc;
+  color: white;
+}
+main .booking-steps li[data-step="done"],
+main .booking-redesign .booking-steps li[data-step="done"] {
+  background: #143c30;
+  color: #d4ffe9;
+  border-color: #4aab83;
+}
+main .booking-steps li[data-step="done"] > span { background: #24664d; color: white; }
+main .booking-steps small { color: #b0f0d0; }
+main .booking-guidance { background: #221c3d; color: #e4dbff; border: 1px solid #66538d; }
+main .booking-guidance strong { background: #6945b1; color: #fff; }
+main .booking-summary > label,
+main .booking-summary label:has(textarea),
+main .booking-workspace label.booking-notes {
+  display: grid;
+  gap: .45rem;
+  width: 100%;
+  margin-block: .9rem;
+  font-weight: 600;
+}
+main .booking-workspace .booking-notes textarea {
+  display: block;
+  width: 100%;
+  min-height: 6rem;
+  padding: .8rem;
+  border-radius: .7rem;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.5;
+}
+
+/* Metric colors identify meaning and retain the same scale across panels. */
+main .dashboard-metric {
+  --metric-color: #53cff8;
+  --metric-surface: #132c45;
+  background: linear-gradient(140deg, var(--metric-surface), #101b30);
+  border: 1px solid color-mix(in srgb, var(--metric-color) 65%, #263147);
+  border-inline-start: 4px solid var(--metric-color);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 10px 25px -16px #000e;
+}
+main .dashboard-metric[data-metric-tone="green"] { --metric-color: #39d79a; --metric-surface: #103b35; }
+main .dashboard-metric[data-metric-tone="red"] { --metric-color: #ff6294; --metric-surface: #3b1936; }
+main .dashboard-metric[data-metric-tone="amber"] { --metric-color: #f5cc52; --metric-surface: #39331d; }
+main .dashboard-metric[data-metric-tone="cyan"] { --metric-color: #40e0e6; --metric-surface: #12373f; }
+main .dashboard-metric dt { color: #e6efff; font-size: .95rem; }
+main .dashboard-metric dd {
+  color: #f7faff;
+  font-size: clamp(1.65rem, 2.6vw, 2.4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin-block: .65rem;
+}
+main .dashboard-metric .metric-mark {
+  background: color-mix(in srgb, var(--metric-color) 17%, #111c30);
+  color: var(--metric-color);
+  border: 1px solid color-mix(in srgb, var(--metric-color) 55%, #111c30);
+  box-shadow: none;
+}
+main :is(.dashboard-chart, .professional-chart) {
+  background: #111d35;
+  color: #edf4ff;
+  border: 1px solid #3c526e;
+  border-radius: 1rem;
+}
+main .dashboard-ring > div { background: #111d35; color: #f1f7ff; }
+main :is(.dashboard-chart, .professional-chart) :is(strong, h2, h3, text) { color: #f1f7ff; fill: currentColor; }
+main .professional-chart-track { background: #263b57; }
+main .professional-chart-track > span { min-height: .6rem; }
+main .dashboard-comparison meter::-webkit-meter-bar { background: #243651; }
+main .dashboard-comparison meter::-webkit-meter-optimum-value { background: linear-gradient(90deg, #43a3f1, #36d9e5); }
+main .professional-chart-legend li,
+main .professional-chart-bars li { color: #dbe8fc; }

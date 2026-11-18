@@ -205,7 +205,7 @@ export default async function DashboardPage({ params, searchParams }: {
     {report.error || !data ? <p role="alert">Não foi possível carregar os indicadores.</p> : <>
       <p className="panel-form">{data.first_day === data.today ? formatDay(data.today) : `${formatDay(data.first_day)} a ${formatDay(data.today)}`}</p>
       <dl className="cards">
-        {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric">
+        {indicators.map(({ label, value, note }, index) => <div key={label} className="card dashboard-metric" data-metric-tone={["blue", "cyan", "cyan", "green", "red", "amber", "amber", "blue", "green", "cyan"][index]}>
           <dt>{label === "Cancelados" && <Link className="dashboard-card-link" aria-label="Ver agendamentos cancelados no período" href={`/painel/${shop}/agenda?visao=cancelados&dia=${data.today}&periodo=${selected.days}`} />}
             {label === "Agendamentos" && <Link className="dashboard-card-link" aria-label="Abrir agenda" href={`/painel/${shop}/agenda`} />}<span className="metric-mark" aria-hidden="true">{["▤", "↗", "◷", "✓", "×", "−", "⋯", "↗", "$", "◎"][index]}</span>{label}</dt>
           <dd>{value}</dd>

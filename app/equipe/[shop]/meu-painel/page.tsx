@@ -329,24 +329,24 @@ export default async function ProfessionalPanel({ params, searchParams }: {
         <section className="professional-chart">
           <h3>Comparecimentos e faltas</h3>
           {attendanceTotal ? <div className="professional-chart-pie" aria-hidden="true"
-            style={{ background: `conic-gradient(#087e66 0 ${attendanceShare}%, #b74612 ${attendanceShare}% 100%)` }} />
+            style={{ background: `conic-gradient(#35d99a 0 ${attendanceShare}%, #f4c954 ${attendanceShare}% 100%)` }} />
             : <p>Sem comparecimentos ou faltas no período.</p>}
           <ul className="professional-chart-legend">
-            <li><span aria-hidden="true" style={{ backgroundColor: "#087e66" }} />Comparecimentos <strong>{attended}</strong></li>
-            <li><span aria-hidden="true" style={{ backgroundColor: "#b74612" }} />Faltas <strong>{panel.absent}</strong></li>
+            <li><span aria-hidden="true" style={{ backgroundColor: "#35d99a" }} />Comparecimentos <strong>{attended}</strong></li>
+            <li><span aria-hidden="true" style={{ backgroundColor: "#f4c954" }} />Faltas <strong>{panel.absent}</strong></li>
           </ul>
         </section>
         <section className="professional-chart">
           <h3>Serviços e produtos</h3>
           <MetricBars rows={[
-            { label: "Serviços fechados e pagos", value: panel.paid_services, color: "#6341b9" },
-            { label: "Produtos vendidos", value: panel.sold_products, color: "#1767b8" },
+            { label: "Serviços fechados e pagos", value: panel.paid_services, color: "#b297ff" },
+            { label: "Produtos vendidos", value: panel.sold_products, color: "#43d6ef" },
           ]} />
         </section>
         <section className="professional-chart">
           <h3>Dias e horários de pico</h3>
           {panel.hours.length ? <MetricBars rows={panel.hours.map(({ weekday, hour, quantity }) => ({
-            label: `${days[weekday - 1]} · ${hour}h`, value: quantity, color: "#087e66",
+            label: `${days[weekday - 1]} · ${hour}h`, value: quantity, color: "#35d99a",
           }))} /> : <p>Sem atendimentos concluídos no período.</p>}
         </section>
       </div>

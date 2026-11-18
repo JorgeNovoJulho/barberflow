@@ -180,7 +180,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           <div><dt>Duração</dt><dd>{service ? formatServiceDuration(service.duration_minutes) : "—"}</dd></div>
           <div><dt>Total</dt><dd><strong>{price}</strong></dd></div>
         </dl>
-        {teamShop && <label>Observações <textarea name="note" rows={2} maxLength={1000} /></label>}
+        {teamShop && <label className="booking-notes">Observações <textarea name="note" rows={3} maxLength={1000} placeholder="Informe detalhes importantes para o atendimento." /></label>}
         <input type="hidden" name="requestId" value={requestId} />
         <div className="account-form">
           <label>{teamShop ? "Nome do cliente" : "Nome"} <input name="customer" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)}
