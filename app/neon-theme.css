@@ -414,3 +414,43 @@ main .public-professional-grid .finance-tab[data-tone="green"] {
   color: #e0ffed;
   border-color: #4bbb83;
 }
+
+main .subscription-plan[data-tier="pro"] {
+  background: #14283f;
+  color: #e0eeff;
+  border-color: #6599d0;
+  border-top-color: #63bbff;
+}
+main .subscription-plan[data-tier="premium"] {
+  background: #352b19;
+  color: #fff0c9;
+  border-color: #bc9850;
+  border-top-color: #f2cb66;
+}
+main .subscription-plan[data-tier="pro"] legend { color: #c0e2ff; }
+main .subscription-plan[data-tier="premium"] legend { color: #ffdc83; }
+main .subscription-plan :is(li, p, small, span, strong) { color: inherit; opacity: 1; }
+main .subscription-plan .subscription-option {
+  background: #101c2c;
+  color: #e3efff;
+  border: 1px solid #6583a8;
+  min-height: 3rem;
+  line-height: 1.5;
+}
+main .subscription-plan[data-tier="premium"] .subscription-option {
+  background: #241e13;
+  color: #fff0c9;
+  border-color: #a68c57;
+}
+main .subscription-plan .subscription-option:has(input:checked) {
+  background: #38295e;
+  color: #faf4ff;
+  border-color: #c1a2ff;
+  outline: 2px solid #b297f3;
+  outline-offset: 1px;
+}
+main .subscription-plan .subscription-option:focus-within { outline: 2px solid #61e2ef; outline-offset: 3px; }
+main .subscription-plan input[type="radio"] { opacity: 1; accent-color: #c2a2ff; flex-shrink: 0; }
+main .subscription-status-card .subscription-current { background: #173350; color: #d4eaff; }
+main .subscription-status-card .subscription-current[data-tier="premium"] { background: #403217; color: #ffe4a0; }
+main .subscription-status-card .subscription-current :is(strong, span) { color: inherit; }

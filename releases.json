@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.29",
+    "date": "2026-11-18",
+    "title": "Legibilidade dos planos de assinatura",
+    "changes": [
+      "Contraste corrigido nos benefícios, preços e opções mensal e anual dos planos Pro e Premium."
+    ]
+  },
+  {
     "version": "0.2.28",
     "date": "2026-11-18",
     "title": "Cards financeiros e contraste dos módulos",
