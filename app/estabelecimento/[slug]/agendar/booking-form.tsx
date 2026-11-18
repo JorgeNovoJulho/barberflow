@@ -117,7 +117,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
   const suggested = !service && services.filter((entry) => entry.professionals.some(({ id }) => id === initialPerson));
   const listedServices = suggested && suggested.length ? suggested : services;
 
-  return <form className="booking-workspace" action={action}>
+  return <form className="booking-workspace" data-plan-resource={teamShop ? "appointments" : undefined} action={action}>
     <ol className="booking-steps" aria-label="Etapas do agendamento">
       {["Serviço", "Profissional", "Data e hora", "Confirmar"].map((label, index) =>
         <li key={label} data-step={stepState(index)} aria-current={index === activeStep ? "step" : undefined}>

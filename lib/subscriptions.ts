@@ -3,18 +3,20 @@ import { bookingCurrency } from "./currency";
 export const planNames = { monthly: "Mensal", yearly: "Anual" } as const;
 export type PlanPeriod = keyof typeof planNames;
 export const planTiers = {
-  pro: { name: "Pro", limits: ["Até 2 profissionais ativos", "Até 2 serviços vinculados por profissional", "Até 8 agendamentos por dia", "Até 20 produtos ativos na vitrine"] },
-  premium: { name: "Premium", limits: ["Profissionais ilimitados", "Serviços vinculados ilimitados", "Agendamentos ilimitados", "Até 100 produtos ativos na vitrine"] },
+  pro: { name: "Pro", limits: ["Até 2 profissionais ativos", "Até 2 serviços vinculados por profissional", "Até 8 agendamentos por dia", "Até 15 produtos ativos na vitrine", "Página pública com Feed", "Contas a pagar e a receber"] },
+  premium: { name: "Premium", limits: ["Até 5 profissionais ativos", "Até 5 serviços vinculados por profissional", "Até 20 agendamentos por dia", "Até 40 produtos ativos na vitrine", "Página pública com Feed", "Contas a pagar e a receber"] },
+  unlimited: { name: "Unlimited", limits: ["Profissionais ilimitados", "Serviços vinculados ilimitados", "Agendamentos ilimitados", "Até 200 produtos ativos na vitrine", "Página pública com Feed", "Contas a pagar e a receber"] },
 } as const;
 export type PlanTier = keyof typeof planTiers;
-export const tiers = ["pro", "premium"] as const;
+export const tiers = ["pro", "premium", "unlimited"] as const;
 export const periods = ["monthly", "yearly"] as const;
 export type PlanPrices = {
   monthly_cents: number; yearly_cents: number; premium_monthly_cents: number; premium_yearly_cents: number;
+  unlimited_monthly_cents: number; unlimited_yearly_cents: number;
 };
 
 export function isPlanTier(value: unknown): value is PlanTier {
-  return value === "pro" || value === "premium";
+  return value === "pro" || value === "premium" || value === "unlimited";
 }
 
 export function isPlanPeriod(value: unknown): value is PlanPeriod {
@@ -26,7 +28,9 @@ export function tierLabel(value: unknown) {
 }
 
 export function planPrice(prices: PlanPrices, tier: PlanTier, period: PlanPeriod) {
-  const cents = tier === "premium"
+  const cents = tier === "unlimited"
+    ? (period === "monthly" ? prices.unlimited_monthly_cents : prices.unlimited_yearly_cents)
+    : tier === "premium"
     ? (period === "monthly" ? prices.premium_monthly_cents : prices.premium_yearly_cents)
     : (period === "monthly" ? prices.monthly_cents : prices.yearly_cents);
   return bookingCurrency.format(cents / 100);

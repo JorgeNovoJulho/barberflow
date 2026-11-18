@@ -454,3 +454,34 @@ main .subscription-plan input[type="radio"] { opacity: 1; accent-color: #c2a2ff;
 main .subscription-status-card .subscription-current { background: #173350; color: #d4eaff; }
 main .subscription-status-card .subscription-current[data-tier="premium"] { background: #403217; color: #ffe4a0; }
 main .subscription-status-card .subscription-current :is(strong, span) { color: inherit; }
+
+main .subscription-plan[data-tier="unlimited"],
+.editorial-landing .subscription-plan[data-tier="unlimited"] { background: #173638; color: #d5ffff; border-color: #4cafb8; border-top-color: #67e4eb; }
+main .subscription-plan[data-tier="unlimited"] legend { color: #91f4fa; }
+main .subscription-plan[data-tier="unlimited"] .subscription-option { background: #10272b; color: #dcffff; border-color: #509da7; }
+main .landing-subscriptions { scroll-margin-top: 1rem; }
+.editorial-landing .subscription-plan { display: flex; flex-direction: column; gap: .75rem; padding: 1.4rem; color: #e6f0ff; background: #14283f; border: 1px solid #6599d0; border-radius: 1rem; }
+.editorial-landing .subscription-plan[data-tier="premium"] { background: #352b19; color: #fff0c9; border-color: #bc9850; }
+.editorial-landing .subscription-plan :is(h3,p,small,li) { color: inherit; }
+.editorial-landing .subscription-plan .primary { margin-top: auto; text-align: center; }
+main .plan-catalog-price { font-size: clamp(1.6rem,3vw,2rem); font-weight: 800; font-variant-numeric: tabular-nums; }
+main .plan-catalog-price small { font-size: .875rem; font-weight: 400; }
+main .landing-trial { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: space-between; align-items: center; padding: 1.5rem; margin-block: 1.25rem 1.5rem; border: 1px solid #9373e1; border-radius: 1rem; background: #211936; color: #efe8ff; }
+main .landing-trial h3 { color: #f9f4ff; }
+main .landing-trial p { max-width: 60ch; margin: 0; color: #d9cdef; }
+main .landing-subscriptions .subscription-plans { grid-template-columns: repeat(3,minmax(0,1fr)); }
+main .plan-upgrade-dialog { width: min(56rem,calc(100% - 1.5rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; padding: clamp(1rem,3vw,1.75rem); border: 1px solid #8573b2; border-radius: 1rem; background: #121b2c; color: #eff5ff; }
+main .plan-upgrade-dialog::backdrop { background: #030610cf; }
+main .upgrade-dialog-heading { display: flex; align-items: start; gap: 1rem; justify-content: space-between; margin-bottom: 1rem; }
+main .upgrade-dialog-heading button { flex-shrink: 0; min-width: 44px; }
+main .upgrade-plan-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,16rem),1fr)); gap: 1rem; margin-block: 1rem; }
+main .upgrade-plan-options .subscription-plan { display: flex; flex-direction: column; }
+main .upgrade-plan-options .primary { margin-top: auto; width: 100%; }
+main .upgrade-pix-qr { display: block; width: min(100%,256px); height: auto; background: white; margin: 1rem auto; }
+main .plan-upgrade-dialog label:has(textarea) { display: grid; gap: .5rem; width: 100%; }
+main .plan-upgrade-dialog textarea { width: 100%; padding: .75rem; overflow-wrap: anywhere; font-size: .875rem; }
+main .plan-upgrade-dialog [aria-pressed="true"],
+main .landing-subscriptions [aria-pressed="true"] { outline: 2px solid #bba2f5; outline-offset: 2px; }
+@media (max-width: 52rem) {
+  main .landing-subscriptions .subscription-plans { grid-template-columns: 1fr; }
+}

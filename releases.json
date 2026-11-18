@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.30",
+    "date": "2026-11-18",
+    "title": "Planos de assinatura e teste gratuito",
+    "changes": [
+      "Planos Pro, Premium e Unlimited na landing page com teste gratuito de 7 dias e acesso ao cadastro.",
+      "Limites de recursos por plano e opções de upgrade com Pix, comprovante e conferência manual.",
+      "Upgrade liberado após aprovação do pagamento, preservando os dados existentes."
+    ]
+  },
+  {
     "version": "0.2.29",
     "date": "2026-11-18",
     "title": "Legibilidade dos planos de assinatura",

@@ -21,6 +21,8 @@ export async function savePlanSettings(form: FormData) {
   const monthly_cents = parsePrice(value(form, "monthly"));
   const yearly_cents = parsePrice(value(form, "yearly"));
   const premium_monthly_cents = parsePrice(value(form, "premiumMonthly"));
+  const unlimited_monthly_cents = parsePrice(value(form, "unlimitedMonthly"));
+  const unlimited_yearly_cents = parsePrice(value(form, "unlimitedYearly"));
   const premium_yearly_cents = parsePrice(value(form, "premiumYearly"));
   const trial = value(form, "trial");
   const trial_days = Number(trial);
@@ -38,9 +40,9 @@ export async function savePlanSettings(form: FormData) {
   const support_whatsapp = value(form, "whatsapp").replace(/[\s()+.-]/g, "");
   if (pix_beneficiary.length > 120 || !/^([1-9]\d{9,14})?$/.test(support_whatsapp)) finish("invalido");
   const instructions = value(form, "instructions");
-  if (!monthly_cents || !yearly_cents || !premium_monthly_cents || !premium_yearly_cents || !/^\d{1,3}$/.test(trial) || trial_days > 365 || instructions.length > 1500) finish("invalido");
+  if (!monthly_cents || !yearly_cents || !premium_monthly_cents || !premium_yearly_cents || !unlimited_monthly_cents || !unlimited_yearly_cents || !/^\d{1,3}$/.test(trial) || trial_days > 365 || instructions.length > 1500) finish("invalido");
   const { data, error } = await supabase.from("barberflow_plan_settings")
-    .update({ monthly_cents, yearly_cents, premium_monthly_cents, premium_yearly_cents, trial_days, pix_key, instructions, pix_beneficiary, support_whatsapp,
+    .update({ unlimited_monthly_cents, unlimited_yearly_cents, monthly_cents, yearly_cents, premium_monthly_cents, premium_yearly_cents, trial_days, pix_key, instructions, pix_beneficiary, support_whatsapp,
       pix_city, pix_merchant, grace_days, billing_rules, plan_benefits }).eq("singleton", true).select("singleton").maybeSingle();
   revalidatePath("/planos");
   finish(error || !data ? "falha" : "configurado");

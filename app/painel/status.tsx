@@ -21,7 +21,7 @@ const messages: Record<string, string> = {
   "equipe-ordenada": "Ordem da equipe atualizada.",
   "equipe-alterada": "Confira a ordem atual da equipe antes de mover o profissional.",
   "acesso-revogado": "Acesso da equipe revogado.",
-  "limite-vinculos": "O plano Pro permite até 2 serviços vinculados por profissional.",
+  "limite-vinculos": "O limite de serviços vinculados por profissional do plano foi atingido. Consulte as opções de upgrade.",
   "vinculos-salvos": "Serviços vinculados.",
   "horario-salvo": "Horário salvo.",
   "horario-invalido": "Confira a ordem dos horários. O intervalo deve ficar dentro do expediente.",

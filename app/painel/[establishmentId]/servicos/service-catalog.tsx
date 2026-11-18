@@ -21,7 +21,7 @@ function ServiceProfessionals({ shop, service, assignments, team }: { shop: stri
     <summary>Vincular profissional{!assignments.failed && ` · ${linked.size} vinculado(s)`}</summary>
     {assignments.failed ? <p role="alert">Não foi possível carregar os vínculos. Recarregue para tentar novamente.</p>
       : !options.length ? <p>Nenhum profissional disponível. {!team && <Link href={`/painel/${shop}/profissionais`}>Cadastrar profissional</Link>}</p>
-      : <form className="account-form" action={saveServiceProfessionals.bind(null, shop, service, team)}>
+      : <form className="account-form" data-plan-resource="services" data-plan-service={service} action={saveServiceProfessionals.bind(null, shop, service, team)}>
         <fieldset className="service-professional-options"><legend>Quem realiza este serviço?</legend>
           {options.map(({ id, name, photo_url, active }) => {
             const photo = httpsUrl(photo_url);

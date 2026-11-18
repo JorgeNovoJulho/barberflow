@@ -26,7 +26,7 @@ export function ProfessionalSubmission({ shop, professional, delegated, children
     }
   }
 
-  return <form className="account-form" onSubmit={submit}>
+  return <form className="account-form" onSubmit={submit} data-plan-resource={professional ? undefined : "professionals"}>
     {children}
     <button className="primary" type="submit" disabled={saving} aria-busy={saving}>
       {saving ? "Salvando…" : "Salvar profissional"}

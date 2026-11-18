@@ -31,10 +31,10 @@ export default async function Subscription({ params, searchParams }: {
   const businessName = business.data.name;
   const today = saoPauloToday();
   const [settings, subscription, current, history, openCharges, access, pixAvailability] = await Promise.all([
-    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,trial_days,instructions,support_whatsapp,grace_days,billing_rules,plan_benefits").single(),
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,unlimited_monthly_cents,unlimited_yearly_cents,trial_days,instructions,support_whatsapp,grace_days,billing_rules,plan_benefits").single(),
     supabase.from("barberflow_subscriptions").select("trial_until,preferred_period,preferred_plan").eq("establishment_id", shop).maybeSingle(),
     supabase.from("barberflow_subscription_payments").select("plan,period,ends_before").eq("establishment_id", shop)
-      .lte("starts_on", today).gt("ends_before", today).maybeSingle(),
+      .lte("starts_on", today).gt("ends_before", today).order("starts_on", { ascending: false }).order("confirmed_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("barberflow_subscription_payments").select("id,plan,period,amount_cents,confirmed_at,starts_on,ends_before")
       .eq("establishment_id", shop).order("starts_on", { ascending: false }).limit(50),
     supabase.from("barberflow_subscription_charges").select("*").eq("establishment_id", shop)
@@ -104,7 +104,7 @@ export default async function Subscription({ params, searchParams }: {
         : request.data?.status === "pending" ? <p role="status">Solicitação em análise pela administração.</p>
         : <form action={requestPromoter}>
           {request.data?.status === "denied" && <p>Solicitação recusada. {request.data.reason}</p>}
-          {!request.data?.eligible && <p>É preciso ter ao menos uma assinatura Pro ou Premium confirmada.</p>}
+          {!request.data?.eligible && <p>É preciso ter ao menos uma assinatura Pro, Premium ou Unlimited confirmada.</p>}
           <button className="primary" disabled={!request.data?.eligible}>Solicitar Conta Divulgador</button>
         </form>}
     </section>

@@ -1,3 +1,4 @@
+import { PlanUpgrade } from "./plan-upgrade";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "./brand-logo";
@@ -68,7 +69,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
             <MobileNav>{navigation}</MobileNav>
           </div>
         </header>
-        <main>{children}</main>
+        <main>{children}<PlanUpgrade /></main>
         <ActionFeedback />
         <footer className="footer">
           <div className="container footer-content">

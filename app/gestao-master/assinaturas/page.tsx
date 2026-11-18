@@ -95,7 +95,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
     </section>
     {estado && Object.hasOwn(feedback, estado) && <p role="status">{feedback[estado]}</p>}
     {config && <MasterCards items={[["Pro mensal",bookingCurrency.format(config.monthly_cents / 100)],
-      ["Pro anual",bookingCurrency.format(config.yearly_cents / 100)],["Premium mensal",bookingCurrency.format(config.premium_monthly_cents / 100)],["Premium anual",bookingCurrency.format(config.premium_yearly_cents / 100)],["Dias de teste",config.trial_days],
+      ["Pro anual",bookingCurrency.format(config.yearly_cents / 100)],["Premium mensal",bookingCurrency.format(config.premium_monthly_cents / 100)],["Premium anual",bookingCurrency.format(config.premium_yearly_cents / 100)],["Unlimited mensal",bookingCurrency.format(config.unlimited_monthly_cents / 100)],["Unlimited anual",bookingCurrency.format(config.unlimited_yearly_cents / 100)],["Dias de teste",config.trial_days],
       ["Comprovantes na fila",pending.error ? "Indisponível" : pending.data.length === 100 ? "100+" : pending.data.length]]} />}
     <h2>Configuração dos planos</h2>
     <p>O painel avisa sobre o vencimento nos últimos sete dias. Após o vencimento e o prazo de regularização, o acesso é suspenso automaticamente. A área de assinatura fica disponível para renovação.</p>
@@ -103,6 +103,8 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       <div className="form-columns">
         <label>Pro mensal (R$) <input name="monthly" inputMode="decimal" defaultValue={amount(config.monthly_cents)} required /></label>
         <label>Pro anual (R$) <input name="yearly" inputMode="decimal" defaultValue={amount(config.yearly_cents)} required /></label>
+        <label>Unlimited mensal (R$) <input name="unlimitedMonthly" inputMode="decimal" defaultValue={amount(config.unlimited_monthly_cents)} required /></label>
+        <label>Unlimited anual (R$) <input name="unlimitedYearly" inputMode="decimal" defaultValue={amount(config.unlimited_yearly_cents)} required /></label>
         <label>Premium mensal (R$) <input name="premiumMonthly" inputMode="decimal" defaultValue={amount(config.premium_monthly_cents)} required /></label>
         <label>Premium anual (R$) <input name="premiumYearly" inputMode="decimal" defaultValue={amount(config.premium_yearly_cents)} required /></label>
         <label>Dias de teste para novos estabelecimentos <input name="trial" type="number" min={0} max={365} defaultValue={config.trial_days} required /></label>
@@ -174,7 +176,7 @@ export default async function BillingAdmin({ searchParams }: { searchParams: Pro
       <h3>{selected.name}</h3>
       {subscription?.error ? <p role="alert">Não foi possível consultar a preferência.</p> : <p>Preferência do proprietário: {preferred ? planNames[preferred] : "Sem preferência"}</p>}
       <form className="account-form" action={confirmSubscriptionPayment.bind(null, selected.id)}>
-        <label>Plano <select name="plan" required defaultValue="pro"><option value="pro">Pro</option><option value="premium">Premium</option></select></label>
+        <label>Plano <select name="plan" required defaultValue="pro"><option value="pro">Pro</option><option value="premium">Premium</option><option value="unlimited">Unlimited</option></select></label>
         <label>Modalidade <select name="period" defaultValue={preferred ?? "monthly"}>
           {Object.entries(planNames).map(([id, name]) => <option value={id} key={id}>{name}</option>)}
         </select></label>

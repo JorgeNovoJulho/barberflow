@@ -20,7 +20,7 @@ const messages: Record<string, string> = {
   conflito: "Esse horário já está ocupado ou bloqueado para o profissional.",
   indisponivel: "Confira o expediente, os serviços vinculados ao profissional e se o cliente está ativo.",
   invalido: "Confira os campos e a ordem dos horários.",
-  "limite-plano": "O plano Pro permite até 8 agendamentos por dia. Escolha outra data.",
+  "limite-plano": "O limite de agendamentos diários do plano foi atingido. Consulte as opções de upgrade.",
   falha: "Não foi possível concluir a operação.",
 };
 
@@ -191,7 +191,7 @@ export default async function Agenda({ params, searchParams }: {
       {!cancelled && <div className="agenda-forms">
         <details className="card" id="novo" open={novo === "1"}>
           <summary data-agenda-tone="green">Novo agendamento manual</summary>
-          {offerings.length ? <form className="account-form" action={createEntry.bind(null, shop, day, "appointment", false)}>
+          {offerings.length ? <form className="account-form" data-plan-resource="appointments" data-plan-day={day} action={createEntry.bind(null, shop, day, "appointment", false)}>
             <AppointmentFields key={`${suggestedProvider?.id ?? ""}-${suggestedService?.id ?? ""}`} providers={offerings}
               initialProfessional={suggestedProvider?.id} initialService={suggestedService?.id} />
             <label>Horário <input key={suggestedTime} type="time" name="start" defaultValue={suggestedTime} required /></label>

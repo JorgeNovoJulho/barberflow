@@ -1,3 +1,4 @@
+import { PlanCatalog } from "./plan-catalog";
 import { BrandLogo } from "./brand-logo";
 import type { CSSProperties } from "react";
 import Link from "next/link";
@@ -35,13 +36,14 @@ function BlockImage({ block, hero = false }: { block: LandingBlock; hero?: boole
 
 export default async function Home() {
   const supabase = await supabaseServer();
-  const [result, settingsResult, session, master] = supabase ? await Promise.all([
+  const [result, settingsResult, session, master, planSettings] = supabase ? await Promise.all([
     supabase.from("barberflow_landing_blocks")
       .select("id,section,title,body,image_url,image_alt,position,published")
       .eq("published", true).order("position").order("id"),
     supabase.from("barberflow_landing_settings").select("appearance").maybeSingle(),
     supabase.auth.getClaims(),
     hasMasterSession(),
+    supabase.from("barberflow_plan_settings").select("monthly_cents,yearly_cents,premium_monthly_cents,premium_yearly_cents,unlimited_monthly_cents,unlimited_yearly_cents").single(),
   ]) : [];
   const settings = parseLandingSettings(settingsResult?.data?.appearance);
   const signedIn = !!session?.data?.claims.sub;
@@ -58,6 +60,7 @@ export default async function Home() {
     ["#segmentos", settings.navSegments, segments.length],
     ["#estoque", settings.navStock, retail.length],
     ["#duvidas", settings.navFaq, questions.length],
+    ["#planos", "Planos", 1],
     ["#demonstracao", "Demonstração", 1],
   ] as const;
   const style = {
@@ -143,6 +146,15 @@ export default async function Home() {
         <BlockImage block={block} />
       </article>)}
     </section>}
+    <section id="planos" className="container section landing-subscriptions" aria-labelledby="landing-plans-title">
+      <h2 id="landing-plans-title">Planos para a rotina da sua loja</h2>
+      <div className="landing-trial">
+        <div><h3>Comece gratuitamente por 7 dias</h3>
+          <p>Experimente a agenda, as comandas e a gestão da loja antes de escolher sua assinatura.</p></div>
+        <Link className="primary" href="/cadastro">Começar grátis por 7 dias</Link>
+      </div>
+      {planSettings?.data ? <PlanCatalog prices={planSettings.data} /> : <Link className="secondary" href="/planos">Consultar planos disponíveis</Link>}
+    </section>
     {questions.length > 0 && <section id="duvidas" className="container section">
       <h2>{settings.faqTitle}</h2>
       {questions.map((block) => <details key={block.id}>

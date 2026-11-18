@@ -254,7 +254,7 @@ export async function ProfessionalManager({ params, searchParams, delegated = fa
             <SubmitButton className="command-action payment-action" tone={accessByProfessional.get(professional.id)?.blocked ? "keep" : "cancel"}>{accessByProfessional.get(professional.id)?.blocked ? "Desbloquear acesso ao painel" : "Bloquear acesso ao painel"}</SubmitButton>
           </form>}
           <details><summary className="secondary finance-tab command-action payment-action" data-tone="teal">Serviços vinculados · {selected.size}</summary>
-            {available.length ? <form className="account-form" action={saveAssignments.bind(null, shop, professional.id, delegated)}>
+            {available.length ? <form className="account-form" data-plan-resource="services" data-plan-person={professional.id} action={saveAssignments.bind(null, shop, professional.id, delegated)}>
               {available.map((service) => <label key={service.id}>
                 <input type="checkbox" name="service" value={service.id} defaultChecked={selected.has(service.id)} /> {service.name}{service.active ? "" : " (arquivado)"}
               </label>)}

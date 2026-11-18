@@ -29,7 +29,7 @@ function alerts(product: Product, today: string, cutoff: string) {
 }
 
 function ProductForm({ shop, product, margins }: { shop: string; product?: Product; margins: Margins }) {
-  return <form className="account-form" action={saveProduct.bind(null, shop, product?.id ?? null)}>
+  return <form className="account-form" data-plan-resource={product?.showcase && product.active ? undefined : "products"} data-plan-showcase={!product ? "true" : undefined} action={saveProduct.bind(null, shop, product?.id ?? null)}>
     <label>Nome <input name="name" maxLength={120} required defaultValue={product?.name} /></label>
     <p>SKU {product?.sku || "gerado automaticamente ao salvar"}</p>
     <label>Código de barras <input name="barcode" inputMode="numeric" pattern="[0-9]{1,32}" maxLength={32} defaultValue={product?.barcode} /></label>
