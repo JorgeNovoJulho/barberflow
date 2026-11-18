@@ -30,7 +30,7 @@ export function FinanceCostCards({ costs, monthly, filtered, period, reference, 
   const rows = (selected ? [selected] : professionals).filter(({ id }) => (filteredTotals.get(id) ?? 0) > 0);
   const daily = Math.round((openExpenses + replacement) / costs.days);
   return <>
-    <div className="card dashboard-metric" id="comissoes">
+    <div className="card dashboard-metric" data-metric-tone="rose" id="comissoes">
       <dt>Comissões a pagar</dt><dd>{pending === undefined ? "—" : money(pending)}</dd>
       <dd className="finance-cost-detail"><details open={Boolean(reference)}>
         <summary>Filtrar comissões</summary>
@@ -53,12 +53,12 @@ export function FinanceCostCards({ costs, monthly, filtered, period, reference, 
         </> : <p role="status">Não foi possível consultar as comissões.</p>}
       </details></dd>
     </div>
-    <div className="card dashboard-metric">
+    <div className="card dashboard-metric" data-metric-tone="orange">
       <dt>Custo diário</dt><dd>{money(daily)}</dd>
       <dd className="finance-cost-detail">{date(costs.today)} · Despesas fixas, variáveis e reinvestimentos em aberto, mais reposição, divididos por {costs.days} dias.</dd>
       {missingCost && <dd className="finance-cost-detail">Estimativa parcial. Há produtos vendidos sem custo cadastrado.</dd>}
     </div>
-    <div className="card dashboard-metric">
+    <div className="card dashboard-metric" data-metric-tone="blue">
       <dt>Custo de reposição de produtos</dt><dd>{money(replacement)}</dd>
       <dd className="finance-cost-detail"><details>
         <summary>Ver produtos vendidos neste mês</summary>

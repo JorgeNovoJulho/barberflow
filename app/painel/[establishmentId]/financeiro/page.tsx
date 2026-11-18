@@ -171,12 +171,12 @@ export default async function Finance({ params, searchParams }: {
             {" · Vence em "}{item.due_on.split("-").reverse().join("/")}
           </li>)}</ul>
         </section>}
-        <dl className="cards">
-          <div className="card dashboard-metric"><dt>Total a receber em aberto</dt><dd>{money(ledger.open_cents + (entries?.receivable ?? 0))}</dd></div>
+        <dl className="cards finance-metric-grid">
+          <div className="card dashboard-metric" data-metric-tone="cyan"><dt>Total a receber em aberto</dt><dd>{money(ledger.open_cents + (entries?.receivable ?? 0))}</dd></div>
           {([["fixed", "Contas a pagar"], ["variable", "Despesas variáveis"], ["reinvestment", "Reinvestimentos"]] as const).map(([key, title]) =>
-            <div key={key} className="card dashboard-metric"><dt>{title} em aberto</dt><dd>{money(entries?.payable_by_type?.[key] ?? 0)}</dd></div>)}
-          {!!entries?.payable_by_type?.unclassified && <div className="card dashboard-metric"><dt>Contas sem classificação</dt><dd>{money(entries.payable_by_type.unclassified)}</dd></div>}
-          <div className="card dashboard-metric"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
+            <div key={key} className="card dashboard-metric" data-metric-tone={{ fixed: "red", variable: "amber", reinvestment: "purple" }[key]}><dt>{title} em aberto</dt><dd>{money(entries?.payable_by_type?.[key] ?? 0)}</dd></div>)}
+          {!!entries?.payable_by_type?.unclassified && <div className="card dashboard-metric" data-metric-tone="amber"><dt>Contas sem classificação</dt><dd>{money(entries.payable_by_type.unclassified)}</dd></div>}
+          <div className="card dashboard-metric" data-metric-tone="green"><dt>Recebimentos líquidos de comandas</dt><dd>{money(ledger.cash_cents)}</dd></div>
           {costs && <FinanceCostCards costs={costs} monthly={monthlyCommission?.data as CommissionReport | null}
             filtered={(commissionFilter ?? monthlyCommission)?.data as CommissionReport | null} period={period}
             reference={reference} professional={professional} guide={guide} openExpenses={openExpenses} />}

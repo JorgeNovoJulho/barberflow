@@ -37,9 +37,9 @@ export function FinanceEntriesPanel({ shop, data, today, guide }: { shop: string
       </form>
     </details>}
     <p>Até 100 lançamentos, com pendências primeiro.</p>
-    {data.entries.length ? <ul className="finance-entry-list">{data.entries.map((entry) => {
+    {data.entries.length ? <ul className="finance-entry-list finance-entry-card-grid">{data.entries.map((entry) => {
       const remaining = entry.amount_cents - entry.settled_cents;
-      return <li key={entry.id} className="card finance-entry-row">
+      return <li key={entry.id} className="card finance-entry-row" data-expense={receiving ? "receivables" : entry.expense_type ?? "unclassified"}>
         <div className="finance-entry-summary">
         <h3>{entry.description}</h3>
         <p>{entry.direction === "out" ? "A pagar" : "A receber"} · {entry.category}</p>

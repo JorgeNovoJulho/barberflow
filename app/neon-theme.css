@@ -357,3 +357,60 @@ main .service-catalog-facts > [data-active="false"] { background: #392a3c; borde
   main .client-card-actions { grid-template-columns: 1fr; }
   main .service-catalog-facts { grid-template-columns: 1fr; }
 }
+
+main .module-heading {
+  background: linear-gradient(115deg, #1c2039, #112b37);
+  color: #f2f6ff;
+  border: 1px solid #526380;
+}
+main .module-heading :is(h1, h2, a) { color: #f2f6ff; }
+main .module-heading :is(p, .eyebrow) { color: #c1d6ee; }
+main .dashboard-metric[data-metric-tone="purple"] { --metric-color: #b89afb; --metric-surface: #2c2343; }
+main .dashboard-metric[data-metric-tone="rose"] { --metric-color: #f28dc8; --metric-surface: #382339; }
+main .dashboard-metric[data-metric-tone="orange"] { --metric-color: #f7ab74; --metric-surface: #3c2b21; }
+main .finance-metric-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  align-items: stretch;
+}
+main .finance-metric-grid .dashboard-metric dd:not(.finance-cost-detail) {
+  font-size: clamp(1.35rem, 2.1vw, 1.9rem);
+  overflow-wrap: normal;
+  white-space: nowrap;
+  letter-spacing: -.035em;
+}
+main .finance-metric-grid .finance-cost-detail {
+  white-space: normal;
+  font-size: .875rem;
+  font-weight: 400;
+  color: #d0dcef;
+  line-height: 1.55;
+}
+main .finance-entry-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+main .finance-entry-card-grid .finance-entry-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+main .finance-entry-card-grid .finance-entry-summary :is(h3, dl) { grid-column: 1 / -1; }
+main .finance-entry-card-grid .finance-entry-summary h3 { font-size: 1.25rem; line-height: 1.35; margin-bottom: .4rem; }
+main .finance-entry-card-grid .finance-entry-row { border: 1px solid #795a97; background: #251d34; }
+main .finance-entry-card-grid [data-expense="variable"] { border-color: #a78343; background: #302819; }
+main .finance-entry-card-grid [data-expense="reinvestment"] { border-color: #338877; background: #16332f; }
+main .finance-entry-card-grid [data-expense="receivables"] { border-color: #4a91bc; background: #152d42; }
+main .finance-entry-card-grid .finance-entry-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: .65rem;
+}
+main .finance-entry-card-grid .finance-entry-actions summary { width: 100%; text-align: center; color: #f1ecff; background: #292c46; }
+main .finance-entry-card-grid .finance-entry-actions > details[open] { grid-column: 1 / -1; }
+main .public-professional-grid .finance-tab[data-tone="green"] {
+  background: #155239;
+  color: #e0ffed;
+  border-color: #4bbb83;
+}

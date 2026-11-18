@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.28",
+    "date": "2026-11-18",
+    "title": "Cards financeiros e contraste dos módulos",
+    "changes": [
+      "Indicadores financeiros com cores por finalidade e contas em grade de cards.",
+      "Cabeçalho da Página pública com contraste e botão de agendamento verde."
+    ]
+  },
+  {
     "version": "0.2.27",
     "date": "2026-11-18",
     "title": "Organização de clientes e catálogo",

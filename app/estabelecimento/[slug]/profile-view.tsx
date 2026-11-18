@@ -129,7 +129,7 @@ export async function ProfileView({ profile, professionalShop, previewShop, denu
           <h3>{person.name}</h3>
           {slot && <p>Próximo horário: {slot.slice(0, 10).split("-").reverse().join("/")} às {slot.slice(11, 16)}</p>}
           <p>{services.map(({ name }) => name).join(" · ")}</p>
-          {!previewShop && <Link className="secondary" href={bookingPath + "?profissional=" + person.id}>Agendar com {person.name}</Link>}
+          {!previewShop && <Link className="secondary finance-tab" data-tone="green" href={bookingPath + "?profissional=" + person.id}>Agendar com {person.name}</Link>}
         </li>;
       })}</ul>
     </section>}
