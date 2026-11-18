@@ -1,0 +1,201 @@
+/* Application visual system inspired by the approved cyan/violet reference. */
+:root {
+  color-scheme: dark;
+  --background: #080b12;
+  --surface: #121620;
+  --foreground: #f2f4ff;
+  --muted: #b1bdd2;
+  --border: #2b3345;
+  --accent-soft: #24203e;
+  --accent-ink: #c6bcff;
+}
+
+body,
+body:not(:has(> main > .editorial-landing)) {
+  --shell-bg: #0b0e17;
+  --shell-light: #15182a;
+  --shell-line: #2d344b;
+  --shell-text: #f2f4ff;
+  --shell-muted: #b1bdd2;
+  --app-light: #080b12;
+  --app-border: #2b3345;
+  --app-elevation: 0 8px 24px -14px #000b;
+  color: var(--foreground);
+  background:
+    radial-gradient(ellipse at 0 0, #6827d51a, transparent 36rem),
+    radial-gradient(ellipse at 100% 100%, #00bfd414, transparent 40rem),
+    #080b12;
+}
+
+main > :not(.editorial-landing) {
+  --foreground: #f2f4ff;
+  --surface: #121620;
+  --muted: #b1bdd2;
+  --border: #2b3345;
+  --accent-ink: #c6bcff;
+}
+
+:is(.site-header, .workspace-rail, body > .footer) {
+  background: #0e111b;
+  border-color: #2b3345;
+}
+.site-header { border-top: 2px solid #8d65ff; }
+.navigation .wordmark .brand-name span,
+.navigation .wordmark .brand-mark,
+.workspace-rail svg { color: #54dff0; }
+.workspace-rail [aria-current="page"] {
+  background: linear-gradient(110deg, #7134e5, #1658bb);
+  color: white;
+}
+main .card,
+main .card.team-professional-card,
+main .dashboard-metric,
+main .workspace-heading,
+main .publication-card,
+main .booking-summary,
+main .checkout-summary {
+  background: linear-gradient(135deg, #161a27, #10151e);
+  color: #f2f4ff;
+  border-color: #30384c;
+  box-shadow: 0 8px 24px -14px #000b;
+}
+main :is(.card, .workspace-heading) :is(h1, h2, h3, strong, dt, dd, legend) { color: inherit; }
+main :is(p, small, .eyebrow) { color: #b8c4da; }
+main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) {
+  background: #0c101a;
+  color: #f2f4ff;
+  border: 1px solid #3a4560;
+  caret-color: #56dff2;
+}
+main :is(input, textarea)::placeholder { color: #9baac5; opacity: 1; }
+main fieldset { border-color: #343e55; }
+main input:is([type="checkbox"], [type="radio"]) { accent-color: #a78bfa; }
+main :is(button, .primary, .secondary, summary.command-action) {
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+main .primary,
+main button.primary,
+.editorial-landing .primary {
+  background: linear-gradient(110deg, #7836e9, #2855d5 65%, #087a98);
+  color: #fff;
+  border: 1px solid #9b80f1;
+  box-shadow: 0 7px 18px -10px #7843ef;
+}
+main .secondary {
+  background: #1a2030;
+  color: #dce5fc;
+  border-color: #414d68;
+}
+main :is(.primary, .secondary, button):hover:not(:disabled) { filter: brightness(1.12); }
+main :is(button, input, select, textarea, a, summary):focus-visible {
+  outline: 2px solid #5ce1f3;
+  outline-offset: 3px;
+}
+main :is(button, input, select):disabled { opacity: .55; cursor: not-allowed; }
+main .finance-tab[data-tone] {
+  --finance-tab-bg: #26203d;
+  --finance-tab-text: #e3d7ff;
+  --finance-tab-border: #8062b9;
+  background: var(--finance-tab-bg);
+  color: var(--finance-tab-text);
+  border-color: var(--finance-tab-border);
+}
+main .finance-tab[data-tone="blue"] { --finance-tab-bg: #142b4a; --finance-tab-text: #bbdbff; --finance-tab-border: #416fa9; }
+main .finance-tab[data-tone="teal"] { --finance-tab-bg: #123439; --finance-tab-text: #a4f0ef; --finance-tab-border: #37868d; }
+main .finance-tab[data-tone="green"] { --finance-tab-bg: #12382c; --finance-tab-text: #b4f5d1; --finance-tab-border: #368c63; }
+main .finance-tab[data-tone="amber"] { --finance-tab-bg: #3c2c15; --finance-tab-text: #ffe0a6; --finance-tab-border: #a9803c; }
+main .finance-tab[data-tone="rose"] { --finance-tab-bg: #401f30; --finance-tab-text: #ffc5d8; --finance-tab-border: #a95c7a; }
+main .finance-tabs .finance-tab[aria-current="page"] { outline: 2px solid currentColor; outline-offset: -3px; }
+main :is(.agenda-stack[data-state="completed"] > summary, .card[data-state="completed"], .card[data-state="paid"]) {
+  background: #12362a;
+  color: #c0f4d6;
+  border-color: #388b61;
+}
+main :is(.agenda-stack[data-state="cancelled"] > summary, .card[data-state="cancelled"], .commission-due-card[data-status="overdue"]) {
+  background: #3b1c2a;
+  color: #ffd0db;
+  border-color: #bc5b75;
+}
+main :is(.agenda-stack[data-state="no_show"] > summary, .card[data-state="no_show"]) {
+  background: #3c2e14;
+  color: #ffe4ad;
+  border-color: #bb943c;
+}
+main :is(.card[data-state="scheduled"], .card[data-state="pending"], .card[data-state="open"]) {
+  background: #142c43;
+  color: #c9e6ff;
+  border-color: #3a83b8;
+}
+main .checkout-item-group[data-tone="purple"] { --checkout-group-bg: #27203c; }
+main .checkout-item-group[data-tone="amber"] { --checkout-group-bg: #352b1a; }
+main .checkout-item-group[data-tone="teal"] { --checkout-group-bg: #143438; }
+main :is(.cash-payment-fields, .cash-payment-panel, .cash-payment-result) {
+  background: #192233;
+  color: #e6edff;
+  border-color: #4a5874;
+}
+main .cash-payment-result[data-state="short"] { background: #451e2a; color: #ffd0da; border-color: #c76880; }
+main .cash-payment-result[data-state="change"] { background: #3c2d15; color: #ffe0aa; border-color: #b68d42; }
+main .cash-payment-result[data-state="ready"] { background: #15372b; color: #baf4d3; border-color: #3d986b; }
+main :is(.agenda-cancel-button, .command-action[data-tone="red"]) { background: #ac294d; color: white; border-color: #d56783; }
+main .agenda-absence-button { background: #705119; color: #fff0c7; border-color: #bc9345; }
+main .professional-appointment-status { background: #1d3c63; color: #d2e6ff; }
+main .professional-appointment-status[data-state="completed"] { background: #1d4b37; color: #c7f8dc; }
+main .professional-appointment-status[data-state="cancelled"] { background: #62293e; color: #ffdae4; }
+main .professional-appointment-status[data-state="no_show"] { background: #624b1d; color: #ffedbd; }
+main :is(table, th, td, details, summary) { border-color: #303b52; }
+main th { background: #1a2232; color: #dce7ff; }
+main progress { accent-color: #38d5ee; }
+main .dashboard-metric :is(svg, .dashboard-icon) { color: #65ddf0; }
+main .dashboard-metric::before { background: linear-gradient(90deg, #8a4fff, #24d3ed); }
+main .theme-preview { background: #1d2233; color: #e5ecff; }
+main dialog { background: #151b29; color: #eef3ff; border-color: #63719a; }
+main dialog::backdrop { background: #030610bf; }
+::selection { background: #7045b9; color: #fff; }
+html { scrollbar-color: #545079 #0c1018; }
+@media (prefers-reduced-motion: no-preference) {
+  main :is(.primary, .secondary, button) { transition: filter 150ms ease-out, border-color 150ms ease-out; }
+}
+
+main .public-professional-grid > li,
+main .dashboard-notice-list li,
+main .walk-in-client-option,
+main .agenda-month-day {
+  background: #151d2b;
+  color: #e6edff;
+  border-color: #3c4962;
+}
+main .business-hours-now { background: #17412f; color: #c5f7dc; border-color: #438765; }
+main .business-hours-now[data-open="false"] { background: #472433; color: #ffd1de; }
+main .business-hours div[data-today="true"] { background: #2b2345; color: #e6dcff; }
+main .business-hours div[data-today="true"] small { color: #d3c3f3; }
+main .professional-today time { background: #1c2d43; color: #d6e8ff; }
+main .professional-today time[data-sunday="true"] { background: #352654; color: #e7d7ff; }
+main .professional-today span { background: #463518; color: #ffe1a4; }
+main .agenda-month-day[data-booked="true"] { background: #3b301c; color: #ffe2a6; }
+main .professional-daily .card:first-child { background: #24203c; }
+main .professional-daily .card + .card { background: #14302b; }
+main .team-booking > summary { background: #163a30; color: #bff6df; }
+main .team-booking.team-walk-in > summary { background: #412e18; color: #ffe1ae; }
+main .checkout-item-group legend { color: #e4dafa; }
+main .account-form .split-cash-received[data-empty="true"],
+main .checkout .sale-required-field { background: #3a1b29; color: #ffd4df; border-color: #d66b8d; }
+main .booking-option { background: #141c2a; color: #e1eaff; border-color: #435271; }
+main .booking-option:has(input:checked) { background: #2b2451; border-color: #a18aff; }
+main .agenda-stack > summary { background: #172d47; color: #c5e6ff; }
+main :is(meter, progress) { accent-color: #35d1ed; }
+main meter::-webkit-meter-optimum-value { background: linear-gradient(90deg, #8b57f6, #24cce4); }
+
+main .public-profile :is(#profissionais, #servicos, #vitrine) .card {
+  background: linear-gradient(135deg, #171c2b, #101820);
+  color: #f2f4ff;
+  border-color: #40506c;
+}
+main .public-service-price { color: #69e4ec; }
+main .public-profile .public-business-profile .primary {
+  background: linear-gradient(110deg, #7836e9, #2855d5 65%, #087a98);
+  border-color: #a086e9;
+  color: white;
+}

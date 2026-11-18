@@ -18,6 +18,7 @@ import "./styles.css";
 import "./visual.css";
 import "./editorial.css";
 import "./app-polish.css";
+import "./neon-theme.css";
 
 export const metadata: Metadata = {
   title: { default: "TOP BARBER", template: "%s | TOP BARBER" },

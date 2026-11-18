@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.23",
+    "date": "2026-11-18",
+    "title": "Identidade visual escura em ciano e violeta",
+    "changes": [
+      "Superfícies escuras, botões com gradiente e destaques em ciano e violeta.",
+      "Cards, formulários e indicadores adaptados à nova paleta."
+    ]
+  },
+  {
     "version": "0.2.22",
     "date": "2026-11-17",
     "title": "Cadastro de categorias de serviços",
