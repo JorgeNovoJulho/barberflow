@@ -104,10 +104,14 @@ export async function ServiceCatalog({ establishmentId, name, services, failed, 
       <h2>Catálogo</h2>
       <p>A ordem dos serviços ativos também aparece na página pública.</p>
       {services?.length ? <ul className="cards">
-        {services.map((service: Service, index) => <li className="card" key={service.id}>
-          <h3>{service.name}</h3>
+        {services.map((service: Service, index) => <li className="card service-catalog-card" key={service.id}>
+          <h3 className="service-catalog-title">{service.name}</h3>
           <ServiceMedia service={service} urls={urls} />
-          <p>{currency.format(service.price_cents / 100)} · {formatServiceDuration(service.duration_minutes)} · {service.active ? "Ativo" : "Arquivado"}</p>
+          <dl className="service-catalog-facts">
+            <div><dt>Valor</dt><dd>{currency.format(service.price_cents / 100)}</dd></div>
+            <div><dt>Duração</dt><dd>{formatServiceDuration(service.duration_minutes)}</dd></div>
+            <div data-active={service.active}><dt>Status</dt><dd>{service.active ? "Ativo" : "Arquivado"}</dd></div>
+          </dl>
           {service.category && <p>{service.category}</p>}
           {service.description && <p>{service.description}</p>}
           <details><summary>Editar serviço</summary><ServiceForm establishmentId={establishmentId} team={team} categories={categories} service={service} /></details>

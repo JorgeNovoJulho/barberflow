@@ -322,3 +322,38 @@ main .professional-agenda-date small {
   line-height: 1.5;
   font-weight: 600;
 }
+
+main .dashboard-header {
+  background: linear-gradient(115deg, #1c2039, #112b37);
+  border: 1px solid #4f5b82;
+  color: #f3f6ff;
+}
+main .dashboard-header h1 { color: #f3f6ff; }
+main .dashboard-header .eyebrow { color: #b9d9f5; }
+main .overview-shortcuts > .card { background: #152438; color: #e9f3ff; border-color: #4b6684; }
+main .overview-shortcuts > .checkout-shortcut-open { background: #14352d; color: #d1ffe8; border-color: #479675; }
+main .overview-shortcuts > .checkout-shortcut-card { background: #29213f; color: #eee3ff; border-color: #8c72b3; }
+main .overview-shortcuts > .checkout-shortcut-orders { background: #382c17; color: #ffe4b3; border-color: #a78b51; }
+main .overview-shortcuts > .card :is(strong, span, summary, p) { color: inherit; }
+main .client-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-block: 1rem .25rem; }
+main .client-card-actions > :is(a, button, details) { width: 100%; margin: 0; min-width: 0; }
+main .client-card-actions .payment-action { width: 100%; min-height: 48px; margin: 0; text-align: center; }
+main .client-card-actions > details[open] { grid-column: 1 / -1; }
+main .client-card-actions > details[open] > form { margin-block-start: 1rem; }
+main .service-catalog-card .service-catalog-title { font-size: clamp(1.35rem, 2.4vw, 1.8rem); margin-bottom: 1rem; color: #f4f7ff; }
+main .service-catalog-card .service-media { width: min(100%, 38rem); margin-inline: auto; }
+main .service-catalog-card .service-media:has([data-provider="Instagram"]),
+main .service-catalog-card .service-media:has([data-provider="TikTok"]) { width: min(100%, 23rem); }
+main .service-catalog-card .service-media > *,
+main .service-catalog-card .service-video-embed { width: 100%; max-width: 100%; }
+main .service-catalog-card .service-photo-carousel img { width: 100%; max-height: none; height: auto; object-fit: contain; }
+main .service-catalog-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-block: 1.25rem; }
+main .service-catalog-facts > div { padding: .85rem; background: #192c40; border: 1px solid #496582; border-radius: .75rem; }
+main .service-catalog-facts dt { color: #bed2ed; font-size: .85rem; }
+main .service-catalog-facts dd { margin: .35rem 0 0; color: #f0f8ff; font-size: clamp(1.05rem, 1.8vw, 1.45rem); font-weight: 800; }
+main .service-catalog-facts > [data-active="true"] { background: #173a2d; border-color: #479876; }
+main .service-catalog-facts > [data-active="false"] { background: #392a3c; border-color: #95709a; }
+@media (max-width: 34rem) {
+  main .client-card-actions { grid-template-columns: 1fr; }
+  main .service-catalog-facts { grid-template-columns: 1fr; }
+}

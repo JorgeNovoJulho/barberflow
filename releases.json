@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.27",
+    "date": "2026-11-18",
+    "title": "Organização de clientes e catálogo",
+    "changes": [
+      "Contraste no cabeçalho e atalhos da Visão geral.",
+      "Ações dos clientes agrupadas e mídia dos serviços alinhada.",
+      "Título, valor, duração e status dos serviços em destaque."
+    ]
+  },
+  {
     "version": "0.2.26",
     "date": "2026-11-18",
     "title": "Legibilidade dos dias na agenda",
