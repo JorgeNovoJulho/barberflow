@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { formatServiceDuration } from "../../../../lib/service-presentation";
 import { offsetDay } from "../../../../lib/agenda";
 import { bookingCurrency } from "../../../../lib/currency";
 import type { PublicProfile } from "../../../../lib/public-booking";
@@ -135,7 +136,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
             if (!entry.professionals.some(({ id }) => id === personId)) setPerson("");
             setTime("");
           }} />
-          <span><strong>{entry.name}</strong><small>{bookingCurrency.format(entry.price_cents / 100)} · {entry.duration_minutes} min</small></span>
+          <span><strong>{entry.name}</strong><small>{bookingCurrency.format(entry.price_cents / 100)} · {formatServiceDuration(entry.duration_minutes)}</small></span>
         </label>)}
       </fieldset>
       <fieldset className="booking-column" data-step={stepState(1)}>
@@ -157,6 +158,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           : availability.error ? "Não foi possível consultar os horários."
           : !slots.length ? "Não há horários livres neste dia. Escolha outra data."
           : "Selecione um dos horários disponíveis."}</p>
+        <small>O atendimento pausa durante o intervalo do profissional e continua depois. O horário de término inclui essa pausa.</small>
         {allowWalkIn && availability && !availability.error && !slots.length && <a className="secondary" href="#avulso" onClick={() => { const section = document.getElementById("avulso"); if (section instanceof HTMLDetailsElement) section.open = true; }}>Avulso</a>}
         {availability?.error && <button type="button" className="secondary" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button>}
         {!!slots.length && <fieldset className="booking-time-list">
@@ -175,7 +177,7 @@ export function BookingForm({ slug, services, initialService, initialPerson, day
           <div><dt>Profissional</dt><dd>{person?.name ?? "—"}</dd></div>
           <div><dt>Data</dt><dd>{person ? selectedDay.split("-").reverse().join("/") : "—"}</dd></div>
           <div><dt>Horário</dt><dd>{timeValid ? time : "—"}</dd></div>
-          <div><dt>Duração</dt><dd>{service ? service.duration_minutes + " min" : "—"}</dd></div>
+          <div><dt>Duração</dt><dd>{service ? formatServiceDuration(service.duration_minutes) : "—"}</dd></div>
           <div><dt>Total</dt><dd><strong>{price}</strong></dd></div>
         </dl>
         {teamShop && <label>Observações <textarea name="note" rows={2} maxLength={1000} /></label>}

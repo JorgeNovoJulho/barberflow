@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.2.24",
+    "date": "2026-11-18",
+    "title": "Agenda com pausa e retomada do atendimento",
+    "changes": [
+      "Serviços longos podem continuar após o intervalo, com término e conflitos calculados corretamente.",
+      "Duração em horas no formulário de agendamento."
+    ]
+  },
+  {
     "version": "0.2.23",
     "date": "2026-11-18",
     "title": "Identidade visual escura em ciano e violeta",
